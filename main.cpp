@@ -6,9 +6,11 @@
 #include <unordered_map>
 #include <bit>
 #include <cstdint>
-#include "types.h"
-#include "state.h"
-#include "unicode.h"
+#include <cstring>
+#include "include/types.h"
+#include "include/token.h"
+#include "include/state.h"
+#include "include/unicode.h"
 
 #include <chrono>
 using namespace std;
