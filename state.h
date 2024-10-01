@@ -18,8 +18,9 @@
 #include <iostream>
 #include <tuple>
 
-#include "types.h"
+// #include "types.h"
 #include "unicode.h"
+#include "token.h"
 
 #include <memory>
 #include <stdexcept>
@@ -40,144 +41,6 @@ std::string string_format( const std::string& format, Args ... args )
 using namespace std;
 
 
-// Tokens are 
-struct Token{
-  uint64_t val;
-  uint64_t hash;
-  uint16_t t_id;
-  uint16_t pad[3];
-};
-
-struct UnicodeToken{
-  const char* data;
-  uint64_t hash;
-  uint16_t t_id;
-  uint8_t kind;
-  uint8_t is_ascii;
-  uint32_t length;
-};
-
-// Object Token 
-struct ObjToken{
-  void* data;
-  uint64_t hash;
-  uint16_t t_id;
-  uint16_t pad[3];
-};
-
-struct EmptyBlock{
-  int64_t prev_f_id;
-  int64_t next_f_id;
-  uint16_t t_id;
-  uint16_t is_lead;
-  uint32_t length;
-};
-
-
-// STR CASE
-Token str_to_token(string arg){
-    
-    // Copy the string data
-    // char* cstr = (char *) malloc(sizeof(char) * arg.length());
-    // memcpy(cstr, arg.data(), arg.length());
-    auto tup = intern(arg);
-    // InternStr* s_id = get<0>(tup);
-    const char* data = get<1>(tup);
-
-    UnicodeToken tok;
-    // tok.data = cstr;
-    tok.data = data;
-    tok.hash = hash<string>{}(arg);//hash<string>{}(cstr); // Hash immediately
-    tok.kind = 1; // TODO
-    tok.is_ascii = 1; // TODO
-    tok.t_id = T_ID_STR;
-    tok.length = arg.length();
-
-    // cout << "IN: " << arg << " " << arg.length() << endl;
-
-    Token out = bit_cast<Token>(tok);
-    return out;
-}
-Token to_token(char* arg){return str_to_token(arg);};
-Token to_token(const char* arg){return str_to_token(arg);};
-Token to_token(string arg){return str_to_token(arg);};
-
-
-// INT CASE
-Token int_to_token(int64_t arg){
-    Token tok;
-    tok.val = bit_cast<uint64_t>(arg);
-    tok.hash = bit_cast<uint64_t>(arg);
-    tok.t_id = T_ID_INT;
-    return tok;
-}
-
-Token to_token(int arg){return int_to_token(arg);};
-Token to_token(long arg){return int_to_token(arg);};
-Token to_token(unsigned arg){return int_to_token(arg);};
-
-// FLOAT CASE
-Token float_to_token(double arg){
-    Token tok;
-    tok.val = bit_cast<uint64_t>(arg);
-    tok.hash = bit_cast<uint64_t>(arg);
-    tok.t_id = T_ID_FLOAT;
-    return tok;
-}
-
-Token to_token(double arg){return float_to_token(arg);};
-Token to_token(float arg){return float_to_token(arg);};
-
-// Edge case Token is itself
-Token to_token(Token arg){return arg;};
-
-
-// --------------------------------------
-// Token to builtin types 
-
-bool token_get_bool(Token tok){
-    return (bool) tok.val;
-}
-
-int64_t token_get_int(Token tok){
-    return bit_cast<int64_t>(tok.val);
-}
-
-double token_get_float(Token tok){
-    return bit_cast<double>(tok.val);
-}
-
-string_view token_get_string(Token tok){
-    UnicodeToken ut = bit_cast<UnicodeToken>(tok);
-    string_view s = string_view(ut.data, ut.length);
-    // s.assign(ut.data, ut.length);
-    // cout << "get_str(" << ut.data[0] << ") L:" << ut.length << "\n";
-    return s;
-}
-
-string repr_token(Token& tok){
-  uint16_t t_id = tok.t_id;
-  stringstream ss;
-  switch(t_id){
-    case T_ID_BOOL:
-      ss << token_get_bool(tok);
-      break;
-    case T_ID_INT:
-      ss << token_get_int(tok);
-      break;
-    case T_ID_FLOAT:
-      ss << string_format("%.6g", token_get_float(tok));
-      break;
-    case T_ID_STR:
-      ss << "'" << token_get_string(tok) << "'";
-      break;
-    default:
-      ss << "<token t_id=" << t_id << " @" << bit_cast<uint64_t>(&tok) << ">";     
-  }  
-  return ss.str();
-}
-
-string to_string(Token& tok){return repr_token(tok);}
 
 
 struct FactHeader{
@@ -205,7 +68,7 @@ struct FactHeader{
     // Token* ptr = bit_cast<Token*>()
     // memcpy()
     // *ptr = tok;
-  };
+  }
 
   Token* get(uint32_t a_id){
     Token* data_ptr = bit_cast<Token*>(
@@ -539,7 +402,7 @@ uint32_t empty_fact_header(State* state, uint32_t length){
   FactHeader* new_fact = alloc_fact_block(state, length);
 
   // Zero fill 
-  memset(new_fact, 0, sizeof(Block)*(1+length));
+  memset((void*) new_fact, 0, sizeof(Block)*(1+length));
 
   // cout << "BLOOP" << new_fact << endl;
   new_fact->t_id = (uint16_t) T_ID_FACT;

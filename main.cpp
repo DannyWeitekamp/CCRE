@@ -197,6 +197,7 @@ State* test_random_declare_retracts(int N=10000, int M=10, double hole_prop=.1){
   duration = duration_cast<microseconds>(stop - start);
   cout << "  traverse allocs(" << N << "): " << duration.count() / 1000.0 << "ms" << endl;
   // state->print_layout();
+  return state;
 }
 
 State* test_random_malloc_free(int N=10000, int M=10, double hole_prop=.1){
@@ -243,7 +244,7 @@ State* test_random_malloc_free(int N=10000, int M=10, double hole_prop=.1){
 
   start = high_resolution_clock::now();
   int64_t sum = 0;
-  for(int i=0; i < facts.size(); i++){
+  for(uint i=0; i < facts.size(); i++){
     sum += *facts[i];
   }
   stop = high_resolution_clock::now();
@@ -252,6 +253,7 @@ State* test_random_malloc_free(int N=10000, int M=10, double hole_prop=.1){
 
 
   // state->print_layout();
+  return state;
 }
 
 
