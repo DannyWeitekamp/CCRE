@@ -1,5 +1,10 @@
+#ifndef _CRE_HASH_H_
+#define _CRE_HASH_H_
+
 #include <cstdint>
 #include <string>
+#include "../include/item.h"
+#include "../include/types.h"
 
 using namespace std;
 
@@ -25,3 +30,59 @@ uint64_t siphash24(uint64_t k0, uint64_t k1, const void* src, uint64_t src_sz);
 
 uint64_t accum_item_hash(uint64_t acc, uint64_t lane);
 uint64_t process_return(uint64_t val);
+
+class CREHash {
+public:
+    uint64_t operator()(const bool& x) const {
+        return x;
+    }
+
+    uint64_t operator()(const uint64_t & x) const {
+        return x;
+    }
+
+    uint64_t operator()(const int64_t & x) const {
+        return x;
+    }
+
+    uint64_t operator()(const double& x) const {
+        return _Py_HashDouble(x);
+    }
+
+    uint64_t operator()(string_view x) const {
+        // return fnv1a((const uint8_t*) x.data(), x.size());
+        return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
+    }
+
+    uint64_t operator()(const string& x) const {
+        // return fnv1a((const uint8_t*) x.c_str(), x.length());
+        return MurmurHash64A((const uint8_t*) x.c_str(), x.length(), 0xFF);
+    }
+
+    uint64_t operator()(Item& x) const {        
+        if(x.hash != 0){
+            return x.hash;
+        }
+
+        uint16_t t_id = x.t_id;
+        uint64_t hash; 
+        switch(t_id) {
+            case T_ID_BOOL:
+                hash = CREHash::operator()(item_get_bool(x)); break;
+            case T_ID_INT:
+                hash = CREHash::operator()(item_get_int(x)); break;
+            case T_ID_FLOAT:
+                hash = CREHash::operator()(item_get_float(x)); break;
+            case T_ID_STR:
+                hash = CREHash::operator()(item_get_string(x)); break;
+            default:
+                hash = uint64_t (-1);
+        }
+
+        x.hash = hash;
+        return hash;
+    }
+};
+
+
+#endif /* _CRE_HASH_H_ */

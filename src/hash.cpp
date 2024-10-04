@@ -19,6 +19,8 @@ Implementation of various hash utilities used in CRE. Hash functions
 #include <string>
 #include "../include/rapidhash.h"
 #include "../include/hash.h"
+#include "../include/item.h"
+#include "../include/types.h"
 
 using namespace std;
 
@@ -359,3 +361,7 @@ uint64_t accum_item_hash(uint64_t acc, uint64_t lane){
     acc *= _PyHASH_XXPRIME_1;
     return acc;
 }
+
+
+
+

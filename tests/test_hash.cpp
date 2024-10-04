@@ -70,21 +70,10 @@ std::vector<std::string> readFileWordByWord(const std::string& filename) {
 }
 
 
-
-
-
-
-
-
-
-
-
 std::hash<std::string> string_hash;
 
 class FastHash {
 public:
-    // Use sum of lengths of first and last names
-    // as hash function.
     uint64_t operator()(const string& s) const
     {
         return rapidhash(s.c_str(), s.length());
@@ -93,8 +82,6 @@ public:
 
 class STDHash {
 public:
-    // Use sum of lengths of first and last names
-    // as hash function.
     uint64_t operator()(const string& s) const
     {
         return string_hash(s);
@@ -103,8 +90,6 @@ public:
 
 class FNV1AHash {
 public:
-    // Use sum of lengths of first and last names
-    // as hash function.
     uint64_t operator()(const string& s) const
     {
         return fnv1a((const uint8_t*) s.c_str(), s.length());
@@ -115,8 +100,6 @@ public:
 
 class XXHash {
 public:
-    // Use sum of lengths of first and last names
-    // as hash function.
     uint64_t operator()(const string& s) const
     {
         return xxh::xxhash<64>((const uint8_t*) s.c_str(), s.length(), 0xFF);
@@ -125,8 +108,6 @@ public:
 
 class MurmurHash {
 public:
-    // Use sum of lengths of first and last names
-    // as hash function.
     uint64_t operator()(const string& s) const
     {
         return MurmurHash64A((const uint8_t*) s.c_str(), s.length(), 0xFF);
@@ -135,8 +116,6 @@ public:
 
 class SipHash {
 public:
-    // Use sum of lengths of first and last names
-    // as hash function.
     uint64_t operator()(const string& s) const
     {
         return siphash24(
@@ -145,6 +124,8 @@ public:
             (const uint8_t*) s.c_str(), s.length());
     }
 };
+
+
 
 
 

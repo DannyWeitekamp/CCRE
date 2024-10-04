@@ -9,7 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstring>
-#include "token.h"
+#include "item.h"
 #include "types.h"
 
 
@@ -48,22 +48,22 @@ struct FactHeader {
     if(a_id >= length){
       throw out_of_range("Setting fact member beyond its length.");
     }
-    Token tok = to_token(val);
+    Item item = to_item(val);
 
-    // Pointer to the 0th Token of the FactHeader
-    Token* data_ptr = bit_cast<Token*>(
+    // Pointer to the 0th Item of the FactHeader
+    Item* data_ptr = bit_cast<Item*>(
         bit_cast<uint64_t>(this) + sizeof(FactHeader)
     );
-    data_ptr[a_id] = tok;
-    // uint64_t tok_ptr = this_ptr + sizeof(FactHeader) + a_id * sizeof(Token);
-    // cout << this_ptr << "," << tok_ptr << "\n";
-    // Token* ptr = bit_cast<Token*>()
+    data_ptr[a_id] = item;
+    // uint64_t item_ptr = this_ptr + sizeof(FactHeader) + a_id * sizeof(Item);
+    // cout << this_ptr << "," << item_ptr << "\n";
+    // Item* ptr = bit_cast<Item*>()
     // memcpy()
-    // *ptr = tok;
+    // *ptr = item;
   }
   
 
-  Token* get(uint32_t a_id);
+  Item* get(uint32_t a_id);
   FactHeader(uint32_t _length);
 };
 
@@ -71,7 +71,7 @@ struct FactHeader {
 
 struct State {
   size_t                       size;
-  //unordered_map<Token, FactHeader> indexer;
+  //unordered_map<Item, FactHeader> indexer;
   int64_t                      first_empty_f_id;
   // uint32_t                     last_empty_f_id;
   void*                        meta_data;
@@ -153,13 +153,13 @@ struct FactView {
       return header->set(a_id, val);
     }
 
-    Token* get(uint32_t a_id);
+    Item* get(uint32_t a_id);
     FactView(State* _state, uint32_t _f_id, uint32_t _length);
     FactHeader* header_ptr();
 };
 
 // Function declarations
-std::vector<Token*> fact_get_tokens(FactHeader& fact);
+std::vector<Item*> fact_get_Items(FactHeader& fact);
 std::string fact_to_string(FactHeader& fact);
 FactView empty_fact(State* state, uint32_t length);
 // FactView empty_fact(uint32_t length);

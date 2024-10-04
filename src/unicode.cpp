@@ -15,14 +15,18 @@
 #include <cstring>
 #include <iostream>
 #include "../include/unicode.h"
+#include "../include/hash.h"
+#include "../include/unordered_dense.h"
 
 using namespace std;
 
 // unordered_flat_map<string, uint32_t> intern_map = {};
-unordered_map<string, uint32_t> intern_map = {};
+// unordered_map<string, uint32_t> intern_map = {};
 // vector<string> s_id_map = {};
 // list<uint32_t> free_s_ids = {};
 // intern_bucket null_bucket = {0,0};
+ankerl::unordered_dense::map<string, uint32_t, CREHash> intern_map = {};
+
 
 string s_id_to_string(uint64_t s_id){
 	auto key_val = bit_cast<pair<string,uint32_t>*>(s_id);

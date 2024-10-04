@@ -8,15 +8,15 @@
 #include <cstdint>
 #include <cstring>
 #include "include/types.h"
-#include "include/token.h"
+#include "include/item.h"
+#include "include/fact.h"
 #include "include/state.h"
 #include "include/unicode.h"
+#include "include/cre_obj.h"
 
 #include <chrono>
 using namespace std;
 using namespace std::chrono;
-
-
 
 
 State* setup_declare(int N=100){
@@ -259,6 +259,27 @@ State* test_random_malloc_free(int N=10000, int M=10, double hole_prop=.1){
 }
 
 
+#define time_it(descr, a) \
+    do { \
+        auto start = high_resolution_clock::now(); \
+        a; \
+        auto stop = high_resolution_clock::now(); \
+        auto duration = duration_cast<microseconds>(stop - start); \
+        cout << descr << ": " << fixed << duration.count() / (1000.0) << "ms" << endl; \
+    } while (0)
+
+#define time_it_n(descr, a, N) \
+    do { \
+    auto start = high_resolution_clock::now(); \
+    for(int i=0; i < N; i++){ \
+        a; \
+    } \
+    auto stop = high_resolution_clock::now(); \
+    auto duration = duration_cast<microseconds>(stop - start); \
+    cout << descr << ": " << fixed << duration.count() / (1000.0 * N) << "ms" << endl; \
+    } while (0)
+
+
 int main() {
   CRE_Context* default_context = new CRE_Context("default");
   cout << "Context:" << default_context->name << "\nWith Types:\n";
@@ -272,11 +293,44 @@ int main() {
   }
 
   cout << "MOOP:";
-  cout << token_get_int(to_token(2)) << "\n";
-  cout << token_get_float(to_token(2.0)) << "\n";
-  cout << token_get_string(to_token("ABC")) << "\n";
+  cout << item_get_int(to_item(2)) << "\n";
+  cout << item_get_float(to_item(2.0)) << "\n";
+  cout << item_get_string(to_item("ABC")) << "\n";
 
-  bench_declare();
+  auto obj = new CRE_Obj();
+  cout << "RECOUNT:" << obj->get_refcount() << endl;
+  CRE_incref(obj);
+  cout << "RECOUNT:" << obj->get_refcount() << endl;
+  CRE_decref(obj);
+  cout << "RECOUNT:" << obj->get_refcount() << endl;
+  CRE_decref(obj);
+
+
+
+  
+
+  // cout << fact_to_string(fact) << endl;
+
+  time_it_n("new facts",
+    for(int i=0; i < 1000; i++){
+      auto fact = new_fact(3);
+      fact->set(0, i);
+      // fact->set(1, "A");
+      // fact->set(2, true);    
+    }
+  ,1000);
+
+  time_it_n("incref facts",
+    auto fact = new_fact(3);
+    for(int i=0; i < 1000; i++){
+      CRE_incref(fact);
+    }
+    
+  ,1000);
+
+  // cout << "RECOUNT:" << obj->get_refcount() << endl;
+
+  // bench_declare();
   // test_full_retract();
   // State* state = setup_declare();
   // state->print_layout();
@@ -288,8 +342,8 @@ int main() {
 
   // State* state = test_full_retract(100, true);
   // test_retract();
-  test_random_malloc_free(50000);
-  test_random_declare_retracts(50000);
+  // test_random_malloc_free(50000);
+  // test_random_declare_retracts(50000);
   
 
   // cout << "------" << endl;

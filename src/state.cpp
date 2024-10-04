@@ -17,7 +17,7 @@
 
 // #include "types.h"
 #include "../include/unicode.h"
-#include "../include/token.h"
+#include "../include/item.h"
 #include "../include/types.h"
 #include "../include/state.h"
 
@@ -40,8 +40,8 @@ std::string string_format( const std::string& format, Args ... args )
 using namespace std;
 
 // FactHeader Implementation
-Token* FactHeader::get(uint32_t a_id){
-    Token* data_ptr = bit_cast<Token*>(
+Item* FactHeader::get(uint32_t a_id){
+    Item* data_ptr = bit_cast<Item*>(
         bit_cast<uint64_t>(this) + sizeof(FactHeader)
     );
     return &data_ptr[a_id];
@@ -58,12 +58,12 @@ FactHeader::FactHeader(uint32_t _length){
 
 
 
-vector<Token*> fact_get_tokens(FactHeader& fact){
-  vector<Token*> out;
+vector<Item*> fact_get_items(FactHeader& fact){
+  vector<Item*> out;
   out.reserve(fact.length);
   for(int i=0; i < fact.length; i++){
-    Token* tok = fact.get(i);
-    out.push_back(tok);
+    Item* item = fact.get(i);
+    out.push_back(item);
   }
   return out;
 }
@@ -72,11 +72,11 @@ string fact_to_string(FactHeader& fact){
   stringstream ss;
   ss << "FactHeader(";  
 
-  // vector<Token> tokens = fact_get_tokens(fact);
+  // vector<Item> items = fact_get_items(fact);
   size_t L = fact.length;
   for(int i=0; i < L; i++){
-    Token* tok = fact.get(i);
-    ss << repr_token(*tok);
+    Item* item = fact.get(i);
+    ss << repr_item(*item);
     if(i != L-1){
       ss << ", ";  
     }    
@@ -109,11 +109,11 @@ State::State(size_t _size){
   meta_data = (void*) 0;
   data = (FactHeader*) malloc(size * sizeof(Block));
 
-  // ObjToken state_token;
-  // state_token.data = (void *) this;
-  // state_token.t_id = T_ID_STATE;
+  // ObjItem state_item;
+  // state_item.data = (void *) this;
+  // state_item.t_id = T_ID_STATE;
 
-  ObjToken* self_data = (ObjToken*) data;// = bit_cast<FactHeader>(state_token);
+  ObjItem* self_data = (ObjItem*) data;// = bit_cast<FactHeader>(state_item);
   self_data->data = (void*) this;//bit_cast<uint64_t>(this);//(void *) &(*this);
   self_data->t_id = T_ID_STATE;
   head = data+1;
@@ -299,7 +299,7 @@ FactHeader* alloc_fact_block(State* state, size_t size, bool recycle_blocks){
 }
 
 uint32_t empty_fact_header(State* state, uint32_t length){
-  // FactHeader allocation size is 1 Block for the header +N Tokens
+  // FactHeader allocation size is 1 Block for the header +N Items
   FactHeader* new_fact = alloc_fact_block(state, length);
 
   // Zero fill 
@@ -321,7 +321,7 @@ uint32_t empty_fact_header(uint32_t length){
 
 // Fact View Implementation
 
-Token* FactView::get(uint32_t a_id){
+Item* FactView::get(uint32_t a_id){
   FactHeader* header = &state->data[f_id];
   return header->get(a_id);
 };
@@ -402,7 +402,7 @@ void _retract_header(State* state, FactHeader* _fact){
     // cout << endl<< "Start F_ID: " << _fact->f_id << " POS: " << _fact-state->data << " LEN: " << _fact->length << endl; 
     if((FactHeader*)_fact-data > 1){ // If not first fact
 
-      // If the prev token is part of an empty block 
+      // If the prev item is part of an empty block 
       //  then make its header EmptyBlock* the leading one;
       EmptyBlock* prev_block = (EmptyBlock*) fact-1;
       if(prev_block->t_id == T_ID_EMPTY_BLOCK){
@@ -458,15 +458,15 @@ void _retract_header(State* state, FactHeader* _fact){
     // cout << "C" << endl;
 
     // Mark the leading block and its last as empty
-    //  set .length on the last token to be the leading block's length;
+    //  set .length on the last item to be the leading block's length;
     //  this is used to extend empty blocks backwards.
-    EmptyBlock* last_tok = (EmptyBlock*) lead_block+lead_block->length;
-    // cout << "LAST TOK @:"<< ((FactHeader*) last_tok)-state->data << endl;
+    EmptyBlock* last_item = (EmptyBlock*) lead_block+lead_block->length;
+    // cout << "LAST ITEM @:"<< ((FactHeader*) last_item)-state->data << endl;
     lead_block->t_id = T_ID_EMPTY_BLOCK;
-    last_tok->t_id = T_ID_EMPTY_BLOCK;
+    last_item->t_id = T_ID_EMPTY_BLOCK;
     lead_block->is_lead = true;
-    last_tok->is_lead = false;
-    last_tok->length = lead_block->length;  
+    last_item->is_lead = false;
+    last_item->length = lead_block->length;  
 
     // If the lead block is not a block preceeding the removed fact
     //  then we need to add it into the linked list;
@@ -496,10 +496,10 @@ void _retract_header(State* state, FactHeader* _fact){
     // cout << "D" << endl;
     
     // for(int i=0; i < fact->length; i++){
-    //   tok.t_id = T_ID_EMPTY_BLOCK
-    //   tok.length = tok-lead_block;
-    //   tok.is_internal = true;
-    //   tok++;
+    //   item.t_id = T_ID_EMPTY_BLOCK
+    //   item.length = item-lead_block;
+    //   item.is_internal = true;
+    //   item++;
     // }
 
     // return true;
@@ -528,6 +528,6 @@ FactHeader* get(State* state, uint32_t f_id){
 }
 
 State* get_state(FactHeader* fact){
-  ObjToken* state_token = (ObjToken*) fact-fact->f_id;
-  return (State*) state_token->data;
+  ObjItem* state_item = (ObjItem*) fact-fact->f_id;
+  return (State*) state_item->data;
 }
