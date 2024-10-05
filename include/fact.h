@@ -7,13 +7,16 @@
 
 using namespace std;
 
+// Externally Defined Forward Declares
+class FactSet;
+
 class Fact : public CRE_Obj {
 
 public: 
   //  -- Members --
   void*     type;
   void* 	pool;
-  void* 	parent; 
+  FactSet* 	parent; 
   uint64_t 	hash;
   uint32_t  f_id;
   uint32_t  length;
@@ -45,6 +48,7 @@ public:
 
   Item* get(uint32_t a_id);
   vector<Item*> get_items();
+  string to_string();
     
 };
 

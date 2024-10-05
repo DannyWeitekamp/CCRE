@@ -330,20 +330,22 @@ int main() {
 
   // cout << "RECOUNT:" << obj->get_refcount() << endl;
 
-  // bench_declare();
+  bench_declare();
+
+  State* state;
   // test_full_retract();
-  // State* state = setup_declare();
-  // state->print_layout();
-  // State* state = test_retract();
-  // test_full_retract(10000, true);
+  // state = setup_declare();
+  // // state->print_layout();
+  // state = test_retract();
+  test_full_retract(10000, true);
   // test_full_retract(10000, false);
   // test_full_retract(10000, true);
   // test_full_retract(10000, false);
 
   // State* state = test_full_retract(100, true);
   // test_retract();
-  // test_random_malloc_free(50000);
-  // test_random_declare_retracts(50000);
+  test_random_malloc_free(50000);
+  test_random_declare_retracts(50000);
   
 
   // cout << "------" << endl;

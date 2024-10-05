@@ -15,31 +15,36 @@ else()
 endif()
 
 add_compile_options(-std=c++2a -lstdc++)
+add_subdirectory(fmt)
+
 
 # Packages
 # find_package(unordered_dense CONFIG REQUIRED)
 
 # Find all source files in the current directory
-file(GLOB CPP_SOURCES "src/*.cpp")
-file(GLOB C_SOURCES "src/*.c")
+file(GLOB SOURCES "src/*.cpp")
 
-# Create an executable from the source files
-add_executable(main main.cpp ${CPP_SOURCES} ${C_SOURCES})
-target_include_directories(main PRIVATE include)
-# target_link_libraries(test_hash unordered_dense::unordered_dense)
+# Build an application library, 
+# (So we don't rebuild the source for each target)
+add_library(app_lib ${SOURCES})
+target_link_libraries(app_lib fmt::fmt)
 
-# --- TESTS -----
+#  -- main -- 
+add_executable(main main.cpp)
+target_link_libraries(main PRIVATE app_lib)
+
+#  -- main2 -- 
+add_executable(main2 main2.cpp)
+target_link_libraries(main2 PRIVATE app_lib)
+
+# ---------- TESTS ----------
 enable_testing()
 
-add_executable(test_hash tests/test_hash.cpp ${CPP_SOURCES} ${C_SOURCES})
-target_include_directories(test_hash PRIVATE include)
-# target_link_libraries(test_hash unordered_dense::unordered_dense)
-
-
-
-
-
+#  -- test_hash -- 
+add_executable(test_hash tests/test_hash.cpp)
+target_link_libraries(test_hash PRIVATE app_lib)
 add_test(
   NAME test_hash
   COMMAND $<TARGET_FILE:test_hash>
   )
+

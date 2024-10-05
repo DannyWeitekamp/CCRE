@@ -4,6 +4,7 @@
 #include <sstream> 
 #include <cstring>
 #include "../include/fact.h"
+#include "../include/factset.h"
 #include "../include/item.h"
 
 
@@ -27,6 +28,7 @@ extern "C" Fact* new_fact(uint32_t _length){
 	fact->f_id = 0;
 	fact->hash = 0;
 	fact->length = _length;
+	fact->parent = (FactSet*) NULL;
 	return fact;
 }
 
@@ -56,6 +58,10 @@ extern "C" string fact_to_string(Fact* fact){
   }
   ss << ")";  
   return ss.str();
+}
+
+string Fact::to_string(){
+	return fact_to_string(this);
 }
 
 
