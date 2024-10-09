@@ -1,27 +1,59 @@
 #include "../include/types.h"
 #include "../include/item.h"
-#include "../include/unicode.h"
+#include "../include/hash.h"
+#include "../include/intern.h"
+#include "../include/fact.h"
 #include <bit>
 #include <sstream>
 #include <functional>
 
 
-Item str_to_item(std::string arg) {
-    auto tup = intern(arg);
-    const char* data = std::get<1>(tup);
+extern "C" Item empty_item() {
+    Item item;
+    item.val = 0;
+    item.hash = 0;
+    item.t_id = 0;
+    return item;
+}
+
+
+Item str_to_item(const std::string_view& arg) {
+    // cout << "SV str_to_item " << arg.length() << endl;
+    // cout << uint64_t(-1) << arg.length() << endl;
+    // cout << "BEFORE INTERN" << endl;
+    auto tup = intern_ret_hash(arg);
+    std::string_view intern_str = tup.first;
+    uint64_t hash = tup.second;
+    // cout << "AFTER INTERN" << endl;
+    const char* data = intern_str.data();
 
     UnicodeItem item;
     item.data = data;
-    item.hash = std::hash<std::string>{}(arg);
+    item.hash = CREHash{}(arg);
     item.kind = 1; // TODO
     item.is_ascii = 1; // TODO
     item.t_id = T_ID_STR;
-    item.length = arg.length();
+    item.length = intern_str.length();
 
+    // cout << "BOOP: " << (uint64_t) data << ", " << intern_str.length() << endl;
     return std::bit_cast<Item>(item);
 }
 
-Item int_to_item(int64_t arg) {
+extern "C" Item str_to_item(const char* data, size_t length) {
+    // cout << "CHAR str_to_item " << length << endl;
+    if(length == size_t(-1)){
+        length = std::strlen(data);
+    }
+    // cout << "CHAR str_to_item " << length << endl;
+    std::string_view sv = std::string_view(data, length);
+
+    // cout << "CHAR str_to_item " << length << endl;
+
+    // cout << sv << endl;
+    return str_to_item(sv);
+}
+
+extern "C" Item int_to_item(int64_t arg) {
     Item item;
     item.val = std::bit_cast<uint64_t>(arg);
     item.hash = std::bit_cast<uint64_t>(arg);
@@ -29,7 +61,7 @@ Item int_to_item(int64_t arg) {
     return item;
 }
 
-Item float_to_item(double arg) {
+extern "C" Item float_to_item(double arg) {
     Item item;
     item.val = std::bit_cast<uint64_t>(arg);
     item.hash = std::bit_cast<uint64_t>(arg);
@@ -37,15 +69,18 @@ Item float_to_item(double arg) {
     return item;
 }
 
-Item to_item(char* arg) { return str_to_item(arg); }
-Item to_item(const char* arg) { return str_to_item(arg); }
-Item to_item(std::string arg) { return str_to_item(arg); }
-Item to_item(int arg) { return int_to_item(arg); }
-Item to_item(long arg) { return int_to_item(arg); }
-Item to_item(unsigned arg) { return int_to_item(arg); }
+
+
+Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
+Item to_item(const std::string_view& arg) {return str_to_item(arg); }
+Item to_item(int32_t arg) { return int_to_item(arg); }
+Item to_item(int64_t arg) { return int_to_item(arg); }
+Item to_item(uint32_t arg) { return int_to_item(arg); }
+Item to_item(uint64_t arg) { return int_to_item(arg); }
 Item to_item(double arg) { return float_to_item(arg); }
 Item to_item(float arg) { return float_to_item(arg); }
 Item to_item(Item arg) { return arg; }
+
 
 bool item_get_bool(Item item) {
     return (bool) item.val;
@@ -80,6 +115,12 @@ std::string repr_item(Item& item) {
         case T_ID_STR:
             ss << "'" << item_get_string(item) << "'";
             break;
+        case T_ID_FACT:
+            {
+                Fact* fact = std::bit_cast<Fact*>(item.val);
+                ss << "<fact f_id=" << fact->f_id << ">";
+            }
+            break;
         default:
             ss << "<item t_id=" << t_id << ">";
             // " @" << std::bit_cast<uint64_t>(&item) << ">";     
@@ -89,4 +130,8 @@ std::string repr_item(Item& item) {
 
 std::string to_string(Item& item) {
     return repr_item(item);
+}
+
+std::ostream& operator<<(std::ostream& out, Item item){
+    return out << repr_item(item);
 }

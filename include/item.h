@@ -3,7 +3,11 @@
 
 #include <string>
 #include <cstdint>
+#include <iostream>
 #include <string_view>
+
+// Externally Defined Forward Declares
+class Fact;
 
 struct Item {
     uint64_t val;
@@ -37,19 +41,26 @@ struct EmptyBlock{
 };
 
 
-Item str_to_item(std::string arg);
-Item int_to_item(int64_t arg);
-Item float_to_item(double arg);
+extern "C" Item empty_item();
+Item str_to_item(const std::string_view& arg);
+extern "C" Item str_to_item(const char* data, size_t length);
+extern "C" Item int_to_item(int64_t arg);
+extern "C" Item float_to_item(double arg);
 
-Item to_item(char* arg);
-Item to_item(const char* arg);
-Item to_item(std::string arg);
-Item to_item(int arg);
-Item to_item(long arg);
-Item to_item(unsigned arg);
+Item to_item(const char* arg, size_t length=-1);
+Item to_item(const std::string_view& arg);
+// Item to_item(const std::string& arg) ;
+Item to_item(int32_t arg);
+Item to_item(int64_t arg);
+Item to_item(uint32_t arg);
+Item to_item(uint64_t arg);
 Item to_item(double arg);
 Item to_item(float arg);
 Item to_item(Item arg);
+
+Item to_item(Fact* arg);
+
+std::ostream& operator<<(std::ostream& out, Item item);
 
 bool item_get_bool(Item item);
 int64_t item_get_int(Item item);

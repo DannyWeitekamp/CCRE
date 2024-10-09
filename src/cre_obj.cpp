@@ -13,12 +13,7 @@ CRE_Obj::CRE_Obj(CRE_dtor_function _dtor){
 	#endif
 	// this->ref_count = 1;
 	this->dtor = _dtor;
-}
-
-CRE_Obj::~CRE_Obj(){
-	if(dtor){
-		this->dtor((void*) this);
-	}
+	this->alloc_buffer = (AllocBuffer*) NULL;
 }
 
 size_t CRE_Obj::get_refcount(){
@@ -38,23 +33,48 @@ extern "C" void CRE_incref(CRE_Obj* x){
 	#endif
 }
 
+extern "C" void CRE_addref(CRE_Obj* x, size_t n){
+	// cout << "INCREF" << endl;
+	#ifndef CRE_NONATOMIC_REFCOUNT
+		x->ref_count.fetch_add(n, std::memory_order_relaxed);
+	#else
+   		x->ref_count += n; 
+	#endif
+}
+
+inline void _check_destroy(CRE_Obj* x){
+	if (x->ref_count <= 0) {
+		if (x->dtor){
+			x->dtor(x);
+		}
+		
+		if(x->alloc_buffer == (AllocBuffer*) NULL){
+			free(x);
+		}
+    }
+}
+
 extern "C" void CRE_decref(CRE_Obj* x){
-	// cout << "DECREF" << endl;
+	cout << "DECREF" << endl;
 
 	#ifndef CRE_NONATOMIC_REFCOUNT
 		x->ref_count.fetch_sub(1, std::memory_order_relaxed);
 	#else
    		x->ref_count--;
 	#endif
-	
-	
-	if (x->ref_count == 0) {
-		if (x->dtor){
-			x->dtor(x);
-		}
-		// cout << "DELETE" << endl;
-		delete x;
-    }
+
+	_check_destroy(x);
+}
+
+extern "C" void CRE_subref(CRE_Obj* x, size_t n){
+	cout << "INCREF" << endl;
+	#ifndef CRE_NONATOMIC_REFCOUNT
+		x->ref_count.fetch_sub(n, std::memory_order_relaxed);
+	#else
+   		x->ref_count -= n; 
+	#endif
+
+   	_check_destroy(x);
 }
 
 

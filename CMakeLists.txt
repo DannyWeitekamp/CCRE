@@ -15,7 +15,11 @@ else()
 endif()
 
 add_compile_options(-std=c++2a -lstdc++)
-add_subdirectory(fmt)
+add_compile_options(-g)
+add_compile_options(-O3)
+
+add_subdirectory(external/fmt)
+# add_subdirectory(external/rapidjson)
 
 
 # Packages
@@ -46,5 +50,12 @@ target_link_libraries(test_hash PRIVATE app_lib)
 add_test(
   NAME test_hash
   COMMAND $<TARGET_FILE:test_hash>
+  )
+
+add_executable(test_factset tests/test_factset.cpp)
+target_link_libraries(test_factset PRIVATE app_lib)
+add_test(
+  NAME test_factset
+  COMMAND $<TARGET_FILE:test_factset>
   )
 

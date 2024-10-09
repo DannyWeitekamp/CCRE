@@ -31,8 +31,10 @@ uint64_t siphash24(uint64_t k0, uint64_t k1, const void* src, uint64_t src_sz);
 uint64_t accum_item_hash(uint64_t acc, uint64_t lane);
 uint64_t process_return(uint64_t val);
 
-class CREHash {
-public:
+struct CREHash {
+    using is_transparent = void;
+    using key_equal = std::equal_to<>;  // Pred to use
+
     uint64_t operator()(const bool& x) const {
         return x;
     }
@@ -49,7 +51,7 @@ public:
         return _Py_HashDouble(x);
     }
 
-    uint64_t operator()(string_view x) const {
+    uint64_t operator()(const string_view& x) const {
         // return fnv1a((const uint8_t*) x.data(), x.size());
         return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
     }

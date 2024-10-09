@@ -13,6 +13,8 @@
 #include "../include/unordered_dense.h"
 #include "../include/rapidhash.h"
 #include "../include/xxhash.h"
+#include "../include/intern.h"
+#include "test_macros.h"
 
 
 
@@ -22,31 +24,6 @@
 
 using namespace std;
 using namespace chrono;
-
-// If parameter is not true, test fails
-// This check function would be provided by the test framework
-#define IS_TRUE(x) { if (!(x)) cout << __FUNCTION__ << " failed on line " << __LINE__ << endl; }
-
-
-#define time_it(descr, a) \
-    do { \
-        auto start = high_resolution_clock::now(); \
-        a; \
-        auto stop = high_resolution_clock::now(); \
-        auto duration = duration_cast<microseconds>(stop - start); \
-        cout << descr << ": " << fixed << duration.count() / (1000.0) << "ms" << endl; \
-    } while (0)
-
-#define time_it_n(descr, a, N) \
-    do { \
-    auto start = high_resolution_clock::now(); \
-    for(int i=0; i < N; i++){ \
-        a; \
-    } \
-    auto stop = high_resolution_clock::now(); \
-    auto duration = duration_cast<microseconds>(stop - start); \
-    cout << descr << ": " << fixed << duration.count() / (1000.0 * N) << "ms" << endl; \
-    } while (0)
 
 
 
@@ -140,6 +117,13 @@ public:
     }\
     } while (0)
 
+#define intern_words() \
+    do { \
+    for (int i=0; i < words.size(); i++) { \
+        intern(words[i]]); \
+    }\
+    } while (0)
+
 
 
 template<int left = 0, int right = 0, typename T>
@@ -156,13 +140,21 @@ constexpr auto slice(T&& container)
 }
 
 
+void test_intern(){
+    std::string s1 = "A";
+    std::string s2 = "A";
+    UnicodeItem str_item1 = std::bit_cast<UnicodeItem>(to_item(s1));
+    cout << (uint64_t) s1.data() << ", " << (uint64_t) str_item1.data << endl;
+    UnicodeItem str_item2 = std::bit_cast<UnicodeItem>(to_item(s2));
+    cout << (uint64_t) s2.data() << ", " << (uint64_t) str_item2.data << endl;
+}
+
 
 
 
 // Test for function1()
 // You would need to write these even when using a framework
-void test_function1()
-{
+void bench_hash() {
     const string str1 = string("Hellooooooooooooo");
     const string str2 = string("Hello");
     
@@ -195,7 +187,7 @@ void test_function1()
     std::vector<std::string> words = readFileWordByWord(filename);
     std::cout << "# Words in the file:" << words.size() << std::endl;
 
-    words = std::vector<std::string>(words.begin(), words.begin()+1000);
+    words = std::vector<std::string>(words.begin(), words.begin()+10000);
     // words = slice<0,1000>(words);
 
     // for (const auto& word : words) {
@@ -212,10 +204,21 @@ void test_function1()
     time_it_n("uord_xxh_map, mobydick\t", insert_n_read(uord_xxh_map), 10);
     time_it_n("uord_mur_map, mobydick\t", insert_n_read(uord_mur_map), 10);
     time_it_n("uord_sip_map, mobydick\t", insert_n_read(uord_sip_map), 10);
+    cout << endl;
+
+    time_it_n("intern_words, mobydick\t",
+        for (int i=0; i < words.size(); i++) { 
+            intern(words[i]); 
+        }, 100);
+
+    time_it_n("copy words, mobydick\t",
+        for (int i=0; i < words.size(); i++) { 
+            new std::string(words[i]); 
+        }, 100);
 
 }
 
 int main(void) {
     // Call all tests. Using a test framework would simplify this.
-    test_function1();
+    bench_hash();
 }

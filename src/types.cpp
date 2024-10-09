@@ -1,87 +1,128 @@
 #include "../include/types.h"
+#include "../include/context.h"
+#include <iostream>
 
-using namespace std;
+// using namespace std;
 
 // Type constructor implementation
-Type::Type(string _name, 
-           vector<tuple<string, Type*>> _members,
-           vector<Type*> _sub_types, 
+CRE_Type::CRE_Type(std::string_view _name, 
+           vector<CRE_Type*> _sub_types, 
            uint8_t _builtin)
-    : name(_name), members(_members), sub_types(_sub_types), builtin(_builtin) {}
+    : name(std::string(_name)), sub_types(_sub_types), builtin(_builtin) {}
+
+
+FactType::FactType(std::string_view _name, 
+           vector<CRE_Type*> _sub_types, 
+           vector<tuple<std::string, CRE_Type*>> _members)
+    : CRE_Type(_name, _sub_types, 0), members(_members) {}
+
+
+
 
 // Operator<< implementation
-ostream& operator<<(ostream& outs, const Type& t) {
+ostream& operator<<(ostream& outs, const FactType& t) {
     return outs << t.name;
 }
 
 // to_string implementation
-string to_string(const Type& value) {
-    ostringstream ss;
+std::string to_string(const FactType& value) {
+    std::ostringstream ss;
     ss << value;
     return ss.str();
 }
 
-// CRE_Context constructor implementation
-CRE_Context::CRE_Context(string _name) : name(_name) {
-    for (auto t : cre_builtins) {
-        _add_type(*t);
-    }
-}
-
-// CRE_Context::_add_type implementation
-uint16_t CRE_Context::_add_type(Type t) {
-    uint16_t t_id;
-    if (type_name_map.find(t.name) == type_name_map.end()) {
-        t_id = types.size();
-        types.push_back(t);
-    } else {
-        t_id = type_name_map[t.name];
-        types[t_id] = t;
-    }    
-    t.t_id = t_id;
-    return t_id;
-}
 
 // define_type implementation
-Type* define_type(CRE_Context* context, 
-                  string name, 
-                  vector<tuple<string, Type*>> members,
-                  vector<Type*> sub_types, 
-                  uint8_t builtin) {
-    Type t(name, members, sub_types, builtin);
+CRE_Type* define_type(std::string_view name, 
+                  std::vector<CRE_Type*> sub_types,
+                  CRE_Context* context) {
+    if(context == nullptr){
+        context = default_context;
+    };
+    CRE_Type* t = new CRE_Type(name, sub_types, 1);
+    // cout << "DEFINE TYPE" << t->name << endl;
     uint16_t t_id = context->_add_type(t);
-    return &context->types[t_id];
+    return context->types[t_id];
 }
+
+FactType* define_fact(std::string_view name, 
+                  std::vector<std::tuple<std::string, CRE_Type*>> members,
+                  std::vector<CRE_Type*> sub_types,
+                  CRE_Context* context) {
+    if(context == nullptr){
+        context = default_context;
+    };
+    // cout << "DEFINE FACT0: " << name << endl;
+    FactType* t = new FactType(name, sub_types, members);
+    // cout << "DEFINE FACT" << t->name << endl;
+    uint16_t t_id = context->_add_type(t);
+    return (FactType*) context->types[t_id];
+}
+
+size_t FactType::get_index(std::string_view key){
+    for(size_t i = 0; i < this->members.size(); i++){
+        if(std::get<0>(this->members[i]) == key){
+            return i;
+        }
+    }
+    return -1;
+}
+
+extern "C" size_t FactType_get_member_index(FactType* type, char* key){
+    std::string_view key_view(key);
+    return type->get_index(key_view);
+}
+
 
 
 
 // Global variable definitions
-Type* cre_undefined = new Type("undefined");
-Type* cre_bool = new Type("bool");
-Type* cre_int = new Type("int");
-Type* cre_float = new Type("float");
-Type* cre_str = new Type("str");
-Type* cre_obj = new Type("obj");
-Type* cre_Fact = new Type("Fact");
-Type* cre_Var = new Type("Var");
-Type* cre_Func = new Type("Func");
-Type* cre_Literal = new Type("Literal");
-Type* cre_Conditions = new Type("Conditions");
-Type* cre_Rule = new Type("Rule");
+CRE_Type* cre_undefined;// = new CRE_Type("undefined",{}, 1);
+CRE_Type* cre_bool;// = new CRE_Type("bool",{}, 1);
+CRE_Type* cre_int;// = new CRE_Type("int",{}, 1);
+CRE_Type* cre_float;// = new CRE_Type("float",{}, 1);
+CRE_Type* cre_str;// = new CRE_Type("str",{}, 1);
+CRE_Type* cre_obj;// = new CRE_Type("obj",{}, 1);
+CRE_Type* cre_Fact;// = new CRE_Type("Fact",{}, 1);
+CRE_Type* cre_Var;// = new CRE_Type("Var",{}, 1);
+CRE_Type* cre_Func;// = new CRE_Type("Func",{}, 1);
+CRE_Type* cre_Literal;// = new CRE_Type("Literal",{}, 1);
+CRE_Type* cre_Conditions;// = new CRE_Type("Conditions",{}, 1);
+CRE_Type* cre_Rule;// = new CRE_Type("Rule",{}, 1);
 
-vector<Type*> cre_builtins = {
-    cre_undefined,
-    cre_bool,
-    cre_int,
-    cre_float,
-    cre_str,
-    cre_obj,
-    cre_Fact,
-    cre_Var,
-    cre_Func,
-    cre_Literal,
-    cre_Conditions,
-    cre_Rule,
-};
 
-CRE_Context default_context("default");
+std::vector<CRE_Type*> cre_builtins;// = {};
+
+void ensure_builtins(){
+    if(cre_builtins.size() == 0){
+        cre_undefined = new CRE_Type("undefined",{}, 1);
+        cre_bool = new CRE_Type("bool",{}, 1);
+        cre_int = new CRE_Type("int",{}, 1);
+        cre_float = new CRE_Type("float",{}, 1);
+        cre_str = new CRE_Type("str",{}, 1);
+        cre_obj = new CRE_Type("obj",{}, 1);
+        cre_Fact = new CRE_Type("Fact",{}, 1);
+        cre_Var = new CRE_Type("Var",{}, 1);
+        cre_Func = new CRE_Type("Func",{}, 1);
+        cre_Literal = new CRE_Type("Literal",{}, 1);
+        cre_Conditions = new CRE_Type("Conditions",{}, 1);
+        cre_Rule = new CRE_Type("Rule",{}, 1);
+
+        // cout << "INIT builtins";
+        cre_builtins = {
+            cre_undefined,
+            cre_bool,
+            cre_int,
+            cre_float,
+            cre_str,
+            cre_obj,
+            cre_Fact,
+            cre_Var,
+            cre_Func,
+            cre_Literal,
+            cre_Conditions,
+            cre_Rule,
+        };    
+    }
+}
+

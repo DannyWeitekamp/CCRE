@@ -7,11 +7,13 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
+
 #include "include/types.h"
+#include "include/context.h"
 #include "include/item.h"
 #include "include/fact.h"
 #include "include/factset.h"
-#include "include/unicode.h"
+// #include "include/unicode.h"
 #include "include/cre_obj.h"
 
 #include <chrono>
@@ -23,7 +25,7 @@ FactSet* setup_declare(int N=100){
   FactSet* fs = new FactSet(3*(N+1));
   for(int i=0; i < N; i++){
     int k = i % 50;
-    Fact* fact = new_fact(2);
+    Fact* fact = empty_untyped_fact(2);
 
     fact->set(0, to_string(k));
     fact->set(1, k);
@@ -155,7 +157,7 @@ FactSet* test_random_declare_retracts(int N=10000, int M=10, double hole_prop=.1
   vector<Fact*> facts = {};
   for(int i=0; i < N; i++){
     int size = rand() % M;
-    Fact* fact = new_fact(size);
+    Fact* fact = empty_untyped_fact(size);
     declare(fs, fact);
     facts.push_back(fact);
   }
@@ -174,7 +176,7 @@ FactSet* test_random_declare_retracts(int N=10000, int M=10, double hole_prop=.1
     int is_dec = rand() % 2;
     if(is_dec){
       int size = rand() % M;
-      Fact* fact = new_fact(size);
+      Fact* fact = empty_untyped_fact(size);
       declare(fs, fact);
       facts.push_back(fact);
     }else{
@@ -286,11 +288,15 @@ FactSet* test_random_declare_retracts(int N=10000, int M=10, double hole_prop=.1
     } while (0)
 
 
+
+
+
+
 int main() {
   CRE_Context* default_context = new CRE_Context("default");
   cout << "Context:" << default_context->name << "\nWith Types:\n";
 
-  Type* point_type = define_type(default_context, "Point", 
+  FactType* point_type = define_fact("Point", 
     {{"x", cre_float}, {"y", cre_float}}
   );
 
@@ -301,6 +307,11 @@ int main() {
   cout << "MOOP:";
   cout << item_get_int(to_item(2)) << "\n";
   cout << item_get_float(to_item(2.0)) << "\n";
+
+  // std::string abc = "ABC";
+  // cout << abc;
+  // cout << item_get_string(to_item(string_view(abc))) << "\n";
+  // cout << abc;
   cout << item_get_string(to_item("ABC")) << "\n";
 
   auto obj = new CRE_Obj();
@@ -319,7 +330,7 @@ int main() {
 
   time_it_n("new facts",
     for(int i=0; i < 1000; i++){
-      auto fact = new_fact(3);
+      auto fact = empty_untyped_fact(3);
       fact->set(0, i);
       // fact->set(1, "A");
       // fact->set(2, true);    
@@ -327,7 +338,7 @@ int main() {
   ,1000);
 
   time_it_n("incref facts",
-    auto fact = new_fact(3);
+    auto fact = empty_untyped_fact(3);
     for(int i=0; i < 1000; i++){
       CRE_incref(fact);
     }

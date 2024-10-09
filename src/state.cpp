@@ -16,7 +16,7 @@
 #include <tuple>
 
 // #include "types.h"
-#include "../include/unicode.h"
+// #include "../include/unicode.h"
 #include "../include/item.h"
 #include "../include/types.h"
 #include "../include/state.h"
@@ -115,7 +115,7 @@ State::State(size_t _size){
 
   ObjItem* self_data = (ObjItem*) data;// = bit_cast<FactHeader>(state_item);
   self_data->data = (void*) this;//bit_cast<uint64_t>(this);//(void *) &(*this);
-  self_data->t_id = T_ID_STATE;
+  self_data->t_id = T_ID_FACTSET;
   head = data+1;
 
   // cout << "WEEE";
