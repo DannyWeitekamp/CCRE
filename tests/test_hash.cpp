@@ -14,6 +14,7 @@
 #include "../include/rapidhash.h"
 #include "../include/xxhash.h"
 #include "../include/intern.h"
+#include "../include/fact.h"
 #include "test_macros.h"
 
 
@@ -218,7 +219,13 @@ void bench_hash() {
 
 }
 
+void test_fact_hash(){
+    Fact* boop = make_fact(NULL, "A", 1);
+    cout << CREHash{}(boop) << endl;
+}
+
 int main(void) {
     // Call all tests. Using a test framework would simplify this.
-    bench_hash();
+    // bench_hash();
+    test_fact_hash();
 }

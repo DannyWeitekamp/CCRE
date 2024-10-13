@@ -263,6 +263,7 @@ Fact* FactSetBuilder::next_empty(size_t size){
 		// cout << "ALLOCED! " << endl; 
 	}
 	fact->length = size;
+	fact->type = NULL;
 	return fact;
 }
 

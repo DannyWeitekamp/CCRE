@@ -54,8 +54,12 @@ extern "C" Fact* new_fact(FactType* type, const Item* items, size_t _length){
 
 	Fact* fact = _alloc_fact(length);
 	_init_fact(fact, uint32_t(length), type);
+
+	for(int i=0; i < length; i++){
+		fact->set(i, items[i]);
+	}
 	
-	memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
+	// memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
 	return fact;
 }
 
@@ -74,21 +78,57 @@ std::vector<Item*> Fact::get_items(){
   return out;
 }
 
-extern "C" std::string fact_to_string(Fact* fact){
-  std::stringstream ss;
-  ss << "Fact(";  
 
-  // vector<Item> items = fact_get_items(fact);
-  size_t L = fact->length;
-  for(int i=0; i < L; i++){
-    Item* item = fact->get(i);
-    ss << repr_item(*item);
-    if(i != L-1){
-      ss << ", ";  
-    }    
-  }
-  ss << ")";  
-  return ss.str();
+int get_unique_id_index(FactType* type){
+	if(type != nullptr){
+		for(int i=0; i < type->members.size(); i++){
+			auto mbr_spec = type->members[i];
+			if(mbr_spec.get_flag(BIFLG_UNIQUE_ID)){
+				return i;
+			}
+		}
+	}
+}
+
+extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
+  	std::stringstream ss;
+  	FactType* type = fact->type;
+
+  	if(verbosity <= 1 && type != nullptr){
+		int unique_id_index = get_unique_id_index(type);
+		if(unique_id_index != -1){
+			Item item = *fact->get(unique_id_index);
+			if(item.t_id == T_ID_STR){
+				UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
+				ss << std::string(uitem.data, uitem.length);
+			}else{
+				ss << repr_item(item);
+			}
+			
+		}
+		return ss.str();
+	}
+  	ss << "Fact(";  
+  	size_t L = fact->length;
+  	for(int i=0; i < L; i++){
+  		if(type != nullptr && i < type->members.size()){
+  			auto mbr_spec = type->members[i];
+  			if(mbr_spec.get_flag(BIFLG_VERBOSITY) >= verbosity){
+  				continue;
+  			}
+
+  			if(mbr_spec.name.length() > 0){
+  				ss << mbr_spec.name << "=";
+  			}
+  		}
+  		Item* item = fact->get(i);
+  		ss << repr_item(*item);
+  		if(i != L-1){
+  			ss << ", ";  
+  		}    
+  	}
+  	ss << ")";  
+	return ss.str();
 }
 
 string Fact::to_string(){
@@ -114,13 +154,38 @@ std::ostream& operator<<(std::ostream& out, Fact* fact){
 	return out << fact_to_string(fact);
 }
 
-
-Item to_item(Fact* arg) { return fact_to_item(arg);}
-
 extern "C" Item fact_to_item(Fact* fact) {
     Item item;
     item.val = std::bit_cast<uint64_t>(fact);
-    item.hash = fact->hash;
+    uint8_t immutable = fact->immutable;
+    if(immutable){
+    	  item.hash = fact->hash;	
+    }else{
+    	  item.hash = 0;
+    }
     item.t_id = T_ID_FACT;
+    // item.immutable = immutable;
     return item;
+}
+
+Item to_item(Fact* arg) { return fact_to_item(arg);}
+
+
+
+uint64_t CREHash::operator()(Fact* x) {
+    uint64_t constexpr fnv_prime = 1099511628211ULL;
+    uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
+
+    if(x->hash != 0){
+        return x->hash;
+    }
+
+    uint64_t hash = fnv_offset_basis ^ (x->length * fnv_prime);
+    for(int i=0; i < x->length; i++){
+        Item item = *x->get(i);
+        uint64_t item_hash = CREHash{}(item);
+        hash ^= item_hash ^ (i * fnv_prime);
+    }
+
+    return hash;
 }

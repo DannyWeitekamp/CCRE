@@ -29,14 +29,15 @@ Item str_to_item(const std::string_view& arg) {
 
     UnicodeItem item;
     item.data = data;
-    item.hash = CREHash{}(arg);
+    item.hash = hash;
+    item.t_id = T_ID_STR;
     item.kind = 1; // TODO
     item.is_ascii = 1; // TODO
-    item.t_id = T_ID_STR;
     item.length = intern_str.length();
 
-    // cout << "BOOP: " << (uint64_t) data << ", " << intern_str.length() << endl;
-    return std::bit_cast<Item>(item);
+    Item generic_item = std::bit_cast<Item>(item);
+    // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
+    return generic_item;
 }
 
 extern "C" Item str_to_item(const char* data, size_t length) {
@@ -53,19 +54,32 @@ extern "C" Item str_to_item(const char* data, size_t length) {
     return str_to_item(sv);
 }
 
+extern "C" Item bool_to_item(bool arg) {
+    Item item;
+    item.val = static_cast<uint64_t>(arg);
+    item.hash = CREHash{}(arg);
+    item.t_id = T_ID_BOOL;
+
+    // cout << "BOOL TO ITEM: " << item.t_id << endl;
+    return item;
+}
+
 extern "C" Item int_to_item(int64_t arg) {
     Item item;
     item.val = std::bit_cast<uint64_t>(arg);
-    item.hash = std::bit_cast<uint64_t>(arg);
+    item.hash = CREHash{}(arg);
     item.t_id = T_ID_INT;
+
+    // cout << "INT TO ITEM: " << item.t_id << endl;
     return item;
 }
 
 extern "C" Item float_to_item(double arg) {
     Item item;
     item.val = std::bit_cast<uint64_t>(arg);
-    item.hash = std::bit_cast<uint64_t>(arg);
+    item.hash = CREHash{}(arg);
     item.t_id = T_ID_FLOAT;
+    // cout << "FLOAT TO ITEM: " << item.t_id << endl;
     return item;
 }
 
@@ -73,6 +87,7 @@ extern "C" Item float_to_item(double arg) {
 
 Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
 Item to_item(const std::string_view& arg) {return str_to_item(arg); }
+Item to_item(bool arg) { return bool_to_item(arg); }
 Item to_item(int32_t arg) { return int_to_item(arg); }
 Item to_item(int64_t arg) { return int_to_item(arg); }
 Item to_item(uint32_t arg) { return int_to_item(arg); }
@@ -134,4 +149,29 @@ std::string to_string(Item& item) {
 
 std::ostream& operator<<(std::ostream& out, Item item){
     return out << repr_item(item);
+}
+
+
+uint64_t CREHash::operator()(Item& x) {        
+    if(x.hash != 0){
+        return x.hash;
+    }
+
+    uint16_t t_id = x.t_id;
+    uint64_t hash; 
+    switch(t_id) {
+        case T_ID_BOOL:
+            hash = CREHash::operator()(item_get_bool(x)); break;
+        case T_ID_INT:
+            hash = CREHash::operator()(item_get_int(x)); break;
+        case T_ID_FLOAT:
+            hash = CREHash::operator()(item_get_float(x)); break;
+        case T_ID_STR:
+            hash = CREHash::operator()(item_get_string(x)); break;
+        default:
+            hash = uint64_t (-1);
+    }
+
+    x.hash = hash;
+    return hash;
 }

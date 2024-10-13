@@ -3,10 +3,15 @@
 
 #include <cstdint>
 #include <string>
-#include "../include/item.h"
-#include "../include/types.h"
+// #include "../include/item.h"
+// #include "../include/fact.h"
+#include "../include/unordered_dense.h"
+// #include "../include/types.h"
 
-using namespace std;
+struct Item;
+class Fact;
+
+// using namespace std;
 
 extern const uint64_t _PyHASH_XXPRIME_1;
 extern const uint64_t _PyHASH_XXPRIME_2;
@@ -22,7 +27,7 @@ uint64_t _Py_HashDouble(double v);
 uint64_t hash_bytes(const uint8_t *val, uint64_t _len);
 uint64_t fnv1a(const uint8_t *val, uint64_t _len);
 uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed );
-uint64_t hash_string(const string &val);
+uint64_t hash_string(const std::string &val);
 
 // Python's siphash24 
 uint64_t siphash24(uint64_t k0, uint64_t k1, const void* src, uint64_t src_sz);
@@ -51,40 +56,29 @@ struct CREHash {
         return _Py_HashDouble(x);
     }
 
-    uint64_t operator()(const string_view& x) const {
+    uint64_t operator()(const std::string_view& x) const {
         // return fnv1a((const uint8_t*) x.data(), x.size());
         return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
     }
 
-    uint64_t operator()(const string& x) const {
+    uint64_t operator()(const std::string& x) const {
         // return fnv1a((const uint8_t*) x.c_str(), x.length());
         return MurmurHash64A((const uint8_t*) x.c_str(), x.length(), 0xFF);
     }
 
-    uint64_t operator()(Item& x) const {        
-        if(x.hash != 0){
-            return x.hash;
-        }
+    uint64_t operator()(Item& x); 
 
-        uint16_t t_id = x.t_id;
-        uint64_t hash; 
-        switch(t_id) {
-            case T_ID_BOOL:
-                hash = CREHash::operator()(item_get_bool(x)); break;
-            case T_ID_INT:
-                hash = CREHash::operator()(item_get_int(x)); break;
-            case T_ID_FLOAT:
-                hash = CREHash::operator()(item_get_float(x)); break;
-            case T_ID_STR:
-                hash = CREHash::operator()(item_get_string(x)); break;
-            default:
-                hash = uint64_t (-1);
-        }
-
-        x.hash = hash;
-        return hash;
-    }
+    // Not Const
+    uint64_t operator()(Fact* x); 
 };
+
+
+template<class T, class U>
+using HashMap = ankerl::unordered_dense::map<T, U, CREHash, std::equal_to<>>;
+
+template<class T>
+using HashSet = ankerl::unordered_dense::set<T, CREHash, std::equal_to<>>;
+
 
 
 #endif /* _CRE_HASH_H_ */

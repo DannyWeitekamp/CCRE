@@ -1,0 +1,16 @@
+{
+	"sango" : {
+		"type" : "Cat",
+		"id" : "sango",
+		"color" : "white",
+		"legs" : 4,
+		"frisky" : true
+	},
+	"soren" : {
+		"type" : "Cat",
+		"id" : "soren",
+		"color" : "brown",
+		"legs" : 4,
+		"frisky" : false
+	}
+}
