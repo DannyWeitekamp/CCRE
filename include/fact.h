@@ -41,15 +41,18 @@ public:
       throw std::out_of_range("Setting fact member beyond its length.");
     }
     Item item = to_item(val);
+
+    // std::cout << "input " << std::to_string(a_id) << " = " << item << std::endl;
     // std::cout << "T:" << uint64_t(this->type) << std::endl;
     if(this->type != nullptr && a_id < this->type->members.size()){
       CRE_Type* mbr_type = this->type->members[a_id].type;
 
-      // std::cout << "TID: " << item.t_id << std::endl;
-      if(mbr_type->t_id != item.t_id && mbr_type->t_id != 0){
+      if(item.t_id == T_ID_NULL){
+        item.t_id = mbr_type->t_id;
+      }else if(mbr_type->t_id != item.t_id && mbr_type->t_id != 0){
         CRE_Type* type = current_context->types[item.t_id-1];
-        throw std::invalid_argument("Setting item[" + std::to_string(a_id) + "] with type " + mbr_type->name + " to value " \
-              + repr_item(item) + " with type " + type->name);
+        throw std::invalid_argument("Setting item[" + std::to_string(a_id) + "] with type '" + mbr_type->name + "' to value " \
+              + item_to_string(item) + " with type '" + type->name + "'");
       }
     }
 
@@ -79,12 +82,17 @@ extern "C" Fact* empty_untyped_fact(uint32_t _length);
 extern "C" Fact* new_fact(FactType* type, const Item* items, size_t _length);
 Fact* new_fact(FactType* type, const std::vector<Item>& items);
 
-extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity=1);
+
+const uint8_t DEFAULT_VERBOSITY = 2;
+
+extern "C" std::string fact_to_unique_id(Fact* fact);
+extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity=DEFAULT_VERBOSITY);
 extern "C" Item fact_to_item(Fact* fact);
 
 
 template <class ... Ts>
 Fact* make_fact(FactType* type, Ts && ... inputs){
+  // std::cout << std::endl;
   Item items[sizeof...(Ts)];
   // std::vector<Item> items = {};
   // items.reserve();
@@ -96,7 +104,7 @@ Fact* make_fact(FactType* type, Ts && ... inputs){
         // items.push_back(item);
         items[i] = to_item(inputs);
         ++i;
-        // std::cout << "input " << " = " << inputs << std::endl;
+        
     } (), ...);
   return new_fact(type, items, i);
 }

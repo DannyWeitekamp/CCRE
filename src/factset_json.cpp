@@ -102,7 +102,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 
 			// Otherwise get the key's index from the fact type
 			if(type != nullptr){
-				index = type->get_index(key);
+				index = type->get_attr_index(key);
 			}
 
 			// Throw error if member index cannot be resolved

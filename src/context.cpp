@@ -10,12 +10,15 @@ size_t CRE_Context::_add_type(CRE_Type* t) {
         // cout << "Adding type: " << t->name << endl;
         index = types.size();
         types.push_back(t);
+        // std::string* s = new std::string(t->name);
         type_name_map[t->name] = index;
     } else {
         // cout << "Replacing type: " << t->name << endl;
         index = type_name_map[t->name];
         types[index] = t;
     }    
+    t->context = this;
+    t->type_index = index;
     // t->t_id = t_id;
     return index;
 };
@@ -29,6 +32,7 @@ FactType* CRE_Context::get_fact_type(const std::string_view& name) {
 }
 
 CRE_Type* CRE_Context::get_type(const std::string_view& name) {
+    // cout << "NAME: " << std::string(name.data()) << " " << name.length() << endl;
 	auto itr = type_name_map.find(name);
 	if (itr != type_name_map.end()) {
         uint16_t t_id = itr->second;

@@ -22,6 +22,8 @@
 using namespace std;
 
 
+
+
 //--------------------------------------------------------------
 // : FactSet
 
@@ -273,3 +275,9 @@ Fact* FactSetBuilder::add_fact(FactType* type, const std::vector<Item>& items){
 	
 }	
 
+
+
+// struct Change 
+// {
+	
+// }; 

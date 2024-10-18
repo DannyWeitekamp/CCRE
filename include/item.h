@@ -44,6 +44,8 @@ struct EmptyBlock{
 extern "C" Item empty_item();
 Item str_to_item(const std::string_view& arg);
 extern "C" Item str_to_item(const char* data, size_t length);
+extern "C" Item opaque_to_item(void* arg);
+extern "C" Item nullptr_to_item(std::nullptr_t arg);
 extern "C" Item bool_to_item(bool arg);
 extern "C" Item int_to_item(int64_t arg);
 extern "C" Item float_to_item(double arg);
@@ -53,6 +55,8 @@ extern "C" Item float_to_item(double arg);
 Item to_item(const char* arg, size_t length=-1);
 Item to_item(const std::string_view& arg);
 // Item to_item(const std::string& arg) ;
+Item to_item(std::nullptr_t arg);
+// Item to_item(void* arg);
 Item to_item(bool arg);
 Item to_item(int32_t arg);
 Item to_item(int64_t arg);
@@ -71,7 +75,7 @@ int64_t item_get_int(Item item);
 double item_get_float(Item item);
 std::string_view item_get_string(Item item);
 
-std::string repr_item(Item& item);
+std::string item_to_string(const Item& item);
 std::string to_string(Item& item);
 
 #endif // _ITEM_H_

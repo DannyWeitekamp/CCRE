@@ -76,7 +76,7 @@ string fact_to_string(FactHeader& fact){
   size_t L = fact.length;
   for(int i=0; i < L; i++){
     Item* item = fact.get(i);
-    ss << repr_item(*item);
+    ss << item_to_string(*item);
     if(i != L-1){
       ss << ", ";  
     }    

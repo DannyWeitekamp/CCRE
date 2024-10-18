@@ -28,7 +28,7 @@ int loop_fact_set(FactSet* fs){
 	volatile int x = 0;
 	for (auto it = fs->begin(); it != fs->end(); ++it) {
 	 	Fact* fact = (*it);
-	 	x += fact->f_id;
+	 	x = x + fact->f_id;
       // cout << "f_id: " << (&(*it))->f_id << endl;
       // state->print_layout();
       // retract(state, (&(*it))->f_id);
@@ -188,7 +188,7 @@ int main() {
 	// cout << "CRE_Context: " << cre_Fact->name << endl;
 	// cout << "CRE_Context: " << default_context->name << endl;
 
-	// bench_build();
+	bench_build();
 	test_errors();
 	test_flags();
 	cout << "AND ITS DONE" << endl;

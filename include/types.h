@@ -17,15 +17,23 @@ struct Type;
 // // Alias CRE_dtor_function as pointer to void(void*)
 // typedef void (*CRE_dtor_function)(CRE_Obj* ptr);
 
+const uint8_t TYPE_KIND_BUILTIN = 1;
+const uint8_t TYPE_KIND_FACT = 2;
+const uint8_t TYPE_KIND_DEFFERED = 3;
+
 
 struct CRE_Type {
     std::string name;
+    std::vector<CRE_Type*> sub_types;
+    CRE_Context* context;
+    int32_t type_index;
     uint16_t t_id;
     uint8_t builtin;
-    std::vector<CRE_Type*> sub_types;
+    uint8_t kind;
+    
 
     CRE_Type(std::string_view _name, 
-        uint16_t t_id,
+        uint16_t _t_id,
         std::vector<CRE_Type*> _sub_types = {}, 
         uint8_t _builtin = 0
     );    
@@ -38,8 +46,8 @@ const uint64_t BIFLG_VERBOSITY = 8;
 
 
 struct MemberSpec {
+    CRE_Type* type; 
     std::string name;
-    CRE_Type* type;
     HashMap<std::string, Item> flags;
     uint64_t builtin_flags;
 
@@ -48,7 +56,14 @@ struct MemberSpec {
              HashMap<std::string, Item> _flags={}
     );
 
+    MemberSpec(
+            std::string_view _name,
+            std::string_view _type_name,
+            HashMap<std::string, Item> _flags
+    );
+
     uint64_t get_flag(uint64_t flag);
+    // CRE_Type* get_type();
 };
 
 // Type declaration
@@ -56,19 +71,27 @@ struct FactType : public CRE_Type{
     std::vector<MemberSpec> members;
     uint64_t builtin_flags;
     HashMap<std::string, Item> flags;
-
-    size_t get_index(std::string_view key);
+    uint8_t finalized;
 
     FactType(std::string_view _name, 
          std::vector<CRE_Type*> _sub_types = {}, 
          std::vector<MemberSpec> _members = {},
          HashMap<std::string, Item> flags = {}
     );
+
+    int get_attr_index(std::string_view key);
+    std::string get_item_attr(int index);
+    CRE_Type* get_item_type(int index);
+    CRE_Type* get_attr_type(std::string_view name);
+    void ensure_finalized();
+    bool try_finalized();
+
 };
 
 // Function declarations
-std::ostream& operator<<(std::ostream& outs, const FactType& t);
-std::string to_string(const FactType& value);
+std::string to_string(const CRE_Type* value);
+std::ostream& operator<<(std::ostream& outs, const CRE_Type* type);
+
 
 
 CRE_Type* define_type(std::string_view name, 
@@ -85,6 +108,7 @@ FactType* define_fact(std::string_view name,
 extern "C" size_t FactType_get_member_index(FactType* type, char* key);
 
 // Constant declarations
+const uint16_t T_ID_NULL = 0;
 const uint16_t T_ID_UNDEFINED = 1;
 const uint16_t T_ID_BOOL = 2;
 const uint16_t T_ID_INT = 3;
@@ -119,5 +143,15 @@ extern std::vector<CRE_Type*> cre_builtins;
 
 void ensure_builtins();
 // extern CRE_Context default_context;
+
+
+struct DefferedType : public CRE_Type {
+    std::string name;
+    std::vector<CRE_Type*> sub_types;
+    uint16_t t_id;
+    uint8_t builtin;
+
+    DefferedType(std::string_view _name);    
+};
 
 #endif /* _CRE_TYPES_H_ */

@@ -14,6 +14,11 @@ else()
   add_compile_options(-Wall -Wextra -Wno-sign-compare -pedantic)
 endif()
 
+# 
+add_compile_options(-Wno-unused-variable
+                    -Wno-reorder
+)
+
 add_compile_options(-std=c++2a -lstdc++)
 add_compile_options(-g)
 add_compile_options(-O3)
@@ -57,5 +62,12 @@ target_link_libraries(test_factset PRIVATE app_lib)
 add_test(
   NAME test_factset
   COMMAND $<TARGET_FILE:test_factset>
+  )
+
+add_executable(test_logical tests/test_logical.cpp)
+target_link_libraries(test_logical PRIVATE app_lib)
+add_test(
+  NAME test_logical
+  COMMAND $<TARGET_FILE:test_logical>
   )
 

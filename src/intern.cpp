@@ -72,5 +72,5 @@ std::string_view intern(const std::string_view& sv){
 
 
 ostream& operator<<(std::ostream& out, InternStr fs){
-	out << std::string_view(fs.data, fs.length);
+	return out << std::string_view(fs.data, fs.length);
 }

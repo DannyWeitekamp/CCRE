@@ -4,15 +4,26 @@
 #include "../include/context.h"
 #include <iostream>
 #include <bitset>
+#include <fmt/format.h>
 
 // using namespace std;
 
 // Type constructor implementation
-CRE_Type::CRE_Type(std::string_view _name, 
+CRE_Type::CRE_Type(
+           std::string_view _name, 
            uint16_t _t_id,
            std::vector<CRE_Type*> _sub_types, 
-           uint8_t _builtin)
-    : name(std::string(_name)), t_id(_t_id), sub_types(_sub_types), builtin(_builtin) {}
+           uint8_t _builtin) : 
+    name(std::string(_name)), t_id(_t_id),
+    sub_types(_sub_types), builtin(_builtin),
+    context(nullptr), type_index(0) {
+
+    if(builtin){
+        this->kind = TYPE_KIND_BUILTIN;
+    }
+}
+
+
 
 
 inline uint8_t get_flag_width(uint8_t flag){
@@ -80,11 +91,85 @@ void _MemberSpec_init_flags(MemberSpec* ms, HashMap<std::string, Item> flags){
     }
 }
 
-MemberSpec::MemberSpec(std::string_view _name,
-             CRE_Type* _type,
-             HashMap<std::string, Item> _flags) :
+MemberSpec::MemberSpec(
+            std::string_view _name,
+            CRE_Type* _type,
+            HashMap<std::string, Item> _flags) :
     name(_name), type(_type), flags(_flags){
     _MemberSpec_init_flags(this, _flags);
+}
+
+MemberSpec::MemberSpec(
+            std::string_view _name,
+            std::string_view _type_name,
+            HashMap<std::string, Item> _flags) :
+    name(_name), flags(_flags){
+    CRE_Type* _type  = current_context->get_type(_type_name);
+    if(_type == nullptr){
+        _type = new DefferedType(_type_name);
+    }
+    this->type = _type;
+    _MemberSpec_init_flags(this, _flags);
+}
+
+// CRE_Type* MemberSpec::get_type(){
+//     CRE_Type* _type = this->type;
+//     if(_type->kind == TYPE_KIND_DEFFERED){
+//         DefferedType* dt = (DefferedType*) type;
+//         _type  = current_context->get_type(dt->name);
+//         this->type = _type;
+//     }
+//     return _type;
+// }
+
+// CRE_Type* MemberSpec::get_type(){
+//     return this->type;
+//     // CRE_Type* _type = this->type;
+//     // if(_type->kind == TYPE_KIND_DEFFERED){
+//     //     DefferedType* dt = (DefferedType*) type;
+//     //     _type  = current_context->get_type(dt->name);
+//     //     this->type = _type;
+//     // }
+//     // return _type;
+// }
+
+bool _try_finalized(FactType* _this, bool do_throw){
+    CRE_Context* context = _this->context;
+    for(int i=0; i < _this->members.size(); i++){
+        MemberSpec* mbr_spec = &_this->members[i];
+        CRE_Type* mbr_type = mbr_spec->type;
+        if(mbr_type->kind == TYPE_KIND_DEFFERED){
+            CRE_Type* resolved_type = context->get_type(mbr_type->name);
+            if(resolved_type != nullptr){
+                // If found free deffered types and replace
+                // std::cout << "RESOLVE TYPE" << std::endl;
+                delete mbr_type;
+                mbr_spec->type = resolved_type;    
+                std::cout << "RESOLVE TYPE: " << uint64_t(resolved_type) << " " << resolved_type << std::endl;
+            }else{
+                // std::cout << "FAIL RESOLVE TYPE" << std::endl;
+                if(!do_throw){
+                    return false;
+                }
+                throw std::runtime_error(
+                    "Invalid use of unfinalized FactType '" + _this->name + "'. " + \
+                    "Attribute '" + mbr_spec->name + \
+                    "' with deffered type '" + mbr_spec->name + \
+                    "' has not been defined in the current context: '" + current_context->name + "'" 
+                );
+            }
+        }
+    }
+    _this->finalized = 1;
+    return true;
+}
+
+bool FactType::try_finalized(){
+    return _try_finalized(this, false);
+}
+
+void FactType::ensure_finalized(){
+    _try_finalized(this, true);
 }
 
 uint64_t MemberSpec::get_flag(uint64_t flag){
@@ -96,24 +181,26 @@ FactType::FactType(std::string_view _name,
            std::vector<CRE_Type*> _sub_types, 
            std::vector<MemberSpec> _members,
            HashMap<std::string, Item> _flags)
-    : CRE_Type(_name, T_ID_FACT, _sub_types,  0), members(_members), flags(_flags) {
-
-    }
-
-
-
-
-// Operator<< implementation
-std::ostream& operator<<(std::ostream& outs, const FactType& t) {
-    return outs << t.name;
+    : CRE_Type(_name, T_ID_FACT, _sub_types,  0),
+      members(_members), flags(_flags) {
+    finalized = false;
+    kind = TYPE_KIND_FACT;
 }
 
-// to_string implementation
-std::string to_string(const FactType& value) {
-    std::ostringstream ss;
-    ss << value;
-    return ss.str();
-}
+
+
+
+// // Operator<< implementation
+// std::ostream& operator<<(std::ostream& outs, const FactType& t) {
+//     return outs << t.name;
+// }
+
+// // to_string implementation
+// std::string to_string(const FactType& value) {
+//     std::ostringstream ss;
+//     ss << value;
+//     return ss.str();
+// }
 
 
 // define_type implementation
@@ -122,7 +209,7 @@ CRE_Type* define_type(std::string_view name,
                   std::vector<CRE_Type*> sub_types,
                   CRE_Context* context) {
     if(context == nullptr){
-        context = default_context;
+        context = current_context;
     };
     CRE_Type* t = new CRE_Type(name, t_id, sub_types, 1);
     // cout << "DEFINE TYPE" << t->name << endl;
@@ -136,16 +223,30 @@ FactType* define_fact(std::string_view name,
                   HashMap<std::string, Item> flags,
                   CRE_Context* context) {
     if(context == nullptr){
-        context = default_context;
+        context = current_context;
     };
     // cout << "DEFINE FACT0: " << name << endl;
     FactType* t = new FactType(name, sub_types, members, flags);
-    // cout << "DEFINE FACT" << t->name << endl;
-    uint16_t t_id = context->_add_type(t);
-    return (FactType*) context->types[t_id];
+    // std::cout << "DEFINE FACT[0]" << t->members[0].builtin_flags << std::endl;
+    size_t index = context->_add_type(t);
+    // std::cout << uint64_t(t) << " <<KIND" << int(t->kind) << std::endl;
+    // std::cout << "<<T_ID" << int(t->t_id) << std::endl;
+    t->finalized = t->try_finalized();
+    
+    return t;//(FactType*) context->types[index];
 }
 
-size_t FactType::get_index(std::string_view key){
+inline void _ensure_index_okay(FactType* type, int index, const std::string& descr){
+    if(index >= type->members.size()){
+        throw std::runtime_error(descr + "(" + 
+            std::to_string(index) + ") failed for type " + type->name + 
+            " with " + std::to_string(type->members.size()) + " members." 
+        );
+    }
+}
+
+
+int FactType::get_attr_index(std::string_view key){
     for(size_t i = 0; i < this->members.size(); i++){
         if(this->members[i].name == key){
             return i;
@@ -154,9 +255,32 @@ size_t FactType::get_index(std::string_view key){
     return -1;
 }
 
-extern "C" size_t FactType_get_member_index(FactType* type, char* key){
+std::string FactType::get_item_attr(int index){
+    _ensure_index_okay(this, index, "get_attr_name");
+    return this->members[index].name;
+}
+
+CRE_Type* FactType::get_item_type(int index){
+    _ensure_index_okay(this, index, "get_deref_type");
+    return this->members[index].type;
+}
+
+CRE_Type* FactType::get_attr_type(std::string_view name){
+    int index = this->get_attr_index(name);
+    if(index == -1){
+        std::cout << uint64_t(this) << " L=" << this->name.length() << std::endl;
+        std::cout << "<<" << name << ", " << this->name << std::endl;
+        throw std::runtime_error("get_attr_type('" + 
+            std::string(name) + "') failed for type " + this->name + 
+            " with " + std::to_string(this->members.size()) + " members." 
+        );
+    }
+    return this->members[index].type;
+}
+
+extern "C" size_t FactType_get_attr_index(FactType* type, char* key){
     std::string_view key_view(key);
-    return type->get_index(key_view);
+    return type->get_attr_index(key_view);
 }
 
 
@@ -214,4 +338,25 @@ void ensure_builtins(){
         };    
     }
 }
+
+DefferedType::DefferedType(std::string_view _name) :
+    CRE_Type(_name, 0, {}, 0) {
+
+    kind = TYPE_KIND_DEFFERED;
+}
+
+
+// to_string implementation
+std::string to_string(const CRE_Type* type) {
+    if(type->kind == TYPE_KIND_DEFFERED){
+        return fmt::format("DefferedType[{}]", type->name);
+    }else{
+        return std::string(type->name);    
+    }
+}
+
+std::ostream& operator<<(std::ostream& outs, const CRE_Type* type) {
+    return outs << to_string(type);
+}
+
 

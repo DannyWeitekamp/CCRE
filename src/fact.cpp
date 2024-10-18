@@ -22,42 +22,72 @@ extern "C" Fact* _alloc_fact(uint32_t _length){
 	return ptr;
 }
 
+extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
+	// Pointer to the 0th Item of the FactHeader
+	Item* data_ptr = std::bit_cast<Item*>(
+      std::bit_cast<uint64_t>(fact) + sizeof(Fact)
+  );
+	FactType* type = fact->type;
+	// cout << "ZFILL: " << start_a_id << ", " << end_a_id << endl;
+  for(int a_id = start_a_id; a_id < end_a_id; a_id++){
+	    data_ptr[a_id] = empty_item();
+
+	    if(type != nullptr && a_id < type->members.size()){
+	    	CRE_Type* mbr_typ = (&type->members[a_id])->type;
+	    	// cout << uint64_t(mbr_typ) << " FILL BACK" << std::to_string(a_id) <<
+	    	//  		" T_ID: " << mbr_typ->t_id <<
+	    	//  		" Type: " << mbr_typ << " [" << 
+	    	//  							int(mbr_typ->kind) << "]" << endl;
+	    	data_ptr[a_id].t_id = mbr_typ->t_id;
+	    }
+	}
+}
+
 extern "C" void _init_fact(Fact* fact, uint32_t _length, FactType* type){
 	fact->type = type;
 	fact->f_id = 0;
 	fact->hash = 0;
 	fact->length = _length;
-	fact->parent = (FactSet*) NULL;
+	fact->parent = (FactSet*) nullptr;
 }
 
 extern "C" Fact* empty_fact(FactType* type){
 	uint32_t _length = (uint32_t) type->members.size();
 	Fact* fact = _alloc_fact(_length);
 	_init_fact(fact, _length, type);
+	_zfill_fact(fact, 0, _length);
 	return fact;
 }
 
 extern "C" Fact* empty_untyped_fact(uint32_t _length){
 	Fact* fact = _alloc_fact(_length);
-	_init_fact(fact, _length, NULL);
+	_init_fact(fact, _length, nullptr);
+	_zfill_fact(fact, 0, _length);
 	return fact;
 }
 
 extern "C" Fact* new_fact(FactType* type, const Item* items, size_t _length){
 	uint32_t length;
 
-	if(type == NULL){
+	uint32_t n_mbrs = 0;
+	if(type == nullptr){
 		length = _length;
 	}else{
+		type->ensure_finalized();
+		n_mbrs = type->members.size(); 
 		length = std::max(type->members.size(), _length);
 	}
 
 	Fact* fact = _alloc_fact(length);
 	_init_fact(fact, uint32_t(length), type);
 
-	for(int i=0; i < length; i++){
+	int i=0;
+	for(; i < _length; i++){
 		fact->set(i, items[i]);
 	}
+	_zfill_fact(fact, _length, length);
+
+	
 	
 	// memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
 	return fact;
@@ -82,52 +112,73 @@ std::vector<Item*> Fact::get_items(){
 int get_unique_id_index(FactType* type){
 	if(type != nullptr){
 		for(int i=0; i < type->members.size(); i++){
-			auto mbr_spec = type->members[i];
-			if(mbr_spec.get_flag(BIFLG_UNIQUE_ID)){
+
+			MemberSpec* mbr_spec = &type->members[i];
+			// cout << "TRY: " << i << " " << mbr_spec->builtin_flags << endl;
+			if(mbr_spec->get_flag(BIFLG_UNIQUE_ID)){
 				return i;
 			}
 		}
 	}
+	return -1;
 }
 
-extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
-  	std::stringstream ss;
-  	FactType* type = fact->type;
-
-  	if(verbosity <= 1 && type != nullptr){
-		int unique_id_index = get_unique_id_index(type);
-		if(unique_id_index != -1){
-			Item item = *fact->get(unique_id_index);
-			if(item.t_id == T_ID_STR){
-				UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
-				ss << std::string(uitem.data, uitem.length);
-			}else{
-				ss << repr_item(item);
-			}
-			
-		}
+extern "C" std::string fact_to_unique_id(Fact* fact){
+	std::stringstream ss;
+	FactType* type = fact->type;
+	int unique_id_index = get_unique_id_index(type);
+	// cout << "unique_id_index: " << unique_id_index << uint64_t(type) << endl ;
+	if(unique_id_index != -1){
+		// cout << "unique_id_index: " << unique_id_index << endl ;
+		Item item = *fact->get(unique_id_index);
+		if(item.t_id == T_ID_STR){
+			UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
+			ss << std::string(uitem.data, uitem.length);
+		}else{
+			ss << item_to_string(item);
+		}	
 		return ss.str();
 	}
-  	ss << "Fact(";  
-  	size_t L = fact->length;
-  	for(int i=0; i < L; i++){
-  		if(type != nullptr && i < type->members.size()){
-  			auto mbr_spec = type->members[i];
-  			if(mbr_spec.get_flag(BIFLG_VERBOSITY) >= verbosity){
-  				continue;
-  			}
+	return "";
+}
 
-  			if(mbr_spec.name.length() > 0){
-  				ss << mbr_spec.name << "=";
-  			}
-  		}
-  		Item* item = fact->get(i);
-  		ss << repr_item(*item);
-  		if(i != L-1){
-  			ss << ", ";  
-  		}    
+
+extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
+  FactType* type = fact->type;
+  if(verbosity <= 1 && type != nullptr){
+  	auto unq_id = fact_to_unique_id(fact);
+  	if(!unq_id.empty()){
+  		return std::string(unq_id);
   	}
-  	ss << ")";  
+	} // Print more verbosely if no unique_id_index
+
+	std::stringstream ss;
+	if(type != nullptr){
+		ss << type->name << "(";  
+	}else{
+		ss << "Fact(";  
+	}
+	
+	size_t L = fact->length;
+	for(int i=0; i < L; i++){
+		if(type != nullptr && i < type->members.size()){
+			MemberSpec* mbr_spec = &type->members[i];
+			if(mbr_spec->get_flag(BIFLG_VERBOSITY) >= verbosity){
+				continue;
+			}
+
+			if(mbr_spec->name.length() > 0){
+				ss << mbr_spec->name << "=";
+			}
+		}
+		Item* item = fact->get(i);
+		ss << item_to_string(*item);
+		if(i != L-1){
+			ss << ", ";  
+		}    
+	}
+	ss << ")";  
+  
 	return ss.str();
 }
 
@@ -164,7 +215,7 @@ extern "C" Item fact_to_item(Fact* fact) {
     	  item.hash = 0;
     }
     item.t_id = T_ID_FACT;
-    // item.immutable = immutable;
+    // cout << "FACT TO ITEM:" << fact << endl;
     return item;
 }
 

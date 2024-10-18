@@ -83,10 +83,21 @@ extern "C" Item float_to_item(double arg) {
     return item;
 }
 
+extern "C" Item opaque_to_item(void* arg) {
+    Item item;
+    item.val = std::bit_cast<uint64_t>(arg);
+    item.hash = 0;
+    item.t_id = T_ID_NULL;
+    // cout << "FLOAT TO ITEM: " << item.t_id << endl;
+    return item;
+}
+
 
 
 Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
 Item to_item(const std::string_view& arg) {return str_to_item(arg); }
+Item to_item(std::nullptr_t arg) { return opaque_to_item(arg); }
+// Item to_item(void* arg) { return opaque_to_item(arg); }
 Item to_item(bool arg) { return bool_to_item(arg); }
 Item to_item(int32_t arg) { return int_to_item(arg); }
 Item to_item(int64_t arg) { return int_to_item(arg); }
@@ -114,10 +125,14 @@ std::string_view item_get_string(Item item) {
     return std::string_view(ut.data, ut.length);
 }
 
-std::string repr_item(Item& item) {
+std::string item_to_string(const Item& item) {
+    // std::cout << "TO STR: " << item.t_id << std::endl;
     uint16_t t_id = item.t_id;
     std::stringstream ss;
     switch(t_id) {
+        case T_ID_NULL:
+            ss << "null";
+            break;
         case T_ID_BOOL:
             ss << std::boolalpha << item_get_bool(item);
             break;
@@ -133,7 +148,24 @@ std::string repr_item(Item& item) {
         case T_ID_FACT:
             {
                 Fact* fact = std::bit_cast<Fact*>(item.val);
-                ss << "<fact f_id=" << fact->f_id << ">";
+                if(fact == nullptr){
+                    ss << "null";
+                    break;
+                }else if(fact->type != nullptr){
+                    std::string unq_id = fact_to_unique_id(fact);
+                    if(!unq_id.empty()){
+                        ss << "@" << unq_id;
+                        break;
+                    }else{
+                        cout << "UNIQUE ID FAIL" << endl;
+                    }
+                }
+
+                if(fact->immutable){
+                    ss << fact_to_string(fact, 2);
+                }else{
+                    ss << "<fact f_id=" << fact->f_id << ">";    
+                }
             }
             break;
         default:
@@ -144,11 +176,11 @@ std::string repr_item(Item& item) {
 }
 
 std::string to_string(Item& item) {
-    return repr_item(item);
+    return item_to_string(item);
 }
 
 std::ostream& operator<<(std::ostream& out, Item item){
-    return out << repr_item(item);
+    return out << item_to_string(item);
 }
 
 
