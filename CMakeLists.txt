@@ -71,3 +71,10 @@ add_test(
   COMMAND $<TARGET_FILE:test_logical>
   )
 
+add_executable(test_transform tests/test_transform.cpp)
+target_link_libraries(test_transform PRIVATE app_lib)
+add_test(
+  NAME test_transform
+  COMMAND $<TARGET_FILE:test_transform>
+  )
+

@@ -234,7 +234,6 @@ extern "C" Fact* FactSetBuilder_add_fact(
 	}
 
 	Fact* fact = fsb->next_empty(length);
-	
 
 	// cout << "L: " << length << "  sizeof ITEM: " << sizeof(Item) << endl ;
 	memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
@@ -277,7 +276,8 @@ Fact* FactSetBuilder::add_fact(FactType* type, const std::vector<Item>& items){
 
 
 
-// struct Change 
-// {
-	
-// }; 
+
+
+
+
+

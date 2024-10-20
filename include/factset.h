@@ -15,6 +15,10 @@
 
 using namespace std;
 
+
+// Forward Declaration
+struct FactChange;
+
 //--------------------------------------------------------------
 // : FactSet
 
@@ -25,6 +29,7 @@ public:
 	vector<Fact*> facts;
 	vector<uint32_t> empty_f_ids;
 	uint64_t size;
+    std::vector<FactChange> change_queue;
 
 
 	// -- Methods -- 
@@ -130,5 +135,21 @@ extern "C" Fact* FactSetBuilder_add_fact(
 
 
 void _declare_from_empty(FactSetBuilder* fsb, Fact* fact, uint32_t length, FactType* type);
+
+// -----------------------------------------------
+// FactChange
+
+const uint16_t CHANGE_KIND_INIT = 0;
+const uint16_t CHANGE_KIND_DECLARE = 1;
+const uint16_t CHANGE_KIND_RETRACT = 2;
+const uint16_t CHANGE_KIND_MODIFY = 3;
+
+
+struct FactChange {
+    uint32_t f_id;
+    uint16_t a_id;
+    uint16_t kind;
+    // Item item;
+}; 
 
 #endif /* _CRE_FactSet_H_ */ 

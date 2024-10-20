@@ -17,6 +17,7 @@
 #include "../include/intern.h"
 // #include "../include/unicode.h"
 #include "../include/cre_obj.h"
+#include "../include/flattener.h"
 #include "test_macros.h"
 
 #include <chrono>
@@ -174,6 +175,8 @@ void bench_build(){
 	json_str = FactSet_to_json(fs);
 	time_it_n("from_json", fs=FactSet_from_json(json_str), 20);
 	time_it_n("\ttraverse:", loop_fact_set(fs), 1000);
+
+	time_it_n("_update_init", (new Flattener(fs))->_update_init();, 500);
 }
 
 uint64_t do_stuff(const string_view& x) {

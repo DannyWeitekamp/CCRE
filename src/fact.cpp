@@ -16,6 +16,13 @@ Item* Fact::get(uint32_t a_id){
     return &data_ptr[a_id];
 }
 
+void Fact::set_unsafe(uint32_t a_id, const Item& val){
+    Item* data_ptr = std::bit_cast<Item*>(
+        std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    );
+    data_ptr[a_id] = val;
+}
+
 
 extern "C" Fact* _alloc_fact(uint32_t _length){
 	Fact* ptr = (Fact*) malloc(sizeof(Fact) + _length * sizeof(Item));
@@ -109,19 +116,7 @@ std::vector<Item*> Fact::get_items(){
 }
 
 
-int get_unique_id_index(FactType* type){
-	if(type != nullptr){
-		for(int i=0; i < type->members.size(); i++){
 
-			MemberSpec* mbr_spec = &type->members[i];
-			// cout << "TRY: " << i << " " << mbr_spec->builtin_flags << endl;
-			if(mbr_spec->get_flag(BIFLG_UNIQUE_ID)){
-				return i;
-			}
-		}
-	}
-	return -1;
-}
 
 extern "C" std::string fact_to_unique_id(Fact* fact){
 	std::stringstream ss;

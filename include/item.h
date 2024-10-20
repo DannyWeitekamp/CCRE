@@ -14,6 +14,21 @@ struct Item {
     uint64_t hash;
     uint16_t t_id;
     uint16_t pad[3];
+
+    bool operator==(const Item& other);
+
+    Item();
+    Item(std::nullptr_t arg);
+    Item(const std::string_view& arg);
+    Item(const char* data, size_t _length);
+    Item(void* arg);
+    Item(bool arg);
+    Item(int32_t arg);
+    Item(int64_t arg);
+    Item(uint32_t arg);
+    Item(uint64_t arg);
+    Item(double arg);
+    Item(float arg);
 };
 
 struct UnicodeItem {

@@ -13,6 +13,54 @@
 // Forward declarations
 struct CRE_Context;
 struct Type;
+// struct FlagGroup;
+
+// ------------------------------------------------------------
+// : FlagGroup
+
+struct FlagGroup {
+    size_t builtin_flags;
+    size_t builtin_flags_mask;
+    HashMap<std::string, Item> custom_flags;
+
+    FlagGroup(const HashMap<std::string, Item>& flags={});
+    FlagGroup(const FlagGroup& flags);
+
+    void assign(const HashMap<std::string, Item>& flags);
+    bool has_flags(const FlagGroup& other);
+    
+    
+    // template <class ... Ts>
+    // FlagGroup(Ts && ... inputs){
+    //   // std::cout << std::endl;
+    //   // Item items[sizeof...(Ts)];
+    //   HashMap<std::string, Item> flags = {};
+    //   flags.reserve(sizeof...(Ts));
+    //   // std::vector<Item> items = {};
+    //   // items.reserve();
+    //   // int i = 0;
+    //   ([&]
+    //     {
+    //         std::pair<std::string, typeof()>
+    //         flags[inputs.first] = to_item(inputs.second);
+    //         // Do things in your "loop" lambda
+    //         // Item item = to_item(inputs);
+    //         // items.push_back(item);
+    //         // items[i] = to_item(inputs);
+    //         // ++i;
+            
+    //     } (), ...);
+
+    //   this->assign(flags);
+    //   // return ::FlagGroup(flags);//new_fact(type, items, i);
+    // }
+    
+
+    
+};
+
+// -------------------------------------------------------------
+// CRE_Type
 
 // // Alias CRE_dtor_function as pointer to void(void*)
 // typedef void (*CRE_dtor_function)(CRE_Obj* ptr);
@@ -46,10 +94,11 @@ const uint64_t BIFLG_VERBOSITY = 8;
 
 
 struct MemberSpec {
-    CRE_Type* type; 
     std::string name;
-    HashMap<std::string, Item> flags;
-    uint64_t builtin_flags;
+    CRE_Type* type; 
+    FlagGroup flags;
+    // uint64_t builtin_flags;
+    // HashMap<std::string, Item> custom_flags;
 
     MemberSpec(std::string_view _name,
              CRE_Type* _type,
@@ -71,6 +120,7 @@ struct FactType : public CRE_Type{
     std::vector<MemberSpec> members;
     uint64_t builtin_flags;
     HashMap<std::string, Item> flags;
+    std::vector<Item> member_names_as_items;
     uint8_t finalized;
 
     FactType(std::string_view _name, 
@@ -93,6 +143,14 @@ std::string to_string(const CRE_Type* value);
 std::ostream& operator<<(std::ostream& outs, const CRE_Type* type);
 
 
+void set_builtin_flag(uint64_t* flags, uint64_t flag_n, uint64_t val);
+uint64_t get_builtin_flag(uint64_t* flags, uint64_t flag_n);
+int get_unique_id_index(FactType* type);
+
+HashMap<std::string, Item> parse_builtin_flags(
+    uint64_t* builtin_ptr,
+    const HashMap<std::string, Item>& flags,
+    bool as_mask=false);
 
 CRE_Type* define_type(std::string_view name, 
                   std::vector<CRE_Type*> sub_type={},
@@ -153,5 +211,7 @@ struct DefferedType : public CRE_Type {
 
     DefferedType(std::string_view _name);    
 };
+
+
 
 #endif /* _CRE_TYPES_H_ */

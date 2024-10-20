@@ -226,6 +226,6 @@ void test_fact_hash(){
 
 int main(void) {
     // Call all tests. Using a test framework would simplify this.
-    // bench_hash();
+    bench_hash();
     test_fact_hash();
 }

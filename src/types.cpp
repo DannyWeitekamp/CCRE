@@ -8,6 +8,9 @@
 
 // using namespace std;
 
+
+
+
 // Type constructor implementation
 CRE_Type::CRE_Type(
            std::string_view _name, 
@@ -24,78 +27,44 @@ CRE_Type::CRE_Type(
 }
 
 
+const FlagGroup default_mbr_flags = 
+    FlagGroup({
+        {"unique_id", to_item(0)},
+        {"visible", to_item(1)},
+        {"semantic", to_item(0)},
+        {"verbosity", to_item(1)}
+});
 
 
-inline uint8_t get_flag_width(uint8_t flag){
-    switch (flag){
-        case BIFLG_UNIQUE_ID:
-            return 1;
-        case BIFLG_VISIBLE_ID:
-            return 1;
-        case BIFLG_SEMANTIC_ID:
-            return 1;
-        case BIFLG_VERBOSITY:
-            return 8;
-        default:
-            return 0;
-    }   
-}
+void _MemberSpec_init_flags(
+    MemberSpec* ms,
+    const HashMap<std::string, Item>& flags){
 
-void set_flag(MemberSpec* ms, uint64_t flag_n, uint64_t val) {
-    uint64_t width = get_flag_width(flag_n); // should inline const
-    uint64_t val_mask = ((1 << width) - 1);
-    ms->builtin_flags = (ms->builtin_flags & ~uint64_t(val_mask << flag_n)) |
-                        uint64_t((val & val_mask) << flag_n);
-
-    // std::bitset<10> btmp(val_mask);
-    // std::bitset<10> tmp(ms->builtin_flags);    
-    // std::cout << "SET FLAG(" << tmp  << ", " << int(flag_n) << ", width=" << width << ", " << "mask=" << btmp << ")" << std::endl;
-}
-
-uint64_t get_flag(MemberSpec* ms, uint64_t flag_n) {
-    uint64_t width = get_flag_width(flag_n); // should inline const
-    uint64_t val_mask = ((1 << width) - 1) << flag_n;
-    uint64_t out = (val_mask & ms->builtin_flags) >> (flag_n);
-
-
-    // std::bitset<10> btmp(val_mask);    
-    // std::bitset<10> tmp(ms->builtin_flags);    
-    // std::cout << "GET FLAG(" << tmp << ", " << int(flag_n) << ", width=" << width << ", " << "mask=" << btmp << ")=" << out << std::endl;
-    return out;
-}
-
-void _MemberSpec_init_flags(MemberSpec* ms, HashMap<std::string, Item> flags){
-    ms->builtin_flags = 0;
+    // ms->builtin_flags = 0;
 
     // Default Flag Values
-    set_flag(ms, BIFLG_UNIQUE_ID, 0);
-    set_flag(ms, BIFLG_VISIBLE_ID, 1);
-    set_flag(ms, BIFLG_SEMANTIC_ID, 0);
-    set_flag(ms, BIFLG_VERBOSITY, 1);
+    // set_builtin_flag(&ms->builtin_flags, BIFLG_UNIQUE_ID, 0);
+    // set_builtin_flag(&ms->builtin_flags, BIFLG_VISIBLE_ID, 1);
+    // set_builtin_flag(&ms->builtin_flags, BIFLG_SEMANTIC_ID, 0);
+    // set_builtin_flag(&ms->builtin_flags, BIFLG_VERBOSITY, 1);
 
-    for (auto& [key, value] : flags){
-        // All builtin flags are boolean
-        if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
-            continue;
-        }
-        // bool is_set = item_get_bool(value);
-        uint64_t val = item_get_int(value);
-        if(key == "unique_id")
-            set_flag(ms, BIFLG_UNIQUE_ID, val);
-        if(key == "visible")
-            set_flag(ms, BIFLG_VISIBLE_ID, val);
-        if(key == "semantic")
-            set_flag(ms, BIFLG_SEMANTIC_ID, val);
-        if(key == "verbosity")
-            set_flag(ms, BIFLG_VERBOSITY, val);
-    }
+    // HashMap<std::string, Item> default_flags= {
+    //     {"unique_id", to_item(0)},
+    //     {"visible", to_item(1)},
+    //     {"semantic", to_item(0)},
+    //     {"verbosity", to_item(0)}
+    // };
+    // ms->flags = FlagGroup(default_flags);
+    ms->flags.assign(flags);//FlagGroup(flags);
+    // ms->custom_flags = parse_builtin_flags(&ms->builtin_flags, flags);
+
 }
 
 MemberSpec::MemberSpec(
             std::string_view _name,
             CRE_Type* _type,
             HashMap<std::string, Item> _flags) :
-    name(_name), type(_type), flags(_flags){
+    name(_name), type(_type), flags(default_mbr_flags){
     _MemberSpec_init_flags(this, _flags);
 }
 
@@ -103,7 +72,7 @@ MemberSpec::MemberSpec(
             std::string_view _name,
             std::string_view _type_name,
             HashMap<std::string, Item> _flags) :
-    name(_name), flags(_flags){
+    name(_name){
     CRE_Type* _type  = current_context->get_type(_type_name);
     if(_type == nullptr){
         _type = new DefferedType(_type_name);
@@ -132,6 +101,21 @@ MemberSpec::MemberSpec(
 //     // }
 //     // return _type;
 // }
+
+int get_unique_id_index(FactType* type){
+    if(type != nullptr){
+        for(int i=0; i < type->members.size(); i++){
+
+            MemberSpec* mbr_spec = &type->members[i];
+            // cout << "TRY: " << i << " " << mbr_spec->builtin_flags << endl;
+            if(mbr_spec->get_flag(BIFLG_UNIQUE_ID)){
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
 
 bool _try_finalized(FactType* _this, bool do_throw){
     CRE_Context* context = _this->context;
@@ -173,7 +157,7 @@ void FactType::ensure_finalized(){
 }
 
 uint64_t MemberSpec::get_flag(uint64_t flag){
-    return ::get_flag(this, flag);
+    return ::get_builtin_flag(&this->flags.builtin_flags, flag);
 }
 
 
@@ -185,6 +169,12 @@ FactType::FactType(std::string_view _name,
       members(_members), flags(_flags) {
     finalized = false;
     kind = TYPE_KIND_FACT;
+
+    member_names_as_items = {};
+    member_names_as_items.reserve(_members.size());
+    for(auto& mbr_spec : _members){
+        member_names_as_items.push_back(Item(mbr_spec.name));
+    }
 }
 
 
@@ -359,4 +349,150 @@ std::ostream& operator<<(std::ostream& outs, const CRE_Type* type) {
     return outs << to_string(type);
 }
 
+// ------------------------------------------------------------
+// : Flags / FlagGroup
 
+
+inline int get_builtin_flag_id(const std::string_view& name){
+    /*  */if(name == "unique_id"){
+        return BIFLG_UNIQUE_ID;
+    }else if(name == "visible"){
+        return BIFLG_VISIBLE_ID;
+    }else if(name == "semantic"){
+        return BIFLG_SEMANTIC_ID;
+    }else if(name == "verbosity"){
+        return BIFLG_VERBOSITY;
+    }
+    return -1;
+}
+
+
+inline uint8_t get_builtin_flag_width(uint8_t flag){
+    switch (flag){
+        case BIFLG_UNIQUE_ID:
+            return 1;
+        case BIFLG_VISIBLE_ID:
+            return 1;
+        case BIFLG_SEMANTIC_ID:
+            return 1;
+        case BIFLG_VERBOSITY:
+            return 8;
+        default:
+            return 0;
+    }   
+}
+
+void set_builtin_flag(uint64_t* flags, uint64_t flag_n, uint64_t val) {
+    uint64_t width = get_builtin_flag_width(flag_n); // should inline const
+    uint64_t val_mask = ((1 << width) - 1);
+    *flags = (*flags & ~uint64_t(val_mask << flag_n)) |
+                        uint64_t((val & val_mask) << flag_n);
+
+    // std::bitset<10> btmp(val_mask);
+    // std::bitset<10> tmp(*flags);    
+    // std::cout << "SET FLAG(" << tmp  << ", [" << int(flag_n) << "]->" << (val & val_mask) << ", width=" << width << ", " << "mask=" << btmp << ")" << std::endl;
+}
+
+uint64_t get_builtin_flag(uint64_t* flags, uint64_t flag_n) {
+    uint64_t width = get_builtin_flag_width(flag_n); // should inline const
+    uint64_t val_mask = ((1 << width) - 1) << flag_n;
+    uint64_t out = (val_mask & *flags) >> (flag_n);
+
+
+    // std::bitset<10> btmp(val_mask);    
+    // std::bitset<10> tmp(ms->builtin_flags);    
+    // std::cout << "GET FLAG(" << tmp << ", " << int(flag_n) << ", width=" << width << ", " << "mask=" << btmp << ")=" << out << std::endl;
+    return out;
+}
+
+// HashMap<std::string, Item> parse_builtin_flags(
+//     uint64_t* builtin_ptr,
+//     const HashMap<std::string, Item>& flags,
+//     bool as_mask){
+
+//     HashMap<std::string, Item> custom_flags = {};
+//     for (auto& [key, value] : flags){
+//         int flag_id = get_builtin_flag_id(key);
+//         if(flag_id != -1){
+//             // All builtin flags are interger like 
+//             if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
+//                 throw std::runtime_error("Bad value type for builtin flag `" + key + "`.");
+//             } 
+//             uint64_t val; 
+//             if(as_mask){
+//                 val = ~0; // all bits=1;
+//             }else{
+//                 val = item_get_int(value);    
+//             }
+            
+//             set_builtin_flag(builtin_ptr, flag_id, val);    
+//         }else{
+//             custom_flags[key] = value;    
+//         }
+//     }    
+//     return custom_flags;
+// }
+
+void FlagGroup::assign(const HashMap<std::string, Item>& flags){
+    // std::cout << "START ASSIGN" << std::endl;
+    // HashMap<std::string, Item> custom_flags = {};
+    for (auto& [key, value] : flags){
+        int flag_id = get_builtin_flag_id(key);
+        if(flag_id != -1){
+            // All builtin flags are interger like 
+            if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
+                throw std::runtime_error("Bad value type for builtin flag `" + key + "`.");
+            } 
+            uint64_t val = item_get_int(value);
+            set_builtin_flag(&this->builtin_flags,      flag_id, val);
+            set_builtin_flag(&this->builtin_flags_mask, flag_id, ~0);    
+        }else{
+            this->custom_flags[key] = value;    
+        }
+    }
+}
+
+
+FlagGroup::FlagGroup(const HashMap<std::string, Item>& flags){   
+    this->builtin_flags = 0;
+    this->builtin_flags_mask = 0;
+    this->custom_flags = {};
+    this->assign(flags);
+}
+
+FlagGroup::FlagGroup(const FlagGroup& flags) :
+    builtin_flags(flags.builtin_flags), 
+    builtin_flags_mask(flags.builtin_flags),
+    custom_flags(flags.custom_flags){
+}
+    // this->builtin_flags = flags.builtin_flags;
+    // this->builtin_flags_mask = flags.builtin_flags_mask;
+    // this->custom_flags = {};
+    // this->assign(flags);
+// }
+
+bool FlagGroup::has_flags(const FlagGroup& other){
+    uint64_t unmatched = (
+        (this->builtin_flags ^
+         other.builtin_flags) &
+         other.builtin_flags_mask
+    );
+
+    // std::cout << "This:  " << std::bitset<10>(this->builtin_flags) << std::endl <<
+    //         "Other: " << std::bitset<10>(other.builtin_flags) << std::endl <<
+    //         "Mask:  " << std::bitset<10>(other.builtin_flags_mask) << std::endl <<
+    //         "Out:   " << std::bitset<10>(unmatched) << std::endl;
+
+    if(unmatched != 0) {return false;}
+
+    for (auto& [key, val] : this->custom_flags){
+        auto it = other.custom_flags.find(key);
+        if (it == other.custom_flags.end()) {
+            return false;
+        }
+        if((*it).second != val){
+            return false;
+        }
+    }
+    return true;
+}

@@ -35,8 +35,10 @@ public:
   Fact(void* type);
   Fact(uint32_t _length);
 
+  void set_unsafe(uint32_t a_id, const Item& val);
+
   template<class T>
-  void set(uint32_t a_id, T val){
+  void set(uint32_t a_id, const T& val){
     if(a_id >= length){
       throw std::out_of_range("Setting fact member beyond its length.");
     }
@@ -84,6 +86,7 @@ Fact* new_fact(FactType* type, const std::vector<Item>& items);
 
 
 const uint8_t DEFAULT_VERBOSITY = 2;
+
 
 extern "C" std::string fact_to_unique_id(Fact* fact);
 extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity=DEFAULT_VERBOSITY);
