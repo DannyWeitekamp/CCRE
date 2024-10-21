@@ -2,7 +2,7 @@
 #define _CRE_TYPES_H_
 
 #include "../include/hash.h"
-#include "../include/item.h"
+// #include "../include/item.h"
 #include <iostream>
 #include <string>
 #include <inttypes.h>
@@ -13,6 +13,7 @@
 // Forward declarations
 struct CRE_Context;
 struct Type;
+struct Item;
 // struct FlagGroup;
 
 // ------------------------------------------------------------

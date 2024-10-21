@@ -21,6 +21,7 @@ struct Flattener : public IncrementalProcessor {
 	std::vector<FlagGroup> flag_groups;	
 	std::map<FactType*, vector<uint16_t>> type_to_member_inds = {};
 	FactSetBuilder* builder;
+	bool use_atom;
 
 // -- Methods --
 	Flattener(FactSet* input=nullptr,
@@ -34,12 +35,13 @@ struct Flattener : public IncrementalProcessor {
 		);
 
 	std::vector<uint16_t>* get_member_inds(FactType* type);
-	size_t _calc_output_size();
+	size_t _calc_buffer_size();
+	size_t _flatten_fact(Fact* in_fact);
 
-	size_t _calc_in_out_info(
-		vector<std::tuple<Fact*, std::vector<uint16_t>*, uint32_t>>& infos,
-		bool use_atom
-	);
+	// size_t _calc_in_out_info(
+	// 	vector<std::tuple<Fact*, std::vector<uint16_t>*, uint32_t>>& infos,
+	// 	bool use_atom
+	// );
 	
 	size_t _update_init();
 };

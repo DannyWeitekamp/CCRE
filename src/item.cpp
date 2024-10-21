@@ -21,15 +21,15 @@ Item str_to_item(const std::string_view& arg) {
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
-    auto tup = intern_ret_hash(arg);
-    std::string_view intern_str = tup.first;
-    uint64_t hash = tup.second;
+    InternStr intern_str = intern(arg);
+    // std::string_view intern_str = tup.first;
+    // uint64_t hash = tup.second;
     // cout << "AFTER INTERN" << endl;
     const char* data = intern_str.data();
 
     UnicodeItem item;
     item.data = data;
-    item.hash = hash;
+    item.hash = intern_str.hash;
     item.t_id = T_ID_STR;
     item.kind = 1; // TODO
     item.is_ascii = 1; // TODO
@@ -102,15 +102,15 @@ Item::Item(const std::string_view& arg) {
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
-    auto tup = intern_ret_hash(arg);
-    std::string_view intern_str = tup.first;
-    uint64_t hash = tup.second;
+    InternStr intern_str = intern(arg);
+    // std::string_view intern_str = tup.first;
+    // uint64_t hash = tup.second;
     // cout << "AFTER INTERN" << endl;
     const char* data = intern_str.data();
 
     UnicodeItem item;
     item.data = data;
-    item.hash = hash;
+    item.hash = intern_str.hash;
     item.t_id = T_ID_STR;
     item.kind = 1; // TODO
     item.is_ascii = 1; // TODO
@@ -141,27 +141,31 @@ Item::Item(const char* data, size_t _length) {
 
 Item::Item(bool arg) :
     val(static_cast<uint64_t>(arg)),
-    hash(CREHash{}(arg)),
+    hash(0),
+    // hash(CREHash{}(arg)),
     t_id(T_ID_BOOL) {
 }
 
-Item::Item(int32_t arg) :
-    val(std::bit_cast<uint64_t>(int64_t(arg))),
-    hash(CREHash{}(int64_t(arg))),
-    t_id(T_ID_INT){
-}
+// Item::Item(int32_t arg) :
+//     val(std::bit_cast<uint64_t>(int64_t(arg))),
+//     hash(0),
+//     // hash(CREHash{}(int64_t(arg))),
+//     t_id(T_ID_INT){
+// }
 
-Item::Item(int64_t arg) :
-    val(std::bit_cast<uint64_t>(arg)),
-    hash(CREHash{}(arg)),
-    t_id(T_ID_INT){
-}
+// Item::Item(int64_t arg) :
+//     val(std::bit_cast<uint64_t>(arg)),
+//     hash(0),
+//     // hash(CREHash{}(arg)),
+//     t_id(T_ID_INT){
+// }
 
-Item::Item(double arg) :
-    val(std::bit_cast<uint64_t>(arg)),
-    hash(CREHash{}(arg)),
-    t_id(T_ID_FLOAT){
-}
+// Item::Item(double arg) :
+//     val(std::bit_cast<uint64_t>(arg)),
+//     hash(0),
+//     // hash(CREHash{}(arg)),
+//     t_id(T_ID_FLOAT){
+// }
 
 Item::Item(void* arg) :
     val(std::bit_cast<uint64_t>(arg)),
@@ -280,7 +284,9 @@ std::ostream& operator<<(std::ostream& out, Item item){
 }
 
 
-uint64_t CREHash::operator()(Item& x) {        
+// template <typename T = Item>
+// uint64_t CREHash::operator()(const T& x) {        
+uint64_t hash_item(const Item& x){
     if(x.hash != 0){
         return x.hash;
     }
@@ -289,18 +295,18 @@ uint64_t CREHash::operator()(Item& x) {
     uint64_t hash; 
     switch(t_id) {
         case T_ID_BOOL:
-            hash = CREHash::operator()(item_get_bool(x)); break;
+            hash = CREHash{}(item_get_bool(x)); break;
         case T_ID_INT:
-            hash = CREHash::operator()(item_get_int(x)); break;
+            hash = CREHash{}(item_get_int(x)); break;
         case T_ID_FLOAT:
-            hash = CREHash::operator()(item_get_float(x)); break;
+            hash = CREHash{}(item_get_float(x)); break;
         case T_ID_STR:
-            hash = CREHash::operator()(item_get_string(x)); break;
+            hash = CREHash{}(item_get_string(x)); break;
         default:
             hash = uint64_t (-1);
     }
 
-    x.hash = hash;
+    // x.hash = hash;
     return hash;
 }
 

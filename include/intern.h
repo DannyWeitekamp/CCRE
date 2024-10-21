@@ -37,15 +37,21 @@ using namespace std;
 // };
 // }
 	
-struct InternStr{
-	uint32_t length;
-	uint32_t refcount;
-	char* data;
-	// InternStr(uint32_t _length, uint32_t _refcount, char* _data){
-	// 	length = _length;
-	// 	refcount = _refcount;
-	// 	data = _data;
-	// }
+// struct InternStr{
+// 	uint32_t length;
+// 	uint32_t refcount;
+// 	char* data;
+// 	// InternStr(uint32_t _length, uint32_t _refcount, char* _data){
+// 	// 	length = _length;
+// 	// 	refcount = _refcount;
+// 	// 	data = _data;
+// 	// }
+// };
+
+struct InternStr : public std::string_view {
+	uint64_t hash;
+
+	InternStr(const std::string_view& sv, uint64_t _hash);
 };
 
 struct nb_unicode{
@@ -83,9 +89,9 @@ struct nb_unicode{
 // unordered_map<std::string, InternStr*> intern_map = {};
 
 ostream& operator<<(std::ostream& out, InternStr fs);
-std::string_view intern(const std::string_view& sv);
-std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv);
-extern ankerl::unordered_dense::set<std::string_view, CREHash, std::equal_to<>> intern_set;
+InternStr intern(const std::string_view& sv);
+// std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv);
+extern HashSet<std::string_view> intern_set;
 // void decref_intern(string& s){
 // 	auto itr = intern_map.find(s);
 // 	if(itr != intern_map.end()){

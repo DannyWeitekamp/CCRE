@@ -3,13 +3,15 @@
 
 #include <cstdint>
 #include <string>
-// #include "../include/item.h"
-// #include "../include/fact.h"
+// #include <bit>
 #include "../include/unordered_dense.h"
-// #include "../include/types.h"
 
+// NOTE: Do not import types.h here
+
+// Forward Declarations
 struct Item;
 class Fact;
+uint64_t hash_item(const Item& x);
 
 // using namespace std;
 
@@ -40,19 +42,13 @@ struct CREHash {
     using is_transparent = void;
     using key_equal = std::equal_to<>;  // Pred to use
 
-    uint64_t operator()(const bool& x) const {
+    template <std::integral T>
+    uint64_t operator()(const T& x) const {
         return x;
     }
 
-    uint64_t operator()(const uint64_t & x) const {
-        return x;
-    }
-
-    uint64_t operator()(const int64_t & x) const {
-        return x;
-    }
-
-    uint64_t operator()(const double& x) const {
+    template <std::floating_point T>
+    uint64_t operator()(const T& x) const {
         return _Py_HashDouble(x);
     }
 
@@ -66,8 +62,10 @@ struct CREHash {
         return MurmurHash64A((const uint8_t*) x.c_str(), x.length(), 0xFF);
     }
 
-    uint64_t operator()(Item& x); 
-
+    uint64_t operator()(const Item& x) const{
+        return hash_item(x);
+    }
+    
     // Not Const
     uint64_t operator()(Fact* x); 
 };

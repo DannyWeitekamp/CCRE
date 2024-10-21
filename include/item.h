@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iostream>
 #include <string_view>
+#include "../include/types.h"
 
 // Externally Defined Forward Declares
 class Fact;
@@ -19,16 +20,18 @@ struct Item {
 
     Item();
     Item(std::nullptr_t arg);
+    Item(bool arg);
+    Item(void* arg);
+
+    template <std::integral T>
+    Item(const T& x) : val(x), hash(0), t_id(T_ID_INT) {}
+
+    template <std::floating_point T>
+    Item(const T& x) : val(x), hash(0), t_id(T_ID_FLOAT) {}
+
     Item(const std::string_view& arg);
     Item(const char* data, size_t _length);
-    Item(void* arg);
-    Item(bool arg);
-    Item(int32_t arg);
-    Item(int64_t arg);
-    Item(uint32_t arg);
-    Item(uint64_t arg);
-    Item(double arg);
-    Item(float arg);
+    
 };
 
 struct UnicodeItem {

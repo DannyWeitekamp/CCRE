@@ -2,6 +2,7 @@
 #include "../include/types.h"
 #include "../include/hash.h"
 #include "../include/context.h"
+#include "../include/item.h"
 #include <iostream>
 #include <bitset>
 #include <fmt/format.h>

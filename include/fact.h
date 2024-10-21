@@ -7,6 +7,8 @@
 #include "../include/cre_obj.h"
 #include "../include/types.h"
 #include "../include/context.h"
+#include "../include/hash.h"
+#include "../include/intern.h"
 
 // Externally Defined Forward Declares
 class FactSet;
@@ -42,7 +44,19 @@ public:
     if(a_id >= length){
       throw std::out_of_range("Setting fact member beyond its length.");
     }
-    Item item = to_item(val);
+
+    // Convert to Item, always intern strings, always hash on assignment;
+    Item item;
+    if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
+      InternStr intern_str(intern(val));
+      item = Item(intern_str);
+    }else{
+      uint64_t hash = CREHash{}(val); 
+      item = Item(val);
+      item.hash = hash;
+    }
+
+    
 
     // std::cout << "input " << std::to_string(a_id) << " = " << item << std::endl;
     // std::cout << "T:" << uint64_t(this->type) << std::endl;
@@ -59,9 +73,9 @@ public:
     }
 
     // Pointer to the 0th Item of the FactHeader
-    Item* data_ptr = std::bit_cast<Item*>(
-        std::bit_cast<uint64_t>(this) + sizeof(Fact)
-    );
+    Item* data_ptr(std::bit_cast<Item*>(
+        ((uint8_t*) this) + sizeof(Fact)
+    ));
     data_ptr[a_id] = item;
   }
 
