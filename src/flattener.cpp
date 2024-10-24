@@ -13,27 +13,99 @@ IncrementalProcessor::IncrementalProcessor(FactSet* _input) :
 }
 
 
-Flattener::Flattener(
-	FactSet* _input, 
-	const HashMap<std::string, Item>& target_flags) :
-	IncrementalProcessor(_input){
 
-	flag_groups = {FlagGroup(target_flags)};
-	use_atom = true;
+// ------------------------------------------------------------
+// Constructor
+
+std::vector<FlagGroup> _format_flags(
+	const HashMap<std::string, Item>& target_flags)
+{
+	std::vector<FlagGroup> flag_groups = {FlagGroup(target_flags)};
+	return flag_groups;
 }
 
-Flattener::Flattener(
-	FactSet* _input, 
-	const vector<HashMap<std::string, Item>>& target_flag_lst) :
-	IncrementalProcessor(_input){
-
-	flag_groups = {};
+std::vector<FlagGroup> _format_flags(
+	const std::vector<HashMap<std::string, Item>>& target_flag_lst)
+{
+	std::vector<FlagGroup> flag_groups = {};
 	flag_groups.reserve(target_flag_lst.size());
 	for(auto target_flags : target_flag_lst){
 		flag_groups.push_back(FlagGroup(target_flags));
 	}
-	use_atom = true;
+	return flag_groups;
 }
+
+std::vector<FlagGroup> default_flags(){
+	HashMap<std::string, Item> def_hash_map= {
+		{{"visible",  to_item(true)}}
+	};
+	std::vector<FlagGroup> flag_groups = {FlagGroup(def_hash_map)};
+	return flag_groups;
+}
+
+// Main Constructor
+Flattener::Flattener(
+		FactSet* _input, 
+		const vector<FlagGroup>& _flag_groups,
+		uint8_t _triple_order,
+		uint8_t _subj_as_atom) :
+	IncrementalProcessor(_input),
+	flag_groups(_flag_groups),
+	triple_order(_triple_order), subj_as_atom(_subj_as_atom),
+	subj_ind(_triple_order == TRIPLE_ORDER_SPO ? 0 : 1),
+	pred_ind(_triple_order == TRIPLE_ORDER_SPO ? 1 : 0)
+	{
+}
+
+Flattener::Flattener(FactSet* _input,
+			  const HashMap<std::string, Item>& target_flags,
+	 	  uint8_t _triple_order,
+	 	  uint8_t _subj_as_atom
+) : Flattener(_input, _format_flags(target_flags), _triple_order, _subj_as_atom)
+{}
+
+Flattener::Flattener(FactSet* _input,
+		  const vector<HashMap<std::string, Item>>& target_flags,
+ 	  uint8_t _triple_order,
+ 	  uint8_t _subj_as_atom
+) : Flattener(_input, _format_flags(target_flags), _triple_order, _subj_as_atom)
+{}
+
+
+
+
+
+
+// Flattener::Flattener(
+// 		FactSet* _input, 
+// 		const HashMap<std::string, Item>& target_flags,
+// 		uint8_t _triple_order,
+// 		uint8_t _subj_as_atom) :
+
+// 		// Delegate constructor
+// 		Flattener(_input, 
+// 				 _format_flags(target_flags),
+// 				 _triple_order, _subj_as_atom
+// 				 )
+// 	 {
+// }
+
+// Flattener::Flattener(
+// 		FactSet* _input, 
+// 		const std::vector<HashMap<std::string, Item>>& target_flag_lst,
+// 		uint8_t _triple_order,
+// 		uint8_t _subj_as_atom) :
+
+// 		// Delegate constructor
+// 		Flattener(_input, 
+// 				 _format_flags(target_flag_lst),
+// 				 _triple_order, _subj_as_atom
+// 				 )
+// 	 {
+// }
+
+
+// ---------------------------------------------------------
 
 
 std::vector<uint16_t>* Flattener::get_member_inds(FactType* type){
@@ -72,44 +144,53 @@ size_t Flattener::_calc_buffer_size(){
 		if(mbr_inds != nullptr){
 			L = mbr_inds->size();
 		}
-		_size += this->use_atom*(sizeof(Fact) + sizeof(Item));
+		_size += this->subj_as_atom*(sizeof(Fact) + sizeof(Item));
 		_size += L*(sizeof(Fact) + 3*sizeof(Item));
 	}
 	return _size;
 }
 
 
-size_t Flattener::_flatten_fact(Fact* in_fact){
-	FactType* type = in_fact->type;
+size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
+	FactType* __restrict type = in_fact->type;
 	auto mbr_inds = this->get_member_inds(type);
 		
 	// Make Atom
-	Fact* atom = builder.next_empty(1);
-	atom->length = 1;
+
 	auto u_ind = get_unique_id_index(type);
-	if(u_ind != -1){
-		atom->set(0, *in_fact->get(u_ind));	
-	}else{
-		atom->set(0, in_fact->f_id);
+	Item id_item = (u_ind != -1 ? 
+						*in_fact->get(u_ind) :
+						Item(in_fact->f_id)
+					);
+	
+
+	if(this->subj_as_atom){
+		Fact* __restrict atom = builder.next_empty(1);
+		atom->length = 1;
+		atom->set_unsafe(0, id_item);	
+		atom->immutable = true;
+		_declare_to_empty(builder.fact_set, atom, 1, NULL);	
+		id_item = Item(atom);
+		// cout << "ATOM: " << atom << endl;
 	}
 	
-	_declare_from_empty(builder, atom, 1, NULL);
-	atom->immutable = true;
-
 	auto make_preds = [&](size_t ind){
-		Fact* out_fact = builder.next_empty(3);
+		Fact* __restrict out_fact = builder.next_empty(3);
 		out_fact->length = 3;
 
-		out_fact->set(0, atom);
+		out_fact->set_unsafe(subj_ind /* 0 or 1 */, id_item);
 
 		if(type != nullptr && ind < type->members.size()){
-			out_fact->set(1, type->member_names_as_items[ind]);
+			out_fact->set_unsafe(pred_ind /* 1 or 0 */,
+			 			type->member_names_as_items[ind]);
 		}else{
-			out_fact->set(1, int(ind));
+			out_fact->set(pred_ind /* 1 or 0 */, int(ind));
 		}
-		out_fact->set(2, *in_fact->get(ind));	
-		_declare_from_empty(builder, out_fact, 3, NULL);
+		out_fact->set_unsafe(2, *in_fact->get(ind));	
 		out_fact->immutable = true;
+		_declare_to_empty(builder.fact_set, out_fact, 3, NULL);
+
+		// cout << uint64_t(out_fact) <<  " OUT FACT: " << out_fact << " L=" << out_fact->length << endl;
 	};
 	
 

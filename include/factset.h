@@ -104,13 +104,31 @@ extern "C" string FactSet_to_string(FactSet* fs, const string& delim = ", ");
 class FactSetBuilder{
 public:
     // --- Members ---
-    AllocBuffer alloc_buffer;
+    AllocBuffer* alloc_buffer;
     FactSet* fact_set;
 
     // --- Methods ---
     FactSetBuilder(size_t size=0, size_t buffer_size=0);
 
-    Fact* next_empty(size_t size);
+    inline Fact* next_empty(size_t size){
+        Fact* fact;
+        AllocBuffer& buff = *this->alloc_buffer;
+
+        uint8_t* next_head = buff.head + sizeof(Fact) + size * sizeof(Item);    
+
+        if(next_head <= buff.end){
+            fact = (Fact*) buff.head;
+            buff.head = next_head;
+            // cout << sizeof(Fact) << endl;
+            // cout << "Buff: " << uint64_t(buff.head) << " " << endl; 
+        }else{
+            fact = empty_untyped_fact(size);
+            // cout << "ALLOCED! " << endl; 
+        }
+        fact->length = size;
+        fact->type = NULL;
+        return fact;
+    }
     Fact* add_fact(FactType* type, const std::vector<Item>& items);
 };
 
@@ -118,9 +136,27 @@ extern "C" Fact* FactSetBuilder_add_fact(
         FactSetBuilder* fs,
         FactType* type, const Item* items, uint32_t _length);
 
+inline void _init_fact(Fact* fact, uint32_t _length, FactType* type){
+    fact->type = type;
+    fact->f_id = 0;
+    fact->hash = 0;
+    fact->length = _length;
+    fact->parent = (FactSet*) nullptr;
+}
 
-void _declare_from_empty(const FactSetBuilder& fsb, Fact* fact, uint32_t length, FactType* type);
 
+// void _declare_from_empty(const FactSetBuilder& fsb, Fact* fact, uint32_t length, FactType* type);
+inline void _declare_to_empty(FactSet* __restrict fs, Fact* fact,
+    uint32_t length, FactType* type){
+
+    // Equivalent of declare(fs, fact) but don't bother with empties
+    _init_fact(fact, length, type);
+    uint32_t f_id = (uint32_t) fs->facts.size();
+    fact->f_id = f_id;
+    fact->parent = fs;
+    fs->facts.push_back(fact);
+    fs->size++;   
+}
 // -----------------------------------------------
 // FactChange
 

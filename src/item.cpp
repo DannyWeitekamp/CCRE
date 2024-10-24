@@ -269,7 +269,7 @@ std::string item_to_string(const Item& item) {
             }
             break;
         default:
-            ss << "<item t_id=" << t_id << ">";
+            ss << "<item t_id=" << t_id << " val=" << item.val << ">";
             // " @" << std::bit_cast<uint64_t>(&item) << ">";     
     }  
     return ss.str();
@@ -314,7 +314,7 @@ uint64_t hash_item(const Item& x){
     return hash;
 }
 
-bool Item::operator==(const Item& other){
+bool Item::operator==(const Item& other) const{
     return (
         this->val == other.val && 
         this->t_id == other.t_id

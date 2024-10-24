@@ -39,11 +39,11 @@ public:
   Fact(void* type);
   Fact(uint32_t _length);
 
-  void set_unsafe(uint32_t a_id, const Item& val);
+  
 
   // Executes type specific .set()
   template<class T>
-  void set(uint32_t a_id, const T& val){
+  inline void set(uint32_t a_id, const T& val){
     if(a_id >= length){
       throw std::out_of_range("Setting fact member beyond its length.");
     }
@@ -80,8 +80,19 @@ public:
     data_ptr[a_id] = item;
   }
 
+  inline void set_unsafe(uint32_t a_id, const Item& val){
+    Item* data_ptr = std::bit_cast<Item*>(
+        std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    );
+    data_ptr[a_id] = val;
+  }
 
-  Item* get(uint32_t a_id) const;
+  inline Item* get(uint32_t a_id) const {
+    Item* data_ptr = std::bit_cast<Item*>(
+        std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    );
+    return &data_ptr[a_id];
+  }
   std::vector<Item*> get_items() const;
   std::string to_string();
   inline size_t size() const;
@@ -189,7 +200,9 @@ struct FactView {
         if (end_ < start ||
             start >= fact->length ||
             end_ > fact->length) {
-            throw std::out_of_range("Invalid slice range");
+            throw std::out_of_range("Invalid slice range[" 
+              + std::to_string(start) + "," + std::to_string(end_) +
+              "] for Fact with length=" + std::to_string(fact->length) + ".");
         }
       // #endif
     }
@@ -320,7 +333,7 @@ struct FactView {
 // };
 
 
-#define SIZEOF_FACT(n) {sizeof(Fact)+n*sizeof(Item)}
+#define SIZEOF_FACT(n) (sizeof(Fact)+n*sizeof(Item))
 
 
 #endif /* _CRE_FACT_H_ */

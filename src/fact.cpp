@@ -12,19 +12,19 @@
 
 
 
-Item* Fact::get(uint32_t a_id) const{
-    Item* data_ptr = std::bit_cast<Item*>(
-        std::bit_cast<uint64_t>(this) + sizeof(Fact)
-    );
-    return &data_ptr[a_id];
-}
+// Item* Fact::get(uint32_t a_id) const{
+//     Item* data_ptr = std::bit_cast<Item*>(
+//         std::bit_cast<uint64_t>(this) + sizeof(Fact)
+//     );
+//     return &data_ptr[a_id];
+// }
 
-void Fact::set_unsafe(uint32_t a_id, const Item& val){
-    Item* data_ptr = std::bit_cast<Item*>(
-        std::bit_cast<uint64_t>(this) + sizeof(Fact)
-    );
-    data_ptr[a_id] = val;
-}
+// void Fact::set_unsafe(uint32_t a_id, const Item& val){
+//     Item* data_ptr = std::bit_cast<Item*>(
+//         std::bit_cast<uint64_t>(this) + sizeof(Fact)
+//     );
+//     data_ptr[a_id] = val;
+// }
 
 
 extern "C" Fact* _alloc_fact(uint32_t _length){
@@ -53,13 +53,7 @@ extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 	}
 }
 
-extern "C" void _init_fact(Fact* fact, uint32_t _length, FactType* type){
-	fact->type = type;
-	fact->f_id = 0;
-	fact->hash = 0;
-	fact->length = _length;
-	fact->parent = (FactSet*) nullptr;
-}
+
 
 extern "C" Fact* empty_fact(FactType* type){
 	uint32_t _length = (uint32_t) type->members.size();
@@ -123,8 +117,10 @@ Fact* Fact::slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy){
 	end = end >=0 ? end : this->length + end;
 		
 	int length = end-start;
-	if(length < 0){
-		throw std::runtime_error("Bad fact slice: ["+std::to_string(start)+","+std::to_string(end)+"].");
+	if(length < 0 || length > this->length){
+		throw std::runtime_error(
+			"Bad slice: ["+std::to_string(start)+","+std::to_string(end)+"] " +
+			"for fact " + fact_to_string(this) + " with length=" + std::to_string(this->length));
 	}
 	// size_t fact_n_bytes = SIZEOF_FACT(length);
 
@@ -132,7 +128,11 @@ Fact* Fact::slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy){
 	// 	buffer->resize(buffer->size + std::min(buffer->size, size_t(4096)));
 	// }
 	// Init Fact Header
+	// cout << "<< start: " << uint64_t(start) <<
+	// 				"<< end: " << uint64_t(end) <<
+	// 	      "<< LENGTH: " << uint64_t(length) << endl;
 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length));
+	// cout << "ALLOC ADDR: " << uint64_t(new_fact) << endl;
 	_init_fact(new_fact, length, nullptr);
 	new_fact->immutable = this->immutable;
 
@@ -170,9 +170,6 @@ Fact* Fact::copy(bool deep_copy){
 	Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
 	return new_fact;
 }
-
-
-
 
 extern "C" std::string fact_to_unique_id(Fact* fact){
 	std::stringstream ss;
@@ -298,10 +295,14 @@ uint64_t _hash_fact_range(Fact* x, uint16_t start, uint16_t end){
 	uint64_t constexpr fnv_prime = 1099511628211ULL;
   uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
 
+
+  // cout << "Fact: " << x << endl;
  	uint64_t hash = fnv_offset_basis; //^ (end-start * fnv_prime);
   for(uint16_t i=start; i < end; i++){
-      Item *item = x->get(i);
-      uint64_t item_hash = CREHash{}(*item);
+  		// cout << "i: " << i << endl;
+      Item& item = *x->get(i);
+      // cout << "item: " << item << endl;
+      uint64_t item_hash = CREHash{}(item);
       hash ^= item_hash ^ (i * fnv_prime);
   }
   return hash; 
@@ -358,6 +359,7 @@ bool item_eq(const Item& ia, const Item& ib){
 			if(ia.val != ib.val) return false;
 			break;
 	}
+	return true;
 }
 
 bool Fact::operator==(const Fact& other) const {

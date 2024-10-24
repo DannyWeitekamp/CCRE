@@ -139,6 +139,19 @@ uint64_t do_stuff(const string_view& x) {
     return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
 }
 
+void test_json(){
+	FactSet* fs;
+	fs = test_buffered_build(10, 3);	
+	cout << fs << endl;
+	auto json_str = FactSet_to_json(fs);	
+	cout << "-START2-" << endl;
+	cout << json_str << endl;
+	fs = FactSet_from_json(json_str);
+	cout << "-START3-" << endl;
+	fs = FactSet_from_json(json_str);
+	cout << "END" << endl;
+}
+
 
 int main() {
 	// FactSet* fs;
@@ -150,6 +163,7 @@ int main() {
 	// test_errors();
 	// test_flags();
 	// test_iterate_fact();
+	// test_json();
 	cout << "AND ITS DONE" << endl;
 
 
@@ -163,13 +177,7 @@ int main() {
 	// cout << fs << endl;
 
 	// cout << "-START-" << endl;
-	// json_str = FactSet_to_json(fs);	
-	// cout << "-START2-" << endl;
-	// cout << json_str << endl;
-	// fs = FactSet_from_json(json_str);
-	// cout << "-START3-" << endl;
-	// fs = FactSet_from_json(json_str);
-	// cout << "END" << endl;
+	
 	
 
 	

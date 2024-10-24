@@ -27,7 +27,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 	CRE_Context* context = default_context;
 
 	std::vector<std::tuple<rapidjson::GenericObject<false, rapidjson::Value>, FactType*, size_t, size_t>> fact_infos;
-	ankerl::unordered_dense::map<std::string_view, size_t, CREHash, std::equal_to<>> fact_map = {};
+	HashMap<std::string_view, size_t> fact_map = {};
 
 	fact_infos.reserve(d.MemberCount());
 	fact_map.reserve(d.MemberCount());
@@ -35,10 +35,10 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 	size_t index = 0;
 	for (auto fact_itr = d.MemberBegin(); fact_itr != d.MemberEnd(); ++fact_itr){
 		std::string_view fact_id = std::string_view(fact_itr->name.GetString(), fact_itr->name.GetStringLength());
+		// cout << fact_id << endl;
 		if(!fact_itr->value.IsObject()){
 			throw std::runtime_error("Fact JSON with key " + std::string(fact_id) + " is not an object.");
 		}
-		
 
 		auto fact_obj = fact_itr->value.GetObject();
 
@@ -62,6 +62,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		}
 		fact_infos.push_back({fact_obj,type,length,byte_offset});
 		auto [it, inserted] = fact_map.insert({fact_id, index});
+		// cout << fact_id << endl;
 		if(!inserted){
 			throw std::runtime_error("Duplicate fact identifier: " + std::string(fact_id));
 		}
@@ -78,7 +79,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		size_t length = std::get<2>(fact_info);
 		// size_t offset = std::get<3>(fact_info);
 
-		Fact* fact = builder.next_empty(length);
+		Fact* __restrict fact = builder.next_empty(length);
 		fact->type = type;
 		// cout << uint64_t(builder->alloc_buffer->data) + offset << endl;
 		// cout << uint64_t(fact) << endl;
@@ -136,7 +137,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 					std::string_view ref_str = std::string_view(item_str.data()+1, item_str.length()-1);
 					size_t index = fact_map[ref_str];
 					size_t offset = std::get<3>(fact_infos[index]);
-					Fact* fact_ptr = (Fact*)(builder.alloc_buffer.data + offset);
+					Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
 					item = fact_to_item(fact_ptr);
 
 				// Normal String Case
@@ -146,7 +147,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 			}
 			fact->set(index, item);
 		}
-		_declare_from_empty(builder, fact, length, type);
+		_declare_to_empty(builder.fact_set, fact, length, type);
 	}
 	FactSet* fact_set = builder.fact_set;
 	// delete builder;
@@ -243,6 +244,7 @@ rapidjson::Document  _FactSet_to_doc(FactSet* fs){
 	// vector<std::string> all_allocated_strings = {};
 	for (auto it = fs->begin(); it != fs->end(); ++it) {
 		Fact* fact = *it;
+		// cout << "f_id" << fact->f_id;
 		std::string fact_id = std::to_string(fact->f_id);
 		rapidjson::Value fact_id_obj(fact_id.c_str(), fact_id.size(), alloc);
 		rapidjson::Value fact_obj(rapidjson::kObjectType);

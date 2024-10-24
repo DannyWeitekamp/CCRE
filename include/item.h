@@ -16,7 +16,7 @@ struct Item {
     uint16_t t_id;
     uint16_t pad[3];
 
-    bool operator==(const Item& other);
+    bool operator==(const Item& other) const;
 
     Item();
     Item(std::nullptr_t arg);
