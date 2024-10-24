@@ -20,7 +20,7 @@ struct Flattener : public IncrementalProcessor {
 	// Which flags to target as criteria for flattening
 	std::vector<FlagGroup> flag_groups;	
 	std::map<FactType*, vector<uint16_t>> type_to_member_inds = {};
-	FactSetBuilder* builder;
+	FactSetBuilder builder;
 	bool use_atom;
 
 // -- Methods --

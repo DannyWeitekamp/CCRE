@@ -39,8 +39,8 @@ add_library(app_lib ${SOURCES})
 target_link_libraries(app_lib fmt::fmt)
 
 #  -- main -- 
-add_executable(main main.cpp)
-target_link_libraries(main PRIVATE app_lib)
+# add_executable(main main.cpp)
+# target_link_libraries(main PRIVATE app_lib)
 
 #  -- main2 -- 
 add_executable(main2 main2.cpp)
@@ -57,6 +57,13 @@ add_test(
   COMMAND $<TARGET_FILE:test_hash>
   )
 
+add_executable(test_fact tests/test_fact.cpp)
+target_link_libraries(test_fact PRIVATE app_lib)
+add_test(
+  NAME test_fact
+  COMMAND $<TARGET_FILE:test_fact>
+  )
+  
 add_executable(test_factset tests/test_factset.cpp)
 target_link_libraries(test_factset PRIVATE app_lib)
 add_test(

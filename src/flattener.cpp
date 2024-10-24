@@ -84,7 +84,7 @@ size_t Flattener::_flatten_fact(Fact* in_fact){
 	auto mbr_inds = this->get_member_inds(type);
 		
 	// Make Atom
-	Fact* atom = builder->next_empty(1);
+	Fact* atom = builder.next_empty(1);
 	atom->length = 1;
 	auto u_ind = get_unique_id_index(type);
 	if(u_ind != -1){
@@ -97,7 +97,7 @@ size_t Flattener::_flatten_fact(Fact* in_fact){
 	atom->immutable = true;
 
 	auto make_preds = [&](size_t ind){
-		Fact* out_fact = builder->next_empty(3);
+		Fact* out_fact = builder.next_empty(3);
 		out_fact->length = 3;
 
 		out_fact->set(0, atom);
@@ -128,7 +128,7 @@ size_t Flattener::_flatten_fact(Fact* in_fact){
 
 size_t Flattener::_update_init(){
 	size_t buffer_size = this->_calc_buffer_size();
-	this->builder = new FactSetBuilder(input->size, buffer_size);
+	builder = FactSetBuilder(input->size, buffer_size);
 
 	for (auto it = input->begin(); it != input->end(); ++it) {
 		Fact* fact = *it;

@@ -74,51 +74,6 @@ FactSet* test_buffered_build(size_t N, size_t M){
 	return fs_builder->fact_set;
 }
 
-void test_errors(){
-	FactType* CatType = define_fact("Cat", 
-	    {{"id", cre_str},
-	     {"color", cre_str},
-	     {"legs", cre_int},
-	     {"frisky", cre_bool}
-	 	}
-	);
-	// Okay
-	make_fact(CatType, "snowball", "white", 3, false);
-
-	// Errors
-	EXPECT_THROW(make_fact(CatType, 0, "white", 3, false));
-	EXPECT_THROW(make_fact(CatType, "snowball", "white", 3.0, false));
-	
-}
-
-void test_flags(){
-	FactType* CatType = define_fact("Cat", 
-	    {{"id", cre_str, {{"unique_id", to_item(true)}} },
-	     {"color", cre_str},
-	     {"legs", cre_int, {{"verbosity", to_item(2)}}},
-	     {"frisky", cre_bool}
-	 	}
-	);
-	// // Okay
-	Fact* snowball = make_fact(CatType, "snowball", "white", 3, false);
-
-	IS_TRUE(snowball->type->members[0].get_flag(BIFLG_UNIQUE_ID) == true);
-	IS_TRUE(snowball->type->members[1].get_flag(BIFLG_UNIQUE_ID) == false);
-	IS_TRUE(snowball->type->members[2].get_flag(BIFLG_UNIQUE_ID) == false);
-	IS_TRUE(snowball->type->members[3].get_flag(BIFLG_UNIQUE_ID) == false);
-
-	IS_TRUE(snowball->type->members[0].get_flag(BIFLG_VERBOSITY) == 1);
-	IS_TRUE(snowball->type->members[1].get_flag(BIFLG_VERBOSITY) == 1);
-	IS_TRUE(snowball->type->members[2].get_flag(BIFLG_VERBOSITY) == 2);
-	IS_TRUE(snowball->type->members[3].get_flag(BIFLG_VERBOSITY) == 1);
-
-	cout << fact_to_string(snowball, 0) << endl;
-	cout << fact_to_string(snowball, 1) << endl;
-	cout << fact_to_string(snowball, 2) << endl;
-	cout << fact_to_string(snowball, 3) << endl;
-
-}
-
 void test_build_from_json(){
 	char* json_str;
 	FactSet* fs;
@@ -192,8 +147,9 @@ int main() {
 	// cout << "CRE_Context: " << default_context->name << endl;
 
 	bench_build();
-	test_errors();
-	test_flags();
+	// test_errors();
+	// test_flags();
+	// test_iterate_fact();
 	cout << "AND ITS DONE" << endl;
 
 

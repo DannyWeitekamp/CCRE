@@ -92,6 +92,7 @@ bool item_get_bool(Item item);
 int64_t item_get_int(Item item);
 double item_get_float(Item item);
 std::string_view item_get_string(Item item);
+Fact* item_get_fact(const Item& item);
 
 std::string item_to_string(const Item& item);
 std::string to_string(Item& item);

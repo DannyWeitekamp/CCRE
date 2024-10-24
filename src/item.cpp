@@ -275,6 +275,10 @@ std::string item_to_string(const Item& item) {
     return ss.str();
 }
 
+Fact* item_get_fact(const Item& item) {
+    return reinterpret_cast<Fact*>(item.val);
+}
+
 std::string to_string(Item& item) {
     return item_to_string(item);
 }

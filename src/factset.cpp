@@ -188,32 +188,15 @@ Fact* FactSet::add_fact(FactType* type, const std::vector<Item>& items){
 }
 
 
-//--------------------------------------------------------------
-// : AllocBuffer
 
-
-AllocBuffer::AllocBuffer(size_t n_bytes){
-	// NOTE: Might play with explicit alignment requirements later
-	// cout << "Buffer size: " << n_bytes << " " << endl; 
-	uint8_t *data = new uint8_t[n_bytes];//(uint8_t*) malloc(n_bytes);
-	// if(ptr == NULL){
-	// 	stringstream err;
-	// 	err << "fatal: out of memory (malloc(" << n_bytes << ")).";
-	// 	throw std::runtime_error(err.str());
-	// }
-	this->data = data;
-	this->head = data;
-	this->end =  data+n_bytes;
-	// this->size = size;
-};
 
 //--------------------------------------------------------------
 // : FactSetBuilder
 
-void _declare_from_empty(FactSetBuilder* fsb, Fact* fact, uint32_t length, FactType* type){
+void _declare_from_empty(const FactSetBuilder& fsb, Fact* fact, uint32_t length, FactType* type){
 	// Equivalent of declare(fs, fact) but don't bother with empties
 	_init_fact(fact, length, type);
-	FactSet* fs = fsb->fact_set;
+	FactSet* fs = fsb.fact_set;
 	uint32_t f_id = (uint32_t) fs->facts.size();	
 	fs->facts.push_back(fact);
 	fact->f_id = f_id;
@@ -238,27 +221,27 @@ extern "C" Fact* FactSetBuilder_add_fact(
 	// cout << "L: " << length << "  sizeof ITEM: " << sizeof(Item) << endl ;
 	memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
 
-	_declare_from_empty(fsb, fact, length, type);
+	_declare_from_empty(*fsb, fact, length, type);
 
 	return fact;
 }
 
-FactSetBuilder::FactSetBuilder(size_t size, size_t buffer_size){
-	this->alloc_buffer = new AllocBuffer(buffer_size);
+FactSetBuilder::FactSetBuilder(size_t size, size_t buffer_size) :
+	alloc_buffer(AllocBuffer(buffer_size)){
 	this->fact_set = new FactSet(size);
 }
 
 Fact* FactSetBuilder::next_empty(size_t size){
 	Fact* fact;
-	AllocBuffer* buff = this->alloc_buffer;
+	AllocBuffer buff = this->alloc_buffer;
 
-	uint8_t* next_head = buff->head + sizeof(Fact) + size * sizeof(Item);	
+	uint8_t* next_head = buff.head + sizeof(Fact) + size * sizeof(Item);	
 
-	if(next_head <= buff->end){
-		fact = (Fact*) buff->head;
-		buff->head = next_head;
+	if(next_head <= buff.end){
+		fact = (Fact*) buff.head;
+		buff.head = next_head;
 		// cout << sizeof(Fact) << endl;
-		// cout << "Buff: " << uint64_t(buff->head) << " " << endl; 
+		// cout << "Buff: " << uint64_t(buff.head) << " " << endl; 
 	}else{
 		fact = empty_untyped_fact(size);
 		// cout << "ALLOCED! " << endl; 

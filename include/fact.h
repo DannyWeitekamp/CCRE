@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <bit>
+#include "../include/alloc_buffer.h"
 #include "../include/item.h"
 #include "../include/cre_obj.h"
 #include "../include/types.h"
@@ -11,10 +12,11 @@
 #include "../include/intern.h"
 
 // Externally Defined Forward Declares
-class FactSet;
+struct FactSet;
+struct AllocBuffer;
 // extern CRE_Context* current_context;
 
-class Fact : public CRE_Obj {
+struct Fact : public CRE_Obj {
 
 public: 
   //  -- Members --
@@ -23,7 +25,7 @@ public:
   uint32_t  f_id;
   uint32_t  length;
   uint64_t 	hash;
-  void* 	pool;
+  AllocBuffer* 	alloc_buffer;
 
   // For internal use;
   uint8_t cov_flag;
@@ -39,6 +41,7 @@ public:
 
   void set_unsafe(uint32_t a_id, const Item& val);
 
+  // Executes type specific .set()
   template<class T>
   void set(uint32_t a_id, const T& val){
     if(a_id >= length){
@@ -56,10 +59,7 @@ public:
       item.hash = hash;
     }
 
-    
-
-    // std::cout << "input " << std::to_string(a_id) << " = " << item << std::endl;
-    // std::cout << "T:" << uint64_t(this->type) << std::endl;
+    // Handle type checking against the fact's type   
     if(this->type != nullptr && a_id < this->type->members.size()){
       CRE_Type* mbr_type = this->type->members[a_id].type;
 
@@ -72,23 +72,68 @@ public:
       }
     }
 
-    // Pointer to the 0th Item of the FactHeader
+    // Get pointer to the 0th Item
     Item* data_ptr(std::bit_cast<Item*>(
         ((uint8_t*) this) + sizeof(Fact)
     ));
+    // Assign to the a_id'th item
     data_ptr[a_id] = item;
   }
 
 
-
-  Item* get(uint32_t a_id);
-  std::vector<Item*> get_items();
+  Item* get(uint32_t a_id) const;
+  std::vector<Item*> get_items() const;
   std::string to_string();
-    
+  inline size_t size() const;
+
+  Fact* slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy);
+  Fact* slice(int start, int end, bool deep_copy);
+  Fact* copy_into(AllocBuffer& buffer, bool deep_copy);
+  Fact* copy(bool deep_copy);
+
+  bool operator==(const Fact& other) const;
+  
+
+
+  class Iterator {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type   = std::ptrdiff_t;
+    using value_type        = Item;
+    using pointer           = Item*;
+    using reference         = Item&;
+
+    private:
+        Item* current;
+    public:
+        explicit Iterator(Item* item_ptr) : current(item_ptr) {}        
+        reference operator*() const { return *current; }
+        pointer operator->() const { return &*current; }
+        Iterator& operator++() { ++current; return *this; }
+        bool operator!=(const Iterator& other) const { return current != other.current; }
+        bool operator==(const Iterator& other) const { return current == other.current; }
+  };
+
+  Iterator begin() const {
+    uint8_t* data = (uint8_t*) this;
+    return Iterator((Item*) (data + sizeof(Fact)));
+  }
+  Iterator end() const {
+    uint8_t* data = (uint8_t*) this;
+    return Iterator((Item*) (data + sizeof(Fact) + this->length*sizeof(Item)));
+  }
+
+  Item operator[](size_t index) {
+    return this->get(index);
+  }
 };
 
-std::ostream& operator<<(std::ostream& out, Fact* fact);
+// Enable Iteration over Fact* 
+Fact::Iterator begin(const Fact* fact);
+Fact::Iterator end(const Fact* fact);
 
+
+
+std::ostream& operator<<(std::ostream& out, Fact* fact);
 
 extern "C" Fact* _alloc_fact(uint32_t _length);
 extern "C" void _init_fact(Fact* fact, uint32_t _length, FactType* type=NULL);
@@ -125,6 +170,157 @@ Fact* make_fact(FactType* type, Ts && ... inputs){
     } (), ...);
   return new_fact(type, items, i);
 }
+
+
+//-------------------------------------------------------------
+struct FactView {
+    // -- Members --
+    Fact* fact;
+    uint16_t start;
+    uint16_t end_;
+
+
+    // -- Methods --
+    explicit FactView(Fact* _fact, int _start, int _end) : fact(_fact) {
+        start = uint16_t(_start >= 0 ? _start : fact->length + _start);
+        end_ = uint16_t(_end >= 0 ? _end : fact->length + _end);
+
+      // #ifndef NDEBUG
+        if (end_ < start ||
+            start >= fact->length ||
+            end_ > fact->length) {
+            throw std::out_of_range("Invalid slice range");
+        }
+      // #endif
+    }
+
+    // Iterator class for the slice
+    class Iterator {
+    private:
+        typename Fact::Iterator it;
+    public:
+        explicit Iterator(const Fact::Iterator& iter) : it(iter) {}
+        Iterator& operator++() { ++it; return *this; }
+        bool operator!=(const Iterator& other) const { return it != other.it; }
+        auto& operator*() const { return *it; }
+    };
+
+    // Begin and end methods for range-based for loops
+    Iterator begin() {
+      return Iterator(Fact::Iterator(&*fact->begin() + start)); 
+    };
+
+    Iterator end() { 
+      return Iterator(Fact::Iterator(&*fact->begin() + end_)); 
+    };
+
+    Item* get(size_t index) {
+      if (index >= end_ - start) {
+          throw std::out_of_range("Index out of slice range");
+      }
+      return fact->get(start + index);
+    }
+
+    // Subscript operator for direct access
+    Item operator[](size_t index) {
+      return *this->get(index);
+    }
+
+    // Size of the view
+    inline size_t size() const { return end_-start; }
+
+    bool operator==(const FactView& other) const;
+    
+};
+
+
+//--------------------------------------------------------------
+// : FactSlice
+
+
+// template<int Start, int End>
+// class FactSlice {
+// private:
+//     Fact* fact;
+
+// public:
+//     static int64_t _get_size(size_t length){
+//       if constexpr ((Start >= 0) == (End >= 0)){
+//         // std::cout << "THIS ONE: " << Start <<  ", " << End << std::endl;
+//         return End - Start;   
+//       }else{
+//         int start = Start >= 0 ? Start : length + Start;
+//         int end = End >= 0 ? End : length + End;
+//         // std::cout << "THAT ONE: " << start << ", " << end << std::endl;
+//         return end-start;
+//       }
+//     }
+
+//     explicit FactSlice(Fact* _fact) : fact(_fact) {
+//         if (_get_size(fact->length) < 0) {
+//             throw std::out_of_range("Invalid slice range");
+//         }
+//     }
+
+//     // Iterator class for the slice
+//     class Iterator {
+//     private:
+//         typename Fact::Iterator it;
+//     public:
+//         explicit Iterator(const Fact::Iterator& iter) : it(iter) {}
+//         Iterator& operator++() { ++it; return *this; }
+//         bool operator!=(const Iterator& other) const { return it != other.it; }
+//         auto& operator*() const { return *it; }
+//     };
+
+//     // Begin and end methods for range-based for loops
+//     Iterator begin() {
+//       if constexpr (Start >= 0){
+//         return Iterator(Fact::Iterator(&*fact->begin()  + Start) ); 
+//       }else{
+//         return Iterator(Fact::Iterator(&*fact->end() + Start) ); 
+//       } 
+//     }
+//     Iterator end() { 
+//       if constexpr (End >= 0){
+//         return Iterator(Fact::Iterator(&*fact->begin() + End)); 
+//       }else{
+//         return Iterator(Fact::Iterator(&*fact->end() + End));
+//       }
+//     }
+
+//     // Subscript operator for direct access
+//     Item operator[](size_t index) {
+//       if constexpr (Start >= 0){
+//         int end = End >= 0 ? End : fact->length + End;
+//         if (index < 0 or index >= end - Start) {
+//             throw std::out_of_range("Index out of slice range");
+//         }
+//         return *fact->get(Start + index);
+//       }else{
+//         int start = fact->length + Start;
+//         int end = End >= 0 ? End : fact->length + End;
+//         if (index < 0 or index >= end - start) {
+//             throw std::out_of_range("Index out of slice range");
+//         }
+//         return *fact->get(start + index);
+//       }        
+//     }
+
+//     // Size of the slice
+//     size_t size() const { return _get_size(fact->length); }
+//     //   if constexpr ((Start >= 0) ^ (End >= 0)){
+//     //     return End - Start;   
+//     //   }else{
+//     //     int start = Start >= 0 ? Start : fact->length + End;
+//     //     int end = End >= 0 ? End : fact->length + End;
+//     //     return end-start;
+//     //   }
+//     // }
+// };
+
+
+#define SIZEOF_FACT(n) {sizeof(Fact)+n*sizeof(Item)}
 
 
 #endif /* _CRE_FACT_H_ */

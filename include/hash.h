@@ -11,6 +11,7 @@
 // Forward Declarations
 struct Item;
 class Fact;
+class FactView;
 uint64_t hash_item(const Item& x);
 
 // using namespace std;
@@ -65,9 +66,12 @@ struct CREHash {
     uint64_t operator()(const Item& x) const{
         return hash_item(x);
     }
-    
+
+    uint64_t operator()(const FactView& x) const;
     // Not Const
-    uint64_t operator()(Fact* x); 
+    uint64_t operator()(Fact* x);
+    
+
 };
 
 

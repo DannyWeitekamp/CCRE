@@ -69,7 +69,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		index++;
 	}
 
-	FactSetBuilder* builder = new FactSetBuilder(d.MemberCount(), byte_offset);
+	FactSetBuilder builder = FactSetBuilder(d.MemberCount(), byte_offset);
 
 
 	for(auto& fact_info : fact_infos){
@@ -78,7 +78,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		size_t length = std::get<2>(fact_info);
 		// size_t offset = std::get<3>(fact_info);
 
-		Fact* fact = builder->next_empty(length);
+		Fact* fact = builder.next_empty(length);
 		fact->type = type;
 		// cout << uint64_t(builder->alloc_buffer->data) + offset << endl;
 		// cout << uint64_t(fact) << endl;
@@ -136,7 +136,7 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 					std::string_view ref_str = std::string_view(item_str.data()+1, item_str.length()-1);
 					size_t index = fact_map[ref_str];
 					size_t offset = std::get<3>(fact_infos[index]);
-					Fact* fact_ptr = (Fact*)(builder->alloc_buffer->data + offset);
+					Fact* fact_ptr = (Fact*)(builder.alloc_buffer.data + offset);
 					item = fact_to_item(fact_ptr);
 
 				// Normal String Case
@@ -148,8 +148,8 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		}
 		_declare_from_empty(builder, fact, length, type);
 	}
-	FactSet* fact_set = builder->fact_set;
-	delete builder;
+	FactSet* fact_set = builder.fact_set;
+	// delete builder;
 	return fact_set;
 }
 
