@@ -9,8 +9,8 @@ Vectorizer::Vectorizer(uint64_t max_heads){
 	buffer = new AllocBuffer(max_heads*SIZEOF_FACT(3));
 	slot_map.reserve(max_heads);
 	inv_slot_map.reserve(max_heads);
-	nominal_maps.reserve(max_heads);
-	inv_nominal_maps.reserve(max_heads);
+	// nominal_map.reserve(max_heads);
+	// inv_en.reserve(max_heads);
 }
 
 size_t Vectorizer::_get_head_slot(Fact* fact){
@@ -31,27 +31,25 @@ size_t Vectorizer::_get_head_slot(Fact* fact){
     	head_slot = slot_map.size();
 	    slot_map[fv] = head_slot;
 	    inv_slot_map.push_back(fact_slice);
-	    nominal_maps.push_back({});
-	    inv_nominal_maps.push_back({});
+	    // nominal_maps.push_back({});
+	    // inv_enumerize_map.push_back({});
     }
     return head_slot;
 }
 
-size_t Vectorizer::_get_nominal_enc(size_t slot, const Item& val_item){
-	size_t nom;
-    auto& nominal_map = nominal_maps[slot];
-    auto& inv_nominal_map = inv_nominal_maps[slot];
-    
-    // cout << "VALUE ITEM: " << val_item;
-    auto nm_itr = nominal_map.find(val_item);
-    if (nm_itr != nominal_map.end()) {
-		nom = (*nm_itr).second;
+size_t Vectorizer::_encode_item(const Item& val_item){
+	size_t enc;
+    // auto& inv_nominal_map = inv_nominal_maps[slot];
+
+    auto nm_itr = enumerize_map.find(val_item);
+    if (nm_itr != enumerize_map.end()) {
+		enc = (*nm_itr).second;
 	}else{
-		nom = nominal_map.size();
-		nominal_map[val_item] = nom;
-		inv_nominal_map.push_back(val_item);
+		enc = enumerize_map.size();
+		enumerize_map[val_item] = enc;
+		inv_enumerize_map.push_back(val_item);
 	}
-	return nom;
+	return enc;
 }
 
 std::tuple<std::vector<uint64_t>, std::vector<double>> 
@@ -64,8 +62,7 @@ std::tuple<std::vector<uint64_t>, std::vector<double>>
 		Fact* fact = (*it);
 		size_t head_slot = this->_get_head_slot(fact);
 		Item val_item = *fact->get(fact->length-1);
-		size_t nom_enc = this->_get_nominal_enc(head_slot, val_item);
-
+		size_t nom_enc = this->_encode_item(val_item);
 		nom_vec[head_slot] = nom_enc;
 
 		// cout << "Fact=" << fact << 
