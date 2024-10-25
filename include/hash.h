@@ -12,6 +12,7 @@
 struct Item;
 class Fact;
 class FactView;
+class SlotPair;
 uint64_t hash_item(const Item& x);
 
 // using namespace std;
@@ -68,8 +69,11 @@ struct CREHash {
     }
 
     uint64_t operator()(const FactView& x) const;
+    
     // Not Const
     uint64_t operator()(Fact* x);
+
+    uint64_t operator()(const SlotPair& x) const;
     
 
 };

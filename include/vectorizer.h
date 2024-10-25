@@ -11,9 +11,14 @@
 
 // };
 
-struct SlotPair {
+struct SlotPair{
+	// struct {
 	uint32_t nom_slot; 
 	uint32_t flt_slot;
+	// }
+	// uint64_t data;
+
+	SlotPair(uint32_t a, uint32_t b) : nom_slot(a), flt_slot(b) {};
 };
 
 
@@ -26,8 +31,9 @@ struct Vectorizer : public CRE_Obj{
 	// HashMap<Fact*, int64_t> slot_map = {}
 	size_t nom_size = 0;
 	size_t flt_size = 0;
-	HashMap<FactView, size_t> slot_map = {};
-	std::vector<Fact*> inv_slot_map = {};
+	HashMap<FactView, SlotPair> slot_map = {};
+	std::vector<Fact*> inv_nom_slot_map = {};
+	std::vector<Fact*> inv_flt_slot_map = {};
 
 	HashMap<Item, size_t> enumerize_map = {};
 	std::vector<Item> inv_enumerize_map = {};
@@ -59,7 +65,7 @@ struct Vectorizer : public CRE_Obj{
 	std::tuple<std::vector<uint64_t>, std::vector<double>>
 		apply(FactSet* fs);
 
-	size_t _get_head_slot(Fact* fact);
+	SlotPair _get_head_slots(Fact* fact, bool val_is_nominal);
 	size_t _encode_item(const Item& val_item);
 	// void insert_onehot(Fact* fact);
 };
