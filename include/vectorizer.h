@@ -11,62 +11,62 @@
 
 // };
 
-struct SlotPair{
+struct UintPair{
 	// struct {
-	uint32_t nom_slot; 
-	uint32_t flt_slot;
+	uint32_t first; 
+	uint32_t second;
 	// }
 	// uint64_t data;
 
-	SlotPair(uint32_t a, uint32_t b) : nom_slot(a), flt_slot(b) {};
+	UintPair(uint32_t a, uint32_t b) : first(a), second(b) {};
+	bool operator==(const UintPair& other) const {
+	 	return (first == other.first) && (second == other.second);
+	}
 };
 
 
 struct Vectorizer : public CRE_Obj{
 	// -- Members --
 
+
 	AllocBuffer* buffer; 
-	// Nominal Case
 
-	// HashMap<Fact*, int64_t> slot_map = {}
-	size_t nom_size = 0;
-	size_t flt_size = 0;
-	HashMap<FactView, SlotPair> slot_map = {};
+	// Map: Fact Head -> nominal slot
+	HashMap<FactView, size_t> nom_slot_map = {};
 	std::vector<Fact*> inv_nom_slot_map = {};
+	
+	// Map: Fact Head -> float slot
 	std::vector<Fact*> inv_flt_slot_map = {};
+	HashMap<FactView, size_t> flt_slot_map = {};
 
+	// Map: Fact Value (last item) -> nominal_encoding
 	HashMap<Item, size_t> enumerize_map = {};
 	std::vector<Item> inv_enumerize_map = {};
 
+	// Map: (slot, nominal_encoding) -> one_hot_slot
+	HashMap<UintPair, size_t> one_hot_map = {};
+	std::vector<UintPair> inv_one_hot_map = {};
 
+	// std::vector<uint64_t> nom_vec = {};
+	// std::vector<double> flt_vec = {};
 
-	// HashMap<FactSlice<0,-1>, int64_t> slot_map = {};
-	// std::vector<HashMap<FactSlice<-2,-1>, int64_t>> nominal_maps;
-	// std::vector<HashMap<Item, int64_t>> nominal_maps = {};
-	// HashMap<std::tuple<size_t, Item>, uint64_t> nominal_map = {};
-
-	// std::vector<FactSlice<0,-1>> inv_slot_map = {};
-	// std::vector<vector<Item>> inv_nominal_maps = {};
-
-
-	// One-hot-case
-	// HashMap<Fact*, int64_t> fact_map = {};
-	// std::vector<Fact*> inv_fact_map = {};
-
-	// std::vector<uint32_t> nominals;
-	// std::vector<float> continous;
 
 	bool one_hot_nominals = true;
 	bool encode_missing = true;
 
 	// -- Methods --
-	Vectorizer(size_t buffer_size=0);
+	Vectorizer(uint64_t max_heads=0,
+			   bool _one_hot_nominals=true,
+			   bool _encode_missing=false
+	);
 
 	std::tuple<std::vector<uint64_t>, std::vector<double>>
 		apply(FactSet* fs);
 
-	SlotPair _get_head_slots(Fact* fact, bool val_is_nominal);
+	size_t _get_nom_slot(Fact* fact);
+	size_t _get_flt_slot(Fact* fact);
 	size_t _encode_item(const Item& val_item);
+	size_t _get_one_hot_slot(size_t slot, size_t enc);
 	// void insert_onehot(Fact* fact);
 };
 
