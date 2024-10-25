@@ -9,46 +9,63 @@ Vectorizer::Vectorizer(uint64_t max_heads){
 	buffer = new AllocBuffer(max_heads*SIZEOF_FACT(3));
 	slot_map.reserve(max_heads);
 	inv_slot_map.reserve(max_heads);
-	// nominal_map.reserve(max_heads);
-	// inv_en.reserve(max_heads);
 }
 
 size_t Vectorizer::_get_head_slot(Fact* fact){
-	size_t head_slot;
+	size_t head_slot = slot_map.size();
+	
 	FactView fv = FactView(fact, 0, -1);
 
-	auto sm_itr = slot_map.find(fv);
-	if (sm_itr != slot_map.end()) {
-		head_slot = (*sm_itr).second;
-    }else{
-    	// Make a sliced copy of all but the last element of fact
-    	Fact* fact_slice = fact->slice_into(*buffer, 0, fact->length-1, true);
-    	// Fact* fact_slice = (Fact*) buffer->alloc_bytes(SIZEOF_FACT(fact->length-1));
-    	// cout << "fact_slice:" << fact_slice << endl; 
+	
+	auto [it, inserted] = slot_map.try_emplace(fv, head_slot);
+	if(inserted){
+		// Hot swap a sliced copy the fact into the emplaced key   
+		FactView* fv_ptr = &(it->first);
+		Fact* fact_slice = fact->slice_into(*buffer, 0, fact->length-1, true);
+		fv_ptr->fact = fact_slice;
+		inv_slot_map.push_back(fact_slice);
+	}else{
+		head_slot = (*it).second;
+	}
+	
 
-    	fv = FactView(fact_slice, 0, fact_slice->length);
-
-    	head_slot = slot_map.size();
-	    slot_map[fv] = head_slot;
-	    inv_slot_map.push_back(fact_slice);
-	    // nominal_maps.push_back({});
-	    // inv_enumerize_map.push_back({});
-    }
+	/* Find-Insert approach -- slower */
+	// auto sm_itr = slot_map.find(fv);
+	// if (sm_itr != slot_map.end()) {
+	// 	head_slot = (*sm_itr).second;
+    // }else{
+    // 	// Make a sliced copy of all but the last element of fact
+    // 	Fact* fact_slice = fact->slice_into(*buffer, 0, fact->length-1, true);
+    // 	fv = FactView(fact_slice, 0, fact_slice->length);
+    // 	head_slot = slot_map.size();
+	//     slot_map[fv] = head_slot;
+	//     inv_slot_map.push_back(fact_slice);
+    // }
+    /* End Try Find-Insert */
     return head_slot;
 }
 
 size_t Vectorizer::_encode_item(const Item& val_item){
-	size_t enc;
-    // auto& inv_nominal_map = inv_nominal_maps[slot];
+	size_t enc = enumerize_map.size();
 
-    auto nm_itr = enumerize_map.find(val_item);
-    if (nm_itr != enumerize_map.end()) {
-		enc = (*nm_itr).second;
-	}else{
-		enc = enumerize_map.size();
-		enumerize_map[val_item] = enc;
+	auto [it, inserted] = enumerize_map.try_emplace(val_item, enc);
+
+	if(inserted){
 		inv_enumerize_map.push_back(val_item);
+	}else{
+		enc = (*it).second;
 	}
+
+	/* Find-Insert approach -- maybe slower */
+    // auto it = enumerize_map.find(val_item);
+    // if (it != enumerize_map.end()) {
+	// 	enc = (*it).second;
+	// }else{
+	// 	enc = enumerize_map.size();
+	// 	enumerize_map[val_item] = enc;
+	// 	inv_enumerize_map.push_back(val_item);
+	// }
+	/* End Try Find-Insert */
 	return enc;
 }
 

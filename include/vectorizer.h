@@ -11,6 +11,11 @@
 
 // };
 
+struct SlotPair {
+	uint32_t nom_slot; 
+	uint32_t flt_slot;
+};
+
 
 struct Vectorizer : public CRE_Obj{
 	// -- Members --
@@ -19,12 +24,16 @@ struct Vectorizer : public CRE_Obj{
 	// Nominal Case
 
 	// HashMap<Fact*, int64_t> slot_map = {}
-
+	size_t nom_size = 0;
+	size_t flt_size = 0;
 	HashMap<FactView, size_t> slot_map = {};
 	std::vector<Fact*> inv_slot_map = {};
 
 	HashMap<Item, size_t> enumerize_map = {};
 	std::vector<Item> inv_enumerize_map = {};
+
+
+
 	// HashMap<FactSlice<0,-1>, int64_t> slot_map = {};
 	// std::vector<HashMap<FactSlice<-2,-1>, int64_t>> nominal_maps;
 	// std::vector<HashMap<Item, int64_t>> nominal_maps = {};

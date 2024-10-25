@@ -329,6 +329,7 @@ uint64_t CREHash::operator()(const FactView& x) const{
 
 
 bool item_eq(const Item& ia, const Item& ib){
+	// cout << "ITEM A: " << ia << " ITEM B: " << ib << endl;
 	if(ia.t_id != ib.t_id) return false;
 	switch (ia.t_id) {
 		case T_ID_FLOAT:
@@ -366,9 +367,9 @@ bool Fact::operator==(const Fact& other) const {
 	if(length != other.length) return false;
 
 	for(size_t i=0; i < length; i++){
-		Item ia = get(i);
-		Item ib = other.get(i);
-		if(!item_eq(ia, ib)) return false;
+		Item* ia = this->get(i);
+		Item* ib = other.get(i);
+		if(!item_eq(*ia, *ib)) return false;
 	}
 	return true;
 };
@@ -378,9 +379,9 @@ bool FactView::operator==(const FactView& other) const {
 	Fact* fact_a = this->fact;
 	Fact* fact_b = other.fact;
 	for(size_t i=0; i < this->size(); i++){
-		Item ia = fact_a->get(this->start + i);
-		Item ib = fact_b->get(other.start + i);
-		if(!item_eq(ia, ib)) return false;
+		Item* ia = fact_a->get(this->start + i);
+		Item* ib = fact_b->get(other.start + i);
+		if(!item_eq(*ia, *ib)) return false;
 	}
 	return true;
 }
