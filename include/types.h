@@ -27,6 +27,9 @@ struct FlagGroup {
     FlagGroup(const HashMap<std::string, Item>& flags={});
     FlagGroup(const FlagGroup& flags);
 
+    // FlagGroup(std::initializer_list<std::tuple<std::string, Item>> flags);
+
+    void assign_flag(std::string_view key, Item value);
     void assign(const HashMap<std::string, Item>& flags);
     bool has_flags(const FlagGroup& other);
     

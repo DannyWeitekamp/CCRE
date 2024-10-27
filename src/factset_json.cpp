@@ -116,19 +116,19 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 			// Populate the item
 			Item item;
 			if(member_itr->value.IsNull()){
-				item = empty_item();
+				item = Item();
 			}else if(member_itr->value.IsBool()){
-				item = to_item(member_itr->value.GetBool());
+				item = Item(member_itr->value.GetBool());
 			}else if(member_itr->value.IsInt()){
-				item = to_item(member_itr->value.GetInt());
+				item = Item(member_itr->value.GetInt());
 			}else if(member_itr->value.IsUint()){
-				item = to_item(member_itr->value.GetUint());
+				item = Item(member_itr->value.GetUint());
 			}else if(member_itr->value.IsInt64()){
-				item = to_item(member_itr->value.GetInt64());
+				item = Item(member_itr->value.GetInt64());
 			}else if(member_itr->value.IsUint64()){
-				item = to_item(member_itr->value.GetUint64());
+				item = Item(member_itr->value.GetUint64());
 			}else if(member_itr->value.IsDouble()){
-				item = to_item(member_itr->value.GetDouble());
+				item = Item(member_itr->value.GetDouble());
 			}else if(member_itr->value.IsString()){
 				std::string_view item_str = std::string_view(member_itr->value.GetString(), member_itr->value.GetStringLength());
 
@@ -138,11 +138,11 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 					size_t index = fact_map[ref_str];
 					size_t offset = std::get<3>(fact_infos[index]);
 					Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
-					item = fact_to_item(fact_ptr);
+					item = Item(fact_ptr);
 
 				// Normal String Case
 				}else{
-					item = str_to_item(item_str);					
+					item = Item(item_str);					
 				}
 			}
 			fact->set(index, item);
@@ -208,17 +208,17 @@ rapidjson::Value item_to_value(Item item, rapidjson::Document::AllocatorType& al
 	rapidjson::Value item_val;
 	switch(item.t_id) {
         case T_ID_BOOL:
-            item_val = rapidjson::Value(item_get_bool(item));
+            item_val = rapidjson::Value(item.as_bool());
             break;
         case T_ID_INT:
-			item_val = rapidjson::Value(item_get_int(item));
+			item_val = rapidjson::Value(item.as_int());
             break;
         case T_ID_FLOAT:
-			item_val = rapidjson::Value(item_get_float(item));
+			item_val = rapidjson::Value(item.as_float());
             break;
         case T_ID_STR:
 			{
-				std::string_view item_str = item_get_string(item);
+				std::string_view item_str = item.as_string();
 				item_val = rapidjson::Value(item_str.data(), item_str.size(), alloc);
 			}
             break;

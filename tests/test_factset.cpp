@@ -39,10 +39,10 @@ int loop_fact_set(FactSet* fs){
 
 FactSet* test_individual_build(size_t N){
 	FactSet* fs = new FactSet();
-	// Item str_item = to_item("A");
-	std::vector<Item> items = {to_item(0), to_item("A"), to_item(false)};
+	// Item str_item = Item("A");
+	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		// std::vector<Item> items = {to_item(i), str_item, to_item(bool(i%2))};
+		// std::vector<Item> items = {Item(i), str_item, Item(bool(i%2))};
 		Fact* fact = new_fact(NULL, items.data(), items.size());
 		declare(fs, fact);
 	}
@@ -52,8 +52,8 @@ FactSet* test_individual_build(size_t N){
 FactSet* test_unbuffered_build(size_t N){
 	FactSetBuilder* fs_builder = new FactSetBuilder(N, 0);
 	// cout << fs_builder->fact_set << endl;
-	// Item str_item = to_item("A");
-	std::vector<Item> items = {to_item(0), to_item("A"), to_item(false)};
+	// Item str_item = Item("A");
+	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
 		FactSetBuilder_add_fact(fs_builder, NULL, items.data(), items.size());
 		// cout << fact << endl;
@@ -65,8 +65,8 @@ FactSet* test_unbuffered_build(size_t N){
 FactSet* test_buffered_build(size_t N, size_t M){
 	FactSetBuilder* fs_builder = new FactSetBuilder(N, N*(sizeof(Fact) + sizeof(Item)*M));
 	// cout << fs_builder->fact_set << endl;
-	// Item str_item = to_item("A");
-	std::vector<Item> items = {to_item(0), to_item("A"), to_item(false)};
+	// Item str_item = Item("A");
+	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
 		FactSetBuilder_add_fact(fs_builder, NULL, items.data(), items.size());
 		// cout << fact << endl;
@@ -101,10 +101,10 @@ void test_build_from_json(){
 	time_it_n("to_json", FactSet_to_json(fs), 50);
 
 	fs = new FactSet();
-	Fact* a = fs->add_fact(nullptr, {to_item(0), to_item("A"), to_item(false)});
-	Fact* b = fs->add_fact(nullptr, {to_item(1), to_item("B"), to_item(true)});
-	Fact* c = fs->add_fact(nullptr, {to_item(2), to_item("C"), to_item(false)});
-	fs->add_fact(nullptr, {to_item(a), to_item(b), to_item(c)});
+	Fact* a = fs->add_fact(nullptr, {Item(0), Item("A"), Item(false)});
+	Fact* b = fs->add_fact(nullptr, {Item(1), Item("B"), Item(true)});
+	Fact* c = fs->add_fact(nullptr, {Item(2), Item("C"), Item(false)});
+	fs->add_fact(nullptr, {Item(a), Item(b), Item(c)});
 
 	cout << fs << endl;
 	json_str = FactSet_to_json(fs);

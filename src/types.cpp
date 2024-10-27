@@ -30,10 +30,10 @@ CRE_Type::CRE_Type(
 
 const FlagGroup default_mbr_flags = 
     FlagGroup({
-        {"unique_id", to_item(0)},
-        {"visible", to_item(1)},
-        {"semantic", to_item(0)},
-        {"verbosity", to_item(1)}
+        {"unique_id", Item(0)},
+        {"visible", Item(1)},
+        {"semantic", Item(0)},
+        {"verbosity", Item(1)}
 });
 
 
@@ -433,23 +433,27 @@ uint64_t get_builtin_flag(uint64_t* flags, uint64_t flag_n) {
 //     }    
 //     return custom_flags;
 // }
+void FlagGroup::assign_flag(std::string_view key, Item value){
+    int flag_id = get_builtin_flag_id(key);
+    if(flag_id != -1){
+        // All builtin flags are interger like 
+        if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
+            throw std::runtime_error("Bad value type for builtin flag `" + std::string(key) + "`.");
+        } 
+        uint64_t val = value.as_int();
+        set_builtin_flag(&this->builtin_flags,      flag_id, val);
+        set_builtin_flag(&this->builtin_flags_mask, flag_id, ~0);    
+    }else{
+        this->custom_flags[std::string(key)] = value;
+    }
+}
+
 
 void FlagGroup::assign(const HashMap<std::string, Item>& flags){
     // std::cout << "START ASSIGN" << std::endl;
     // HashMap<std::string, Item> custom_flags = {};
     for (auto& [key, value] : flags){
-        int flag_id = get_builtin_flag_id(key);
-        if(flag_id != -1){
-            // All builtin flags are interger like 
-            if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
-                throw std::runtime_error("Bad value type for builtin flag `" + key + "`.");
-            } 
-            uint64_t val = item_get_int(value);
-            set_builtin_flag(&this->builtin_flags,      flag_id, val);
-            set_builtin_flag(&this->builtin_flags_mask, flag_id, ~0);    
-        }else{
-            this->custom_flags[key] = value;    
-        }
+        assign_flag(key, value);
     }
 }
 
@@ -466,6 +470,12 @@ FlagGroup::FlagGroup(const FlagGroup& flags) :
     builtin_flags_mask(flags.builtin_flags),
     custom_flags(flags.custom_flags){
 }
+
+// FlagGroup::FlagGroup(std::initializer_list<std::tuple<std::string, Item>> flags){
+//     for (auto& [key, value] : flags){
+//         assign_flag(key, value);
+//     }
+// }
     // this->builtin_flags = flags.builtin_flags;
     // this->builtin_flags_mask = flags.builtin_flags_mask;
     // this->custom_flags = {};

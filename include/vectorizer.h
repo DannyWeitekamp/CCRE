@@ -5,6 +5,8 @@
 #include "../include/hash.h"
 #include "../include/alloc_buffer.h"
 #include "../include/fact.h"
+#include "../include/factset.h"
+#include "../include/incr_processor.h"
 
 
 // struct FactOffsetPtr {
@@ -25,7 +27,7 @@ struct UintPair{
 };
 
 
-struct Vectorizer : public CRE_Obj{
+struct Vectorizer : public IncrementalProcessor{
 	// -- Members --
 
 
@@ -40,15 +42,15 @@ struct Vectorizer : public CRE_Obj{
 	HashMap<FactView, size_t> flt_slot_map = {};
 
 	// Map: Fact Value (last item) -> nominal_encoding
-	HashMap<Item, size_t> enumerize_map = {};
-	std::vector<Item> inv_enumerize_map = {};
+	HashMap<Item, size_t> enumerize_map = {{Item(), 0}};
+	std::vector<Item> inv_enumerize_map = {Item()};
 
 	// Map: (slot, nominal_encoding) -> one_hot_slot
 	HashMap<UintPair, size_t> one_hot_map = {};
 	std::vector<UintPair> inv_one_hot_map = {};
 
-	// std::vector<uint64_t> nom_vec = {};
-	// std::vector<double> flt_vec = {};
+	std::vector<uint64_t> nom_vec = {};
+	std::vector<double> flt_vec = {};
 
 
 	bool one_hot_nominals = true;
@@ -67,6 +69,8 @@ struct Vectorizer : public CRE_Obj{
 	size_t _get_flt_slot(Fact* fact);
 	size_t _encode_item(const Item& val_item);
 	size_t _get_one_hot_slot(size_t slot, size_t enc);
+	void _init_new(FactSet* fs);
+	void _map_fact(Fact* fact);
 	// void insert_onehot(Fact* fact);
 };
 

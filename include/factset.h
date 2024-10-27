@@ -29,20 +29,24 @@ public:
 	// -- Members --
 	vector<Fact*> facts;
 	vector<uint32_t> empty_f_ids;
-	uint64_t size;
+	uint64_t _size;
     std::vector<FactChange> change_queue;
-
 
 	// -- Methods -- 
 	FactSet(size_t n_facts=0);
 	FactSet(vector<Fact*> facts);
     // ~FactSet();
 
+    inline size_t size() const {return _size;}
 	uint32_t declare(Fact* fact);
 	void retract(uint32_t f_id);
 	void retract(Fact* fact);
     vector<Fact*> get_facts();
     Fact* add_fact(FactType* type, const std::vector<Item>& items);
+    std::string to_string(
+        std::string_view format="FactSet{{\n  {}\n}}",
+        std::string_view delim="\n  "
+    );
 
 // -- Iterator --
     class Iterator {
@@ -94,7 +98,7 @@ extern "C" void fs_dtor(FactSet* fs);
 extern "C" FactSet* FactSet_from_json(char* json_str, size_t length=-1, bool copy_buffer=true);
 extern "C" FactSet* FactSet_from_json_file(const char* json);
 extern "C" char* FactSet_to_json(FactSet*);
-extern "C" string FactSet_to_string(FactSet* fs, const string& delim = ", ");
+
 
 
 
@@ -155,7 +159,7 @@ inline void _declare_to_empty(FactSet* __restrict fs, Fact* fact,
     fact->f_id = f_id;
     fact->parent = fs;
     fs->facts.push_back(fact);
-    fs->size++;   
+    fs->_size++;   
 }
 // -----------------------------------------------
 // FactChange

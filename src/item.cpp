@@ -1,3 +1,4 @@
+#include "../include/helpers.h"
 #include "../include/types.h"
 #include "../include/item.h"
 #include "../include/hash.h"
@@ -8,95 +9,95 @@
 #include <functional>
 
 
-extern "C" Item empty_item() {
-    Item item;
-    item.val = 0;
-    item.hash = 0;
-    item.t_id = 0;
-    return item;
-}
+// extern "C" Item empty_item() {
+//     Item item;
+//     item.val = 0;
+//     item.hash = 0;
+//     item.t_id = 0;
+//     return item;
+// }
 
 
-Item str_to_item(const std::string_view& arg) {
-    // cout << "SV str_to_item " << arg.length() << endl;
-    // cout << uint64_t(-1) << arg.length() << endl;
-    // cout << "BEFORE INTERN" << endl;
-    InternStr intern_str = intern(arg);
-    // std::string_view intern_str = tup.first;
-    // uint64_t hash = tup.second;
-    // cout << "AFTER INTERN" << endl;
-    const char* data = intern_str.data();
+// Item str_to_item(const std::string_view& arg) {
+//     // cout << "SV str_to_item " << arg.length() << endl;
+//     // cout << uint64_t(-1) << arg.length() << endl;
+//     // cout << "BEFORE INTERN" << endl;
+//     InternStr intern_str = intern(arg);
+//     // std::string_view intern_str = tup.first;
+//     // uint64_t hash = tup.second;
+//     // cout << "AFTER INTERN" << endl;
+//     const char* data = intern_str.data();
 
-    UnicodeItem item;
-    item.data = data;
-    item.hash = intern_str.hash;
-    item.t_id = T_ID_STR;
-    item.kind = 1; // TODO
-    item.is_ascii = 1; // TODO
-    item.length = intern_str.length();
+//     UnicodeItem item;
+//     item.data = data;
+//     item.hash = intern_str.hash;
+//     item.t_id = T_ID_STR;
+//     item.kind = 1; // TODO
+//     item.is_ascii = 1; // TODO
+//     item.length = intern_str.length();
 
-    Item generic_item = std::bit_cast<Item>(item);
-    // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
-    return generic_item;
-}
+//     Item generic_item = std::bit_cast<Item>(item);
+//     // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
+//     return generic_item;
+// }
 
-extern "C" Item str_to_item(const char* data, size_t length) {
-    // cout << "CHAR str_to_item " << length << endl;
-    if(length == size_t(-1)){
-        length = std::strlen(data);
-    }
-    // cout << "CHAR str_to_item " << length << endl;
-    std::string_view sv = std::string_view(data, length);
+// extern "C" Item str_to_item(const char* data, size_t length) {
+//     // cout << "CHAR str_to_item " << length << endl;
+//     if(length == size_t(-1)){
+//         length = std::strlen(data);
+//     }
+//     // cout << "CHAR str_to_item " << length << endl;
+//     std::string_view sv = std::string_view(data, length);
 
-    // cout << "CHAR str_to_item " << length << endl;
+//     // cout << "CHAR str_to_item " << length << endl;
 
-    // cout << sv << endl;
-    return str_to_item(sv);
-}
+//     // cout << sv << endl;
+//     return str_to_item(sv);
+// }
 
-extern "C" Item bool_to_item(bool arg) {
-    Item item;
-    item.val = static_cast<uint64_t>(arg);
-    item.hash = CREHash{}(arg);
-    item.t_id = T_ID_BOOL;
+// extern "C" Item bool_to_item(bool arg) {
+//     Item item;
+//     item.val = static_cast<uint64_t>(arg);
+//     item.hash = CREHash{}(arg);
+//     item.t_id = T_ID_BOOL;
 
-    // cout << "BOOL TO ITEM: " << item.t_id << endl;
-    return item;
-}
+//     // cout << "BOOL TO ITEM: " << item.t_id << endl;
+//     return item;
+// }
 
-extern "C" Item int_to_item(int64_t arg) {
-    Item item;
-    item.val = std::bit_cast<uint64_t>(arg);
-    item.hash = CREHash{}(arg);
-    item.t_id = T_ID_INT;
+// extern "C" Item int_to_item(int64_t arg) {
+//     Item item;
+//     item.val = std::bit_cast<uint64_t>(arg);
+//     item.hash = CREHash{}(arg);
+//     item.t_id = T_ID_INT;
 
-    // cout << "INT TO ITEM: " << item.t_id << endl;
-    return item;
-}
+//     // cout << "INT TO ITEM: " << item.t_id << endl;
+//     return item;
+// }
 
-extern "C" Item float_to_item(double arg) {
-    Item item;
-    item.val = std::bit_cast<uint64_t>(arg);
-    item.hash = CREHash{}(arg);
-    item.t_id = T_ID_FLOAT;
-    // cout << "FLOAT TO ITEM: " << item.t_id << endl;
-    return item;
-}
+// extern "C" Item float_to_item(double arg) {
+//     Item item;
+//     item.val = std::bit_cast<uint64_t>(arg);
+//     item.hash = CREHash{}(arg);
+//     item.t_id = T_ID_FLOAT;
+//     // cout << "FLOAT TO ITEM: " << item.t_id << endl;
+//     return item;
+// }
 
-extern "C" Item opaque_to_item(void* arg) {
-    Item item;
-    item.val = std::bit_cast<uint64_t>(arg);
-    item.hash = 0;
-    item.t_id = T_ID_NULL;
-    // cout << "FLOAT TO ITEM: " << item.t_id << endl;
-    return item;
-}
+// extern "C" Item opaque_to_item(void* arg) {
+//     Item item;
+//     item.val = std::bit_cast<uint64_t>(arg);
+//     item.hash = 0;
+//     item.t_id = T_ID_NULL;
+//     // cout << "FLOAT TO ITEM: " << item.t_id << endl;
+//     return item;
+// }
 
 
 // ---------------------------------------
-Item::Item():
-    val(0), hash(0), t_id(0){
-}
+// Item::Item():
+//     val(0), hash(0), t_id(0), pad(0){
+// }
 
 Item::Item(const std::string_view& arg) {
     // cout << "SV str_to_item " << arg.length() << endl;
@@ -139,12 +140,12 @@ Item::Item(const char* data, size_t _length) {
     // return str_to_item(sv);
 }
 
-Item::Item(bool arg) :
-    val(static_cast<uint64_t>(arg)),
-    hash(0),
-    // hash(CREHash{}(arg)),
-    t_id(T_ID_BOOL) {
-}
+// Item::Item(bool arg) :
+//     val(static_cast<uint64_t>(arg)),
+//     hash(0),
+//     // hash(CREHash{}(arg)),
+//     t_id(T_ID_BOOL) {
+// }
 
 // Item::Item(int32_t arg) :
 //     val(std::bit_cast<uint64_t>(int64_t(arg))),
@@ -167,29 +168,29 @@ Item::Item(bool arg) :
 //     t_id(T_ID_FLOAT){
 // }
 
-Item::Item(void* arg) :
-    val(std::bit_cast<uint64_t>(arg)),
-    hash(0),
-    t_id(T_ID_NULL) {
-}
+// Item::Item(void* arg) :
+//     val(std::bit_cast<uint64_t>(arg)),
+//     hash(0),
+//     t_id(T_ID_NULL) {
+// }
 
 
 // --------------------------------------
 
 
 
-Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
-Item to_item(const std::string_view& arg) {return str_to_item(arg); }
-Item to_item(std::nullptr_t arg) { return opaque_to_item(arg); }
-// Item to_item(void* arg) { return opaque_to_item(arg); }
-Item to_item(bool arg) { return bool_to_item(arg); }
-Item to_item(int32_t arg) { return int_to_item(arg); }
-Item to_item(int64_t arg) { return int_to_item(arg); }
-Item to_item(uint32_t arg) { return int_to_item(arg); }
-Item to_item(uint64_t arg) { return int_to_item(arg); }
-Item to_item(double arg) { return float_to_item(arg); }
-Item to_item(float arg) { return float_to_item(arg); }
-Item to_item(Item arg) { return arg; }
+// Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
+// Item to_item(const std::string_view& arg) {return str_to_item(arg); }
+// Item to_item(std::nullptr_t arg) { return opaque_to_item(arg); }
+// // Item to_item(void* arg) { return opaque_to_item(arg); }
+// Item to_item(bool arg) { return bool_to_item(arg); }
+// Item to_item(int32_t arg) { return int_to_item(arg); }
+// Item to_item(int64_t arg) { return int_to_item(arg); }
+// Item to_item(uint32_t arg) { return int_to_item(arg); }
+// Item to_item(uint64_t arg) { return int_to_item(arg); }
+// Item to_item(double arg) { return float_to_item(arg); }
+// Item to_item(float arg) { return float_to_item(arg); }
+// Item to_item(Item arg) { return arg; }
 
 
 //
@@ -208,22 +209,7 @@ Item to_item(Item arg) { return arg; }
 // Item::Item(float arg) { return float_to_item(arg); }
 
 
-bool item_get_bool(Item item) {
-    return (bool) item.val;
-}
 
-int64_t item_get_int(Item item) {
-    return std::bit_cast<int64_t>(item.val);
-}
-
-double item_get_float(Item item) {
-    return std::bit_cast<double>(item.val);
-}
-
-std::string_view item_get_string(Item item) {
-    UnicodeItem ut = std::bit_cast<UnicodeItem>(item);
-    return std::string_view(ut.data, ut.length);
-}
 
 std::string item_to_string(const Item& item) {
     // std::cout << "TO STR: " << item.t_id << std::endl;
@@ -234,16 +220,16 @@ std::string item_to_string(const Item& item) {
             ss << "null";
             break;
         case T_ID_BOOL:
-            ss << std::boolalpha << item_get_bool(item);
+            ss << std::boolalpha << item.as_bool();
             break;
         case T_ID_INT:
-            ss << item_get_int(item);
+            ss << item.as_int();
             break;
         case T_ID_FLOAT:
-            ss << std::to_string(item_get_float(item));
+            ss << flt_to_str(item.as_float());
             break;
         case T_ID_STR:
-            ss << "'" << item_get_string(item) << "'";
+            ss << "'" << item.as_string() << "'";
             break;
         case T_ID_FACT:
             {
@@ -275,12 +261,10 @@ std::string item_to_string(const Item& item) {
     return ss.str();
 }
 
-Fact* item_get_fact(const Item& item) {
-    return reinterpret_cast<Fact*>(item.val);
-}
+
 
 std::string to_string(Item& item) {
-    return item_to_string(item);
+    return std::string(item.as_string());
 }
 
 std::ostream& operator<<(std::ostream& out, Item item){
@@ -299,13 +283,13 @@ uint64_t hash_item(const Item& x){
     uint64_t hash; 
     switch(t_id) {
         case T_ID_BOOL:
-            hash = CREHash{}(item_get_bool(x)); break;
+            hash = CREHash{}(x.as_bool()); break;
         case T_ID_INT:
-            hash = CREHash{}(item_get_int(x)); break;
+            hash = CREHash{}(x.as_int()); break;
         case T_ID_FLOAT:
-            hash = CREHash{}(item_get_float(x)); break;
+            hash = CREHash{}(x.as_float()); break;
         case T_ID_STR:
-            hash = CREHash{}(item_get_string(x)); break;
+            hash = CREHash{}(x.as_string()); break;
         default:
             hash = uint64_t (-1);
     }

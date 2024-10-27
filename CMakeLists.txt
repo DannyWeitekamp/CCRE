@@ -1,11 +1,14 @@
 # Specify the minimum version of CMake required
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
 # Set the project name and version
-project(MyProject VERSION 1.0)
+project(cre VERSION 1.0)
 
 # Specify the CPP standard
 set(CMAKE_CXX_STANDARD 23)
+
+# Note: Nanobind thing
+set(DEV_MODULE Development.Module)
 
 # Add compiler warnings
 if(MSVC)
@@ -24,14 +27,25 @@ add_compile_options(-g)
 add_compile_options(-O3)
 
 add_subdirectory(external/fmt)
+add_subdirectory(external/nanobind)
 # add_subdirectory(external/rapidjson)
 
 
 # Packages
+find_package(Python 3.8 COMPONENTS Interpreter ${DEV_MODULE} REQUIRED)
+
+# Note: Nanobind thing
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
 # find_package(unordered_dense CONFIG REQUIRED)
 
 # Find all source files in the current directory
 file(GLOB SOURCES "src/*.cpp")
+file(GLOB PY_SOURCES "python/*.cpp")
+
 
 # Build an application library, 
 # (So we don't rebuild the source for each target)
@@ -85,3 +99,4 @@ add_test(
   COMMAND $<TARGET_FILE:test_transform>
   )
 
+nanobind_add_module(my_ext python/my_ext.cpp)

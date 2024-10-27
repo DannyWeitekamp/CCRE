@@ -71,7 +71,7 @@ extern "C" uint32_t declare(FactSet* fs, Fact* fact){
 	CRE_incref(fact);
 
 	// cout << "C" << endl;
-	fs->size++;
+	fs->_size++;
 
 	return f_id;
 }
@@ -92,7 +92,7 @@ extern "C" void retract_f_id(FactSet* fs, uint32_t f_id){
 	
 	fs->facts[f_id] = NULL;
 	fs->empty_f_ids.push_back(f_id);
-	fs->size--;
+	fs->_size--;
 
 	fact->f_id = 0;
 	fact->parent = (FactSet*) NULL;
@@ -118,7 +118,7 @@ extern "C" void retract(FactSet* fs, Fact* fact){
 
 extern "C" vector<Fact*> fs_get_facts(FactSet* fs){
 	vector<Fact*> facts = {};
-	facts.reserve(fs->size);
+	facts.reserve(fs->size());
 	for (auto it = fs->begin(); it != fs->end(); ++it) { 
 		Fact* fact = (*it);
 		facts.push_back(fact);
@@ -126,15 +126,17 @@ extern "C" vector<Fact*> fs_get_facts(FactSet* fs){
     return facts;
 }
 
-extern "C" string FactSet_to_string(FactSet* fs, const string& delim){
+std::string FactSet::to_string(
+			std::string_view format,
+			std::string_view delim){
 	vector<string> fact_strs = {};
 	// cout << "size" << fs->size << endl;
-	fact_strs.reserve(fs->size);
-	for (auto it = fs->begin(); it != fs->end(); ++it) {
+	fact_strs.reserve(size());
+	for (auto it = begin(); it != end(); ++it) {
 		Fact* fact = (*it);
 		fact_strs.emplace_back(fact_to_string(fact));
 	}
-	return fmt::format("FactSet{{ {} }}", fmt::join(fact_strs, delim));	
+	return fmt::format(fmt::runtime(format), fmt::join(fact_strs, delim));	
 }
 
 extern "C" void fs_dtor(FactSet* fs){
@@ -147,12 +149,15 @@ extern "C" void fs_dtor(FactSet* fs){
 
 // ---- Method Declarations ----
 
-FactSet::FactSet(size_t n_facts){
-	this->facts = {};
-	this->empty_f_ids = {};
+FactSet::FactSet(size_t n_facts) :
+	facts({}), empty_f_ids({}), _size(0)
+{
 	this->facts.reserve(n_facts);
+	// this->facts = {};
+	// this->empty_f_ids = {};
+	
 	this->dtor = (CRE_dtor_function) &fs_dtor;
-	this->size = 0;
+	// this->_size = 0;
 
 	// cout << "empty_f_ids:" << this->empty_f_ids.size() << endl;
 }
@@ -178,7 +183,7 @@ void FactSet::retract(Fact* fact){
 }
 
 ostream& operator<<(std::ostream& out, FactSet* fs){
-	return out << FactSet_to_string(fs);
+	return out << fs->to_string("FactSet{{ {} }} ", "");
 }
 
 Fact* FactSet::add_fact(FactType* type, const std::vector<Item>& items){

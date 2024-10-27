@@ -8,11 +8,6 @@
 #include <thread>
 
 
-IncrementalProcessor::IncrementalProcessor(FactSet* _input) :
- 	input(_input), change_queue_head(0){
-}
-
-
 
 // ------------------------------------------------------------
 // Constructor
@@ -35,23 +30,30 @@ std::vector<FlagGroup> _format_flags(
 	return flag_groups;
 }
 
-std::vector<FlagGroup> default_flags(){
-	HashMap<std::string, Item> def_hash_map= {
-		{{"visible",  to_item(true)}}
-	};
-	std::vector<FlagGroup> flag_groups = {FlagGroup(def_hash_map)};
-	return flag_groups;
-}
+std::vector<FlagGroup> Flattener::default_flags ={
+	FlagGroup(HashMap<std::string, Item>(
+		{ {{"visible",  Item(true)}} }
+	))
+};
+
+// std::vector<FlagGroup> default_flags(){
+// 	HashMap<std::string, Item> def_hash_map= {
+// 		{{"visible",  Item(true)}}
+// 	};
+// 	std::vector<FlagGroup> flag_groups = {FlagGroup(def_hash_map)};
+// 	return flag_groups;
+// }
 
 // Main Constructor
 Flattener::Flattener(
 		FactSet* _input, 
 		const vector<FlagGroup>& _flag_groups,
-		uint8_t _triple_order,
-		uint8_t _subj_as_atom) :
+		uint8_t _subj_as_fact,
+		uint8_t _triple_order) :
 	IncrementalProcessor(_input),
 	flag_groups(_flag_groups),
-	triple_order(_triple_order), subj_as_atom(_subj_as_atom),
+	subj_as_fact(_subj_as_fact), 
+	triple_order(_triple_order), 
 	subj_ind(_triple_order == TRIPLE_ORDER_SPO ? 0 : 1),
 	pred_ind(_triple_order == TRIPLE_ORDER_SPO ? 1 : 0)
 	{
@@ -59,55 +61,22 @@ Flattener::Flattener(
 
 Flattener::Flattener(FactSet* _input,
 			  const HashMap<std::string, Item>& target_flags,
-	 	  uint8_t _triple_order,
-	 	  uint8_t _subj_as_atom
-) : Flattener(_input, _format_flags(target_flags), _triple_order, _subj_as_atom)
+		  uint8_t _subj_as_fact,
+	 	  uint8_t _triple_order
+	 	  
+) : Flattener(_input, _format_flags(target_flags), _subj_as_fact, _triple_order)
 {}
 
 Flattener::Flattener(FactSet* _input,
 		  const vector<HashMap<std::string, Item>>& target_flags,
- 	  uint8_t _triple_order,
- 	  uint8_t _subj_as_atom
-) : Flattener(_input, _format_flags(target_flags), _triple_order, _subj_as_atom)
+	  uint8_t _subj_as_fact,
+ 	  uint8_t _triple_order
+ 	  
+) : Flattener(_input, _format_flags(target_flags), _subj_as_fact, _triple_order)
 {}
 
 
-
-
-
-
-// Flattener::Flattener(
-// 		FactSet* _input, 
-// 		const HashMap<std::string, Item>& target_flags,
-// 		uint8_t _triple_order,
-// 		uint8_t _subj_as_atom) :
-
-// 		// Delegate constructor
-// 		Flattener(_input, 
-// 				 _format_flags(target_flags),
-// 				 _triple_order, _subj_as_atom
-// 				 )
-// 	 {
-// }
-
-// Flattener::Flattener(
-// 		FactSet* _input, 
-// 		const std::vector<HashMap<std::string, Item>>& target_flag_lst,
-// 		uint8_t _triple_order,
-// 		uint8_t _subj_as_atom) :
-
-// 		// Delegate constructor
-// 		Flattener(_input, 
-// 				 _format_flags(target_flag_lst),
-// 				 _triple_order, _subj_as_atom
-// 				 )
-// 	 {
-// }
-
-
 // ---------------------------------------------------------
-
-
 std::vector<uint16_t>* Flattener::get_member_inds(FactType* type){
 	if(type == nullptr){
 		return nullptr;
@@ -144,7 +113,7 @@ size_t Flattener::_calc_buffer_size(){
 		if(mbr_inds != nullptr){
 			L = mbr_inds->size();
 		}
-		_size += this->subj_as_atom*(sizeof(Fact) + sizeof(Item));
+		_size += this->subj_as_fact*(sizeof(Fact) + sizeof(Item));
 		_size += L*(sizeof(Fact) + 3*sizeof(Item));
 	}
 	return _size;
@@ -155,23 +124,22 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 	FactType* __restrict type = in_fact->type;
 	auto mbr_inds = this->get_member_inds(type);
 		
-	// Make Atom
-
+	// Make Subject from unique_id or f_id
 	auto u_ind = get_unique_id_index(type);
 	Item id_item = (u_ind != -1 ? 
 						*in_fact->get(u_ind) :
 						Item(in_fact->f_id)
 					);
-	
 
-	if(this->subj_as_atom){
-		Fact* __restrict atom = builder.next_empty(1);
-		atom->length = 1;
-		atom->set_unsafe(0, id_item);	
-		atom->immutable = true;
-		_declare_to_empty(builder.fact_set, atom, 1, NULL);	
-		id_item = Item(atom);
-		// cout << "ATOM: " << atom << endl;
+	// cout << "SUJECT AS FACT: " << this->subj_as_fact<< endl;
+	if(this->subj_as_fact){
+		Fact* __restrict subj_fact = builder.next_empty(1);
+		subj_fact->length = 1;
+		subj_fact->set_unsafe(0, id_item);	
+		subj_fact->immutable = true;
+		_declare_to_empty(builder.fact_set, subj_fact, 1, NULL);	
+		// id_item = Item(subj_fact);
+		// cout << "SUBJ FACT: " << subj_fact << endl;
 	}
 	
 	auto make_preds = [&](size_t ind){
@@ -208,14 +176,21 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 
 
 size_t Flattener::_update_init(){
-	size_t buffer_size = this->_calc_buffer_size();
-	builder = FactSetBuilder(input->size, buffer_size);
+	size_t buffer_size = _calc_buffer_size();
+	builder = FactSetBuilder(input->size(), buffer_size);
 
 	for (auto it = input->begin(); it != input->end(); ++it) {
 		Fact* fact = *it;
-		this->_flatten_fact(fact);
+		_flatten_fact(fact);
 	}
 	return 0;
+}
+
+FactSet* Flattener::apply(FactSet* fs){
+	input = fs;
+	_update_init();
+	return builder.fact_set;
+
 }
 
 

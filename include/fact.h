@@ -95,7 +95,7 @@ public:
   }
   std::vector<Item*> get_items() const;
   std::string to_string();
-  inline size_t size() const;
+  inline size_t size() const {return length;}
 
   Fact* slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy);
   Fact* slice(int start, int end, bool deep_copy);
@@ -160,7 +160,7 @@ const uint8_t DEFAULT_VERBOSITY = 2;
 
 extern "C" std::string fact_to_unique_id(Fact* fact);
 extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity=DEFAULT_VERBOSITY);
-extern "C" Item fact_to_item(Fact* fact);
+// extern "C" Item fact_to_item(Fact* fact);
 
 
 template <class ... Ts>
@@ -175,7 +175,7 @@ Fact* make_fact(FactType* type, Ts && ... inputs){
         // Do things in your "loop" lambda
         // Item item = to_item(inputs);
         // items.push_back(item);
-        items[i] = to_item(inputs);
+        items[i] = Item(inputs);
         ++i;
         
     } (), ...);

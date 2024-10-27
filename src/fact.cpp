@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+#include "../include/helpers.h"
 #include "../include/alloc_buffer.h"
 #include "../include/fact.h"
 #include "../include/factset.h"
@@ -40,7 +41,7 @@ extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 	FactType* type = fact->type;
 	// cout << "ZFILL: " << start_a_id << ", " << end_a_id << endl;
   for(int a_id = start_a_id; a_id < end_a_id; a_id++){
-	    data_ptr[a_id] = empty_item();
+	    data_ptr[a_id] = Item();
 
 	    if(type != nullptr && a_id < type->members.size()){
 	    	CRE_Type* mbr_typ = (&type->members[a_id])->type;
@@ -108,9 +109,9 @@ std::vector<Item*> Fact::get_items() const{
   return out;
 }
 
-inline size_t Fact::size() const{
-	return this->length;
-}
+// inline size_t Fact::size() const{
+// 	return this->length;
+// }
 
 Fact* Fact::slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy){
 	start = start >=0 ? start : this->length + start;
@@ -140,7 +141,7 @@ Fact* Fact::slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy){
 		Item* item = this->get(i);
 		
 		if(item->t_id == T_ID_FACT && item->val != 0){
-			Fact* fact_item = item_get_fact(item);
+			Fact* fact_item = item->as_fact();
 			if(fact_item->immutable){
 
 			}
@@ -203,11 +204,15 @@ extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
 	std::stringstream ss;
 	if(type != nullptr){
 		ss << type->name << "(";  
+	}else if(fact->immutable){
+		ss << "(";  
 	}else{
 		ss << "Fact(";  
 	}
 	
 	size_t L = fact->length;
+	// std::vector<std::string> mbr_strs = {};
+	// mbr_strs.reserve(L);
 	for(int i=0; i < L; i++){
 		if(type != nullptr && i < type->members.size()){
 			MemberSpec* mbr_spec = &type->members[i];
@@ -270,21 +275,21 @@ Fact::Iterator begin(const Fact* fact){return fact->begin();}
 Fact::Iterator end(const Fact* fact){return fact->end();}
 
 
-extern "C" Item fact_to_item(Fact* fact) {
-    Item item;
-    item.val = std::bit_cast<uint64_t>(fact);
-    uint8_t immutable = fact->immutable;
-    if(immutable){
-    	  item.hash = fact->hash;	
-    }else{
-    	  item.hash = 0;
-    }
-    item.t_id = T_ID_FACT;
-    // cout << "FACT TO ITEM:" << fact << endl;
-    return item;
-}
+// extern "C" Item fact_to_item(Fact* fact) {
+//     Item item;
+//     item.val = std::bit_cast<uint64_t>(fact);
+//     uint8_t immutable = fact->immutable;
+//     if(immutable){
+//     	  item.hash = fact->hash;	
+//     }else{
+//     	  item.hash = 0;
+//     }
+//     item.t_id = T_ID_FACT;
+//     // cout << "FACT TO ITEM:" << fact << endl;
+//     return item;
+// }
 
-Item to_item(Fact* arg) { return fact_to_item(arg);}
+// Item to_item(Fact* arg) { return fact_to_item(arg);}
 
 
 
@@ -334,13 +339,13 @@ bool item_eq(const Item& ia, const Item& ib){
 	switch (ia.t_id) {
 		case T_ID_FLOAT:
 			{
-				double da = item_get_float(ia);
-				double db = item_get_float(ib);
+				double da = ia.as_float();
+				double db = ib.as_float();
 				if(da != db) return false;
 				break;
 			}
 		case T_ID_FACT:
-			if(*item_get_fact(ia) != *item_get_fact(ib)) return false;
+			if(*ia.as_fact() != *ib.as_fact()) return false;
 			break;
 		case T_ID_VAR:
 			// TODO

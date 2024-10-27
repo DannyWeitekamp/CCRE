@@ -305,14 +305,14 @@ int main() {
   }
 
   cout << "MOOP:";
-  cout << item_get_int(to_item(2)) << "\n";
-  cout << item_get_float(to_item(2.0)) << "\n";
+  cout << Item(2).as_int() << "\n";
+  cout << Item(2.0).as_float() << "\n";
 
   // std::string abc = "ABC";
   // cout << abc;
-  // cout << item_get_string(to_item(string_view(abc))) << "\n";
+  // cout << Item(string_view(abc))->as_string() << "\n";
   // cout << abc;
-  cout << item_get_string(to_item("ABC")) << "\n";
+  cout << Item("ABC").as_string() << "\n";
 
   auto obj = new CRE_Obj();
   cout << "RECOUNT:" << obj->get_refcount() << endl;

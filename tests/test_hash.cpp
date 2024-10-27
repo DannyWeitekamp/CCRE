@@ -144,9 +144,9 @@ constexpr auto slice(T&& container)
 void test_intern(){
     std::string s1 = "A";
     std::string s2 = "A";
-    UnicodeItem str_item1 = std::bit_cast<UnicodeItem>(to_item(s1));
+    UnicodeItem str_item1 = std::bit_cast<UnicodeItem>(Item(s1));
     cout << (uint64_t) s1.data() << ", " << (uint64_t) str_item1.data << endl;
-    UnicodeItem str_item2 = std::bit_cast<UnicodeItem>(to_item(s2));
+    UnicodeItem str_item2 = std::bit_cast<UnicodeItem>(Item(s2));
     cout << (uint64_t) s2.data() << ", " << (uint64_t) str_item2.data << endl;
 }
 
