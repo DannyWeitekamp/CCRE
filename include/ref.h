@@ -41,13 +41,13 @@ public:
 
     /// Construct a reference from a pointer
     ref(T *ptr) : m_ptr(ptr) { 
-        // std::cout << "constr from ptr" << std::endl;
+        std::cout << "constr from ptr" << std::endl;
         if(m_ptr) m_ptr->inc_ref(); 
     }
 
     /// Copy a reference, increases the reference count
     ref(const ref &r) : m_ptr(r.m_ptr) {
-        // std::cout << "copy from ptr" << std::endl;
+        std::cout << "copy from ref" << std::endl;
         if(m_ptr) m_ptr->inc_ref(); 
     }
 
@@ -136,36 +136,44 @@ public:
 };
 
 // Registar a type caster for ``ref<T>`` if nanobind was previously #included
-// #if defined(NB_VERSION_MAJOR)
-// NAMESPACE_BEGIN(nanobind)
-// NAMESPACE_BEGIN(detail)
-// template <typename T> struct type_caster<ref<T>> {
-//     using Caster = make_caster<T>;
-//     static constexpr bool IsClass = true;
-//     NB_TYPE_CASTER(ref<T>, Caster::Name)
+#if defined(NB_VERSION_MAJOR)
+NAMESPACE_BEGIN(nanobind)
+NAMESPACE_BEGIN(detail)
+template <typename T> struct type_caster<ref<T>> {
+    using Caster = make_caster<T>;
+    static constexpr bool IsClass = true;
+    NB_TYPE_CASTER(ref<T>, Caster::Name)
 
-//     bool from_python(handle src, uint8_t flags,
-//                      cleanup_list *cleanup) noexcept {
-//         Caster caster;
-//         if (!caster.from_python(src, flags, cleanup))
-//             return false;
+    bool from_python(handle src, uint8_t flags,
+                     cleanup_list *cleanup) noexcept {
+        Caster caster;
+        if (!caster.from_python(src, flags, cleanup))
+            return false;
 
-//         value = Value(caster.operator T *());
-//         return true;
-//     }
+        value = Value(caster.operator T *());
+        return true;
+    }
 
-//     static handle from_cpp(const ref<T> &value, rv_policy policy,
-//                            cleanup_list *cleanup) noexcept {
-//         // if constexpr (std::is_base_of_v<intrusive_base, T>)
-//             // if (policy != rv_policy::copy && policy != rv_policy::move && value.get())
-//                 // if (PyObject* obj = value->self_py())
-//                     // return handle(obj).inc_ref();
-
-//         return Caster::from_cpp(value.get(), policy, cleanup);
-//     }
-// };
-// NAMESPACE_END(detail)
-// NAMESPACE_END(nanobind)
-// #endif
+    static handle from_cpp(const ref<T> &value, rv_policy policy,
+                           cleanup_list *cleanup) noexcept {
+        // if constexpr (std::is_base_of_v<intrusive_base, T>)
+        if (policy != rv_policy::copy && policy != rv_policy::move && value.get()){
+            const T* val = value.get();
+            // val->inc_ref();
+            // return val;
+            if (PyObject* obj = value->self_py()){
+                return handle(obj).inc_ref();
+            }else{
+                val->inc_ref();
+            }
+        }
+        handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
+        // SET
+        return py_out
+    }
+};
+NAMESPACE_END(detail)
+NAMESPACE_END(nanobind)
+#endif
 
 
