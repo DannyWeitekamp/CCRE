@@ -19,7 +19,10 @@
 #include <iostream>
 #include "../include/hash.h"
 #include "../include/unordered_dense.h"
-using namespace std;
+
+
+using std::cout;
+using std::endl;
 
 
 // struct intern_bucket{
@@ -76,11 +79,9 @@ struct nb_unicode{
 
 
 
-// using namespace std;
-
 // unordered_flat_map<string, uint32_t> intern_map = {};
 // unordered_map<string, uint32_t> intern_map = {};
-// vector<string> s_id_map = {};
+// std::vector<string> s_id_map = {};
 // list<uint32_t> free_s_ids = {};
 // intern_bucket null_bucket = {0,0};
 // ankerl::unordered_dense::map<std::string_view, InternStr*, CREHash> intern_map = {};
@@ -88,7 +89,7 @@ struct nb_unicode{
 
 // unordered_map<std::string, InternStr*> intern_map = {};
 
-ostream& operator<<(std::ostream& out, InternStr fs);
+std::ostream& operator<<(std::ostream& out, InternStr fs);
 InternStr intern(const std::string_view& sv);
 // std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv);
 extern HashSet<std::string_view> intern_set;

@@ -82,7 +82,7 @@ Var* Var::extend_attr(std::string_view attr){
 }
 
 std::string var_to_string(Var* var){
-	vector<string> deref_strs = {};
+	std::vector<std::string> deref_strs = {};
 	deref_strs.reserve(var->length);
 
 	// std::string out = std::string(var.alias);

@@ -19,8 +19,8 @@
 #include "../include/fact.h"
 #include "../include/factset.h"
 
-using namespace std;
-
+using std::cout;
+using std::endl;
 
 
 
@@ -35,7 +35,7 @@ extern "C" bool is_declared(Fact* fact){
 
 extern "C" void assert_undeclared(FactSet* fs, Fact* fact){
 	if(is_declared(fact)){
-		stringstream err;
+		std::stringstream err;
 		if(fact->parent == fs){
 			err << "Redeclaration of Fact: " << fact->to_string();
 		}else{
@@ -78,14 +78,14 @@ extern "C" uint32_t declare(FactSet* fs, Fact* fact){
 
 extern "C" void retract_f_id(FactSet* fs, uint32_t f_id){
 	if(f_id >= fs->facts.size()){
-		stringstream err;
+		std::stringstream err;
 		err << "Retract f_id=" << f_id << " is out of range.";
 		throw std::out_of_range(err.str());
 	}
 	Fact* fact = fs->facts[f_id];
 
 	if(fact == (Fact*) NULL){
-		stringstream err;
+		std::stringstream err;
 		err << "Attempt to retract retracted f_id.";
 		throw std::runtime_error(err.str());
 	}
@@ -101,7 +101,7 @@ extern "C" void retract_f_id(FactSet* fs, uint32_t f_id){
 
 extern "C" void retract(FactSet* fs, Fact* fact){
 	if(fact->parent != fs){
-		stringstream err;
+		std::stringstream err;
 		err << "Attempt to retract ";
 		if(fact->parent == (FactSet *) NULL){
 			err << "undeclared fact:";
@@ -116,8 +116,8 @@ extern "C" void retract(FactSet* fs, Fact* fact){
 	retract_f_id(fs, f_id);
 }
 
-extern "C" vector<Fact*> fs_get_facts(FactSet* fs){
-	vector<Fact*> facts = {};
+extern "C" std::vector<Fact*> fs_get_facts(FactSet* fs){
+	std::vector<Fact*> facts = {};
 	facts.reserve(fs->size());
 	for (auto it = fs->begin(); it != fs->end(); ++it) { 
 		Fact* fact = (*it);
@@ -129,7 +129,8 @@ extern "C" vector<Fact*> fs_get_facts(FactSet* fs){
 std::string FactSet::to_string(
 			std::string_view format,
 			std::string_view delim){
-	vector<string> fact_strs = {};
+	
+	std::vector<std::string> fact_strs = {};
 	// cout << "size" << fs->size << endl;
 	fact_strs.reserve(size());
 	for (auto it = begin(); it != end(); ++it) {
@@ -139,13 +140,13 @@ std::string FactSet::to_string(
 	return fmt::format(fmt::runtime(format), fmt::join(fact_strs, delim));	
 }
 
-extern "C" void fs_dtor(FactSet* fs){
-	for (auto& fact : fs->facts) {
-		if(fact == (Fact *) NULL) 
-			continue;
-		CRE_decref(fact);
-	}
-}
+// extern "C" void fs_dtor(FactSet* fs){
+// 	for (auto& fact : fs->facts) {
+// 		if(fact == (Fact *) NULL) 
+// 			continue;
+// 		CRE_decref(fact);
+// 	}
+// }
 
 // ---- Method Declarations ----
 
@@ -156,7 +157,7 @@ FactSet::FactSet(size_t n_facts) :
 	// this->facts = {};
 	// this->empty_f_ids = {};
 	
-	this->dtor = (CRE_dtor_function) &fs_dtor;
+	// this->dtor = (CRE_dtor_function) &fs_dtor;
 	// this->_size = 0;
 
 	// cout << "empty_f_ids:" << this->empty_f_ids.size() << endl;
@@ -182,7 +183,7 @@ void FactSet::retract(Fact* fact){
 	return ::retract(this, fact);	
 }
 
-ostream& operator<<(std::ostream& out, FactSet* fs){
+std::ostream& operator<<(std::ostream& out, FactSet* fs){
 	return out << fs->to_string("FactSet{{ {} }} ", "");
 }
 

@@ -71,7 +71,8 @@ uint8_t* AllocBuffer::alloc_bytes(size_t n_bytes){
 }
 
 uint8_t* AllocBuffer::free_back(size_t n_bytes){
-
+	throw std::runtime_error("not implemented");
+	return 0;
 }
 
 // AllocBuffer::insert_fact_slice(Fact* fact, int start, int end){

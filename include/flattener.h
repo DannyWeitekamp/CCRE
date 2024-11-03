@@ -12,10 +12,10 @@ const uint8_t TRIPLE_ORDER_SPO = 1;
 const uint8_t TRIPLE_ORDER_PSO = 2;
 
 std::vector<FlagGroup> _format_flags(
-	const vector<HashMap<std::string, Item>>& target_flag_lst
+	const std::vector<HashMap<std::string, Item>>& target_flag_lst
 );
 std::vector<FlagGroup> _format_flags(
-	const vector<HashMap<std::string, Item>>& target_flag_lst
+	const std::vector<HashMap<std::string, Item>>& target_flag_lst
 );
 
 // std::vector<FlagGroup> default_flags();
@@ -31,7 +31,7 @@ struct Flattener : public IncrementalProcessor {
 
 	// Which flags to target as criteria for flattening
 	std::vector<FlagGroup> flag_groups;	
-	std::map<FactType*, vector<uint16_t>> type_to_member_inds = {};
+	std::map<FactType*, std::vector<uint16_t>> type_to_member_inds = {};
 	FactSetBuilder builder;
 
 	const bool subj_as_fact;
@@ -55,7 +55,7 @@ struct Flattener : public IncrementalProcessor {
 	 	  uint8_t _triple_order = TRIPLE_ORDER_SPO
 	);
 	Flattener(FactSet* _input,
-			  const vector<HashMap<std::string, Item>>& target_flags,
+			  const std::vector<HashMap<std::string, Item>>& target_flags,
 	 	  uint8_t _subj_as_fact = false,
 	 	  uint8_t _triple_order = TRIPLE_ORDER_SPO
 	);

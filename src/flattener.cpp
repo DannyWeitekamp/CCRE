@@ -47,7 +47,7 @@ std::vector<FlagGroup> Flattener::default_flags ={
 // Main Constructor
 Flattener::Flattener(
 		FactSet* _input, 
-		const vector<FlagGroup>& _flag_groups,
+		const std::vector<FlagGroup>& _flag_groups,
 		uint8_t _subj_as_fact,
 		uint8_t _triple_order) :
 	IncrementalProcessor(_input),
@@ -68,7 +68,7 @@ Flattener::Flattener(FactSet* _input,
 {}
 
 Flattener::Flattener(FactSet* _input,
-		  const vector<HashMap<std::string, Item>>& target_flags,
+		  const std::vector<HashMap<std::string, Item>>& target_flags,
 	  uint8_t _subj_as_fact,
  	  uint8_t _triple_order
  	  
@@ -126,10 +126,13 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		
 	// Make Subject from unique_id or f_id
 	auto u_ind = get_unique_id_index(type);
-	Item id_item = (u_ind != -1 ? 
-						*in_fact->get(u_ind) :
-						Item(in_fact->f_id)
+	// cout << "U_IND: " << u_ind << endl;
+	Item id_item = (u_ind == -1 ? 
+						Item(in_fact->f_id) :
+						*in_fact->get(u_ind)
 					);
+	// cout << "FACT: " << in_fact << endl;
+	// cout << "SUBJ: " << id_item << endl;
 
 	// cout << "SUJECT AS FACT: " << this->subj_as_fact<< endl;
 	if(this->subj_as_fact){
@@ -137,6 +140,7 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		subj_fact->length = 1;
 		subj_fact->set_unsafe(0, id_item);	
 		subj_fact->immutable = true;
+		// _init_fact()
 		_declare_to_empty(builder.fact_set, subj_fact, 1, NULL);	
 		// id_item = Item(subj_fact);
 		// cout << "SUBJ FACT: " << subj_fact << endl;

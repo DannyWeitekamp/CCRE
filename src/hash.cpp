@@ -22,7 +22,8 @@ Implementation of various hash utilities used in CRE. Hash functions
 #include "../include/item.h"
 #include "../include/types.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 #ifdef __APPLE__
 #  include <libkern/OSByteOrder.h>
@@ -262,8 +263,8 @@ uint64_t _Py_HashDouble(double v){
     uint64_t x, y;
     double m;
 
-    if (!isfinite(v)) {
-        if (isinf(v)){
+    if (!std::isfinite(v)) {
+        if (std::isinf(v)){
             return v > 0 ? _PyHASH_INF : -_PyHASH_INF;
         }else{
             // This line is different from CPython
@@ -343,7 +344,7 @@ inline uint64_t hash_bytes(const uint8_t *val, uint64_t _len){
     // return process_return(_hash);
 }
 
-uint64_t hash_string(const string &val){
+uint64_t hash_string(const std::string &val){
     return hash_bytes((const uint8_t *) val.c_str(), val.length());
 };
 

@@ -28,10 +28,10 @@
 // }
 
 
-extern "C" Fact* _alloc_fact(uint32_t _length){
-	Fact* ptr = (Fact*) malloc(sizeof(Fact) + _length * sizeof(Item));
-	return ptr;
-}
+// extern "C" Fact* _alloc_fact(uint32_t _length){
+	
+// 	return ptr;
+// }
 
 extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 	// Pointer to the 0th Item of the FactHeader
@@ -54,7 +54,15 @@ extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 	}
 }
 
-
+Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
+	CRE_Obj(),
+	type(_type),
+	parent(nullptr),
+	f_id(-1),
+	length(_type ? std::max(_length, uint32_t(_type->members.size())) : _length),
+	hash(0),
+	immutable(_immutable)
+{}
 
 extern "C" Fact* empty_fact(FactType* type){
 	uint32_t _length = (uint32_t) type->members.size();
@@ -113,62 +121,91 @@ std::vector<Item*> Fact::get_items() const{
 // 	return this->length;
 // }
 
-Fact* Fact::slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy){
-	start = start >=0 ? start : this->length + start;
-	end = end >=0 ? end : this->length + end;
-		
-	int length = end-start;
-	if(length < 0 || length > this->length){
-		throw std::runtime_error(
-			"Bad slice: ["+std::to_string(start)+","+std::to_string(end)+"] " +
-			"for fact " + fact_to_string(this) + " with length=" + std::to_string(this->length));
-	}
-	// size_t fact_n_bytes = SIZEOF_FACT(length);
+void _copy_fact_slice(Fact* src, Fact* dest, size_t start, size_t end){
+	size_t length = end-start;
 
-	// if(buffer->head + fact_n_bytes >= buffer->end){
-	// 	buffer->resize(buffer->size + std::min(buffer->size, size_t(4096)));
-	// }
-	// Init Fact Header
-	// cout << "<< start: " << uint64_t(start) <<
-	// 				"<< end: " << uint64_t(end) <<
-	// 	      "<< LENGTH: " << uint64_t(length) << endl;
-	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length));
-	// cout << "ALLOC ADDR: " << uint64_t(new_fact) << endl;
-	_init_fact(new_fact, length, nullptr);
-	new_fact->immutable = this->immutable;
 
-	for(int i=start; i < end; i++){
-		Item* item = this->get(i);
+	_init_fact(dest, length, nullptr);
+	dest->immutable = src->immutable;
+
+	size_t src_end = std::min(size_t(dest->length), end);
+
+	int i=start;
+	for(; i < src_end; i++){
+		Item* item = src->get(i);
 		
 		if(item->t_id == T_ID_FACT && item->val != 0){
 			Fact* fact_item = item->as_fact();
 			if(fact_item->immutable){
-
+				// TODO
 			}
 		}else{
 			// Everything else can just be copied;
-			new_fact->set_unsafe(i, *item);
+			dest->set_unsafe(i, *item);
 		}
 	}
+	if(i < end){
+		_zfill_fact(dest, i, end);
+	}
+}
+
+std::tuple<size_t, size_t> Fact::_format_slice(int _start, int _end){
+	size_t start = _start >=0 ? _start : this->length + _start;
+	size_t end = _end >=0 ? _end : this->length + _end;
+		
+	int length = end-start;
+	if(length < 0 
+		//|| length > this->length // (Okay if over)
+		){
+		throw std::runtime_error(
+			"Bad slice: ["+std::to_string(start)+","+std::to_string(end)+"] " +
+			"for fact " + fact_to_string(this) + " with length=" + std::to_string(this->length));
+	}
+	return std::make_tuple(start,end);
+}
+
+
+Fact* Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy){
+	
+	// cout << "<< start: " << uint64_t(start) <<
+	// 				"<< end: " << uint64_t(end) <<
+	// 	      "<< LENGTH: " << uint64_t(length) << endl;
+	auto [start, end] = _format_slice(_start, _end);
+	_copy_fact_slice(this, new_fact, start, end);
+	// cout << "ALLOC ADDR: " << uint64_t(new_fact) << endl;
+	
 	return new_fact;
 }
 
-Fact* Fact::slice(int start, int end, bool deep_copy){
-	// Fact* fact = () _alloc_fact(_length);
-	AllocBuffer buffer = AllocBuffer(SIZEOF_FACT(this->length), true);
-	Fact* new_fact = this->slice_into(buffer, start, end, deep_copy);
+Fact* Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy){
+	auto [start, end] = _format_slice(_start, _end);
+	size_t length = end-start;
+	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length));
+	_copy_fact_slice(this, new_fact, start, end);
+	return new_fact;
+}
+
+Fact* Fact::slice(int _start, int _end, bool deep_copy){
+	auto [start, end] = _format_slice(_start, _end);
+	size_t length = end-start;
+	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
+	_copy_fact_slice(this, new_fact, start, end);
 	return new_fact;
 }
 
 Fact* Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
-	Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
+	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length));
+	_copy_fact_slice(this, new_fact, 0, this->length);
 	return new_fact;
 }
 
 Fact* Fact::copy(bool deep_copy){
 	// Fact* fact = () _alloc_fact(_length);
-	AllocBuffer buffer = AllocBuffer(SIZEOF_FACT(this->length), true);
-	Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
+	// AllocBuffer buffer = AllocBuffer(SIZEOF_FACT(this->length), true);
+	// cout << "MALLOC" << SIZEOF_FACT(this->length) << endl; 
+	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(this->length));
+	_copy_fact_slice(this, new_fact, 0, this->length);
+	// Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
 	return new_fact;
 }
 

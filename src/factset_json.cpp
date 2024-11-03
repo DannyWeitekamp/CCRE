@@ -49,9 +49,9 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 			std::string_view type_name = std::string_view(type_obj->GetString(), type_obj->GetStringLength());
 			type = context->get_fact_type(type_name);
 
-			if(type == nullptr){
-				throw std::runtime_error("Fact type '" + std::string(type_name) + "' not defined in CRE_Context: " + context->name);
-			};
+			// if(type == nullptr){
+			// 	throw std::runtime_error("Fact type '" + std::string(type_name) + "' not defined in CRE_Context: " + context->name);
+			// };
 			if(type->members.size() > length){
 				length = type->members.size();
 			}

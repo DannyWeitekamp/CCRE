@@ -14,6 +14,7 @@
 
 #pragma once
 #include <iostream>
+#include "../include/cre_obj.h"
 // #include "counter.h"
 
 // NAMESPACE_BEGIN(nanobind)
@@ -41,14 +42,15 @@ public:
 
     /// Construct a reference from a pointer
     ref(T *ptr) : m_ptr(ptr) { 
-        std::cout << "constr from ptr" << std::endl;
-        if(m_ptr) m_ptr->inc_ref(); 
+        // std::cout << "constr from ptr" << std::endl;
+
+        if(m_ptr) CRE_incref(m_ptr); 
     }
 
     /// Copy a reference, increases the reference count
     ref(const ref &r) : m_ptr(r.m_ptr) {
         std::cout << "copy from ref" << std::endl;
-        if(m_ptr) m_ptr->inc_ref(); 
+        if(m_ptr) CRE_incref(m_ptr); 
     }
 
     /// Move a reference witout changing the reference count
@@ -57,13 +59,13 @@ public:
     /// Destroy this reference
     ~ref() { 
         // std::cout << "destroy " << std::endl;
-        if(m_ptr) m_ptr->dec_ref();
+        if(m_ptr) CRE_decref(m_ptr);
     }
 
     /// Move-assign another reference into this one
     ref &operator=(ref &&r) noexcept {
         // std::cout << "move" << std::endl;
-        if(m_ptr) m_ptr->dec_ref();
+        if(m_ptr) CRE_decref(m_ptr);
         m_ptr = r.m_ptr;
         r.m_ptr = nullptr;
         return *this;
@@ -72,8 +74,8 @@ public:
     /// Copy-assign another reference into this one
     ref &operator=(const ref &r) {
         // std::cout << "& OP ver const" << std::endl;
-        if(r.m_ptr) r.m_ptr->inc_ref();
-        if(m_ptr) m_ptr->dec_ref();
+        if(r.m_ptr) CRE_incref(r.m_ptr);
+        if(m_ptr) CRE_decref(m_ptr);
         m_ptr = r.m_ptr;
         return *this;
     }
@@ -81,9 +83,9 @@ public:
     /// Overwrite this reference with a pointer to another object
     ref &operator=(T *ptr) {
         // std::cout << "& OP ver" << std::endl;
-        if(ptr) ptr->inc_ref();
+        if(ptr) CRE_incref(ptr);
         // std::cout << "&&" << std::endl;
-        if(m_ptr) m_ptr->dec_ref();
+        if(m_ptr) CRE_decref(m_ptr);
         // std::cout << "**" << std::endl;
         m_ptr = ptr;
         // std::cout << "end" << std::endl;
@@ -92,7 +94,7 @@ public:
 
     /// Clear the currently stored reference
     void reset() {
-        m_ptr->dec_ref();
+        CRE_decref(m_ptr);
         m_ptr = nullptr;
     }
 
@@ -135,6 +137,7 @@ public:
 
 };
 
+// #include <nanobind/nanobind.h>
 // Registar a type caster for ``ref<T>`` if nanobind was previously #included
 #if defined(NB_VERSION_MAJOR)
 NAMESPACE_BEGIN(nanobind)
@@ -157,19 +160,17 @@ template <typename T> struct type_caster<ref<T>> {
     static handle from_cpp(const ref<T> &value, rv_policy policy,
                            cleanup_list *cleanup) noexcept {
         // if constexpr (std::is_base_of_v<intrusive_base, T>)
+        const T* val = value.get();
         if (policy != rv_policy::copy && policy != rv_policy::move && value.get()){
-            const T* val = value.get();
-            // val->inc_ref();
-            // return val;
-            if (PyObject* obj = value->self_py()){
+            if (PyObject* obj = (PyObject*) value->proxy_obj){
                 return handle(obj).inc_ref();
             }else{
-                val->inc_ref();
+                CRE_incref(val);
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
-        // SET
-        return py_out
+        val->proxy_obj = (void*) py_out.ptr();
+        return py_out;
     }
 };
 NAMESPACE_END(detail)

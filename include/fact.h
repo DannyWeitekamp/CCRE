@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <bit>
+#include <iostream>
 #include "../include/alloc_buffer.h"
 #include "../include/item.h"
 #include "../include/cre_obj.h"
@@ -20,24 +21,27 @@ struct Fact : public CRE_Obj {
 
 public: 
   //  -- Members --
-  FactType*     type;
-  FactSet* 	parent; 
-  uint32_t  f_id;
-  uint32_t  length;
-  uint64_t 	hash;
-  AllocBuffer* 	alloc_buffer;
+  FactType*     type=nullptr;
+  FactSet* 	parent=nullptr; 
+  uint32_t  f_id=-1;
+  uint32_t  length=0;
+  uint64_t 	hash=0;
 
   // For internal use;
-  uint8_t cov_flag;
+  uint8_t cov_flag=0;
   // Whether or the fact is immutable;
-  uint8_t immutable;
-  uint8_t has_mutable;
+  uint8_t immutable=0;
+  uint8_t has_mutable=0;
 
-  uint16_t pad1[2];
+  uint8_t pad1[5]={0};
 
   //  -- Methods --
-  Fact(void* type);
-  Fact(uint32_t _length);
+  // Fact(void* type);
+  Fact(uint32_t _length, FactType* _type=nullptr, bool _immutable=false);
+
+  ~Fact(){
+    //
+  };
 
   
 
@@ -97,9 +101,13 @@ public:
   std::string to_string();
   inline size_t size() const {return length;}
 
-  Fact* slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy);
-  Fact* slice(int start, int end, bool deep_copy);
-  Fact* copy_into(AllocBuffer& buffer, bool deep_copy);
+  std::tuple<size_t, size_t> _format_slice(int _start, int _end);
+  Fact* slice_into(Fact* new_fact,      int start, int end, bool deep_copy=false);
+  Fact* slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy=false);
+  Fact* slice(int start, int end, bool deep_copy=false);
+
+  Fact* copy_into(Fact* new_fact, bool deep_copy=false);
+  Fact* copy_into(AllocBuffer& buffer, bool deep_copy=false);
   Fact* copy(bool deep_copy);
 
   bool operator==(const Fact& other) const;
@@ -146,8 +154,23 @@ Fact::Iterator end(const Fact* fact);
 
 std::ostream& operator<<(std::ostream& out, Fact* fact);
 
-extern "C" Fact* _alloc_fact(uint32_t _length);
-extern "C" void _init_fact(Fact* fact, uint32_t _length, FactType* type=NULL);
+inline Fact* _alloc_fact(uint32_t _length){
+  Fact* ptr = (Fact*) malloc(sizeof(Fact) + _length * sizeof(Item));
+  return ptr;
+}
+
+// inline void _init_fact(Fact* fact, uint32_t _length, FactType* type){
+//     fact->type = type;
+//     fact->f_id = 0;
+//     fact->hash = 0;
+//     fact->length = _length;
+//     fact->parent = (FactSet*) nullptr;
+// }
+
+inline void _init_fact(Fact* fact, uint32_t _length, FactType* _type=nullptr, bool _immutable=false){
+  // Placement new
+  new (fact) Fact(_length, _type, _immutable);
+}
 
 extern "C" Fact* empty_fact(FactType* type);
 extern "C" Fact* empty_untyped_fact(uint32_t _length);
@@ -184,6 +207,8 @@ Fact* make_fact(FactType* type, Ts && ... inputs){
 
 
 //-------------------------------------------------------------
+// : FactView
+
 struct FactView {
     // -- Members --
     Fact* fact;
@@ -245,6 +270,30 @@ struct FactView {
     bool operator==(const FactView& other) const;
     
 };
+
+// ------------------------------------------------------------
+// : SIZEOF_FACT(n)
+
+constexpr bool FACT_ALIGN_IS_POW2 = (alignof(Fact) & (alignof(Fact) - 1)) == 0;
+#define _SIZEOF_FACT(n) (sizeof(Fact)+(n)*sizeof(Item))
+
+// Because facts are regularly allocated with buffers and have an atomic
+//  for their refcount we need to make sure to pad facts so that
+//  ((Fact*) x) + SIZEOF_FACT(x->size()) is always an aligned address so 
+//  that we keep facts in contigous memory that wasn't allocated with 'new'
+#if FACT_ALIGN_IS_POW2 == true
+  #define ALIGN_PADDING(n_bytes) ((alignof(Fact) - (n_bytes & (alignof(Fact)-1))) & (alignof(Fact)-1))
+#else
+  #define ALIGN_PADDING(n_bytes) ((alignof(Fact) - (n_bytes % (alignof(Fact)))) % (alignof(Fact)))
+#endif
+
+constexpr bool FACT_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Fact)) | ALIGN_PADDING(sizeof(Item))) != 0;
+
+#if FACT_NEED_ALIGN_PAD
+  #define SIZEOF_FACT(n) (_SIZEOF_FACT(n) + ALIGN_PADDING(_SIZEOF_FACT(n)))
+#else
+  #define SIZEOF_FACT(n) _SIZEOF_FACT(n)
+#endif
 
 
 //--------------------------------------------------------------
@@ -332,8 +381,6 @@ struct FactView {
 //     // }
 // };
 
-
-#define SIZEOF_FACT(n) (sizeof(Fact)+n*sizeof(Item))
 
 
 #endif /* _CRE_FACT_H_ */

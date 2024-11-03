@@ -48,9 +48,8 @@ InternStr intern(const std::string_view& sv){
         return InternStr(*it, hash);
     }    
     // If not found, create a new string and insert it into the intern set
-	string* new_str = new string(sv);
+	std::string* new_str = new std::string(sv);
     auto itr = intern_set.insert(*new_str);
-	// std::string_view inserted = *itr.first;
 	return InternStr(*itr.first, hash);
 
     // return inserted;
@@ -78,7 +77,7 @@ InternStr intern(const std::string_view& sv){
 	// return *inserted.first;
 
 
-ostream& operator<<(std::ostream& out, InternStr fs){
+std::ostream& operator<<(std::ostream& out, InternStr fs){
 	// return out << std::string_view(fs.data, fs.length);
 	return out << std::string_view(fs);
 }

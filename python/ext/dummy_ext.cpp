@@ -2,13 +2,20 @@
 #include <string>
 #include <atomic>
 #include <memory> 
+
+// Note: Need to be included in this order
 #include <nanobind/nanobind.h>
+#include "../../include/cre_obj.h"
+#include "../../include/ref.h"
+//
+
 // #include <nanobind/nb_types.h>
 // #include <nanobind/intrusive/ref.h>
 // #include <nanobind/intrusive/counter.h>
 #include <nanobind/stl/string.h>
 // #include <../external/nanobind/src/nb_internals.h>
-#include "../include/ref.h"
+
+
 
 
 
@@ -21,46 +28,49 @@ using std::endl;
 
 
 
-class Object {
-private:
-    mutable std::atomic<int64_t> m_ref_count { 0 };
-    mutable PyObject* m_self_pyobj { nullptr };
-    // nb::intrusive_counter m_ref_count ;
 
-public:
-    void inc_ref() const noexcept { 
-        // cout << "incref: " << uint64_t(this) << endl;
-        ++m_ref_count; 
-    }
+// class Object {
+// private:
+//     mutable std::atomic<int64_t> m_ref_count { 0 };
+    
+//     // nb::intrusive_counter m_ref_count ;
 
-    void dec_ref() const noexcept {
-        // cout << "decref:" << uint64_t(this) << endl;
-        if (--m_ref_count <= 0){
-            // cout << "delete" << endl;
-            delete this;
-            // return true;
-        }
-        // return false;
-    }
-    // void inc_ref() noexcept { m_ref_count.inc_ref(); }
-    // bool dec_ref() noexcept { return m_ref_count.dec_ref(); }
+// public:
+//     mutable PyObject* m_self_pyobj { nullptr };
 
-    // Important: must declare virtual destructor
-    virtual ~Object() = default;
+//     void inc_ref() const noexcept { 
+//         // cout << "incref: " << uint64_t(this) << endl;
+//         ++m_ref_count; 
+//     }
 
-    // void set_self_py(PyObject *self) noexcept {
-    //     m_ref_count.set_self_py(self);
-    // }
+//     void dec_ref() const noexcept {
+//         // cout << "decref:" << uint64_t(this) << endl;
+//         if (--m_ref_count <= 0){
+//             // cout << "delete" << endl;
+//             delete this;
+//             // return true;
+//         }
+//         // return false;
+//     }
+//     // void inc_ref() noexcept { m_ref_count.inc_ref(); }
+//     // bool dec_ref() noexcept { return m_ref_count.dec_ref(); }
 
-    int get_refcount() noexcept {
-        // return int(*(int*)&m_ref_count);
-        return int(m_ref_count);
-    }
+//     // Important: must declare virtual destructor
+//     virtual ~Object() = default;
 
-    PyObject* self_py() const noexcept {
-        return m_self_pyobj;
-    }
-};
+//     // void set_self_py(PyObject *self) noexcept {
+//     //     m_ref_count.set_self_py(self);
+//     // }
+
+//     int get_refcount() noexcept {
+//         // return int(*(int*)&m_ref_count);
+//         return int(m_ref_count);
+//     }
+
+//     PyObject* self_py() const noexcept {
+//         return m_self_pyobj;
+//     }
+// };
 
 // // Convenience function for increasing the reference count of an instance
 // inline void inc_ref(Object *o) noexcept {
@@ -84,7 +94,7 @@ public:
 //-------------------------------------------------------
 // : Dog
 
-struct Dog : public Object{
+struct Dog : public CRE_Obj{
     std::string name;
     int         age;
 
@@ -107,7 +117,7 @@ struct Dog : public Object{
     }
 };
 
-struct Kennel : public Object {
+struct Kennel : public CRE_Obj {
     ref<Dog> dog;
     // Dog* dog;
 
@@ -147,70 +157,32 @@ struct Kennel : public Object {
 // }
 // std::cout << dummy_mod.dummy << std::endl;
 
-NB_MODULE(dummy_ext, m) {
-    nb::class_<Object>(m, "Object"
-      // ,nb::intrusive_ptr<Object>(
-      //     [](Object *o, PyObject *po) noexcept { o->set_self_py(po); })
-    )
-    .def("get_refcount", &Object::get_refcount)
-    ;
-}
+// NB_MODULE(dummy_ext, m) {
+//     nb::class_<CRE_Obj>(m, "CRE_Obj"
+//       // ,nb::intrusive_ptr<Object>(
+//       //     [](Object *o, PyObject *po) noexcept { o->set_self_py(po); })
+//     )
+//     .def("get_refcount", &CRE_Obj::get_refcount)
+//     ;
+// }
 
 
 typedef void (*dealloc_ty)(PyObject *self);
 dealloc_ty nb_inst_dealloc = nullptr;
 
-static void
-cre_obj_dealloc(PyObject *self)
-{
-    // PyObject *error_type, *error_value, *error_traceback;
-
-    /* Save the current exception, if any. */
-    // PyErr_Fetch(&error_type, &error_value, &error_traceback);
-    // nb::detail::inst_dealloc(self);
-
-
-    // Call 
-    // using CastTy = Object*;
-    // using Caster = nb::detail::make_caster<CastTy>;
-    // Caster caster;
-
-    
-
-    // auto self_handle = nb::handle_t<CastTy>(self);
-    // auto self_handle = nb::handle(self);
-
-    // Object* cpp_self;
-    // nb::detail::load_i64(self_handle.ptr(), 0xFF, (int64_t*) cpp_self);
-
-
-    // bool rv = caster.from_python(self_handle.ptr(), (uint8_t) nb::detail::cast_flags::manual, nullptr);
-    // bool rv = caster.from_python(self_handle.ptr(),
-    //                     ((uint8_t) nb::detail::cast_flags::convert) |
-    //                     ((uint8_t) nb::detail::cast_flags::manual),
-    //                     0);
-
-
-    // cout << "RV: " << rv << endl;
-
-    // cout << "CASTED:" << uint64_t(cpp_self) << endl;
-    // cout << "CASTED:" << caster.operator nb::detail::cast_t<CastTy>() << endl;
-
-    
+static void cre_obj_dealloc(PyObject *self){
     auto self_handle = nb::handle(self);
-    Object* cpp_self = (Object*) nb::inst_ptr<Object>(self_handle);
+    CRE_Obj* cpp_self = (CRE_Obj*) nb::inst_ptr<CRE_Obj>(self_handle);
 
-    cout << "~Before Die~:" << cpp_self->get_refcount() << endl;    
-
+    // cout << "~Before Die~:" << cpp_self->get_refcount() << endl;    
 
     if(nb_inst_dealloc){
-        (*nb_inst_dealloc)(self);    
+        (*nb_inst_dealloc)(self);
     }
-    cpp_self->dec_ref();
-    
-
-    /* Restore the saved exception. */
-    // PyErr_Restore(error_type, error_value, error_traceback);
+    // When the Python proxy object is collected remove 
+    //   the C++ object's reference to it so it isn't reused
+    cpp_self->proxy_obj = nullptr;
+    CRE_decref(cpp_self);//->dec_ref();
 }
 
 // PyObject *myclass_tp_add(PyObject *a, PyObject *b) {
@@ -225,16 +197,15 @@ PyType_Slot slots[] = {
 
 
 
-NB_MODULE(my_ext, m) {
-    nb::class_<Object>(m, "Object"
+NB_MODULE(dummy_ext, m) {
+    nb::class_<CRE_Obj>(m, "CRE_Obj"
       // ,nb::intrusive_ptr<Object>(
       //     [](Object *o, PyObject *po) noexcept { o->set_self_py(po); })
     )
-    .def("get_refcount", &Object::get_refcount)
-
+    .def("get_refcount", &CRE_Obj::get_refcount)
     ;
 
-    auto obj_ty_handle = nb::type<Object>();
+    auto obj_ty_handle = nb::type<CRE_Obj>();
 
     if (obj_ty_handle.is_valid()) {
         PyTypeObject* obj_ty = (PyTypeObject*) obj_ty_handle.ptr();
@@ -259,19 +230,19 @@ NB_MODULE(my_ext, m) {
 
     // nb::class_<ref<Dog>>(m, "ref<Dog>");
 
-    nb::class_<Dog>(m, "Dog", nb::type_slots(slots))
-        // .def(nb::new_([]() { return Dog::make("floot", 0); }))
-        .def(nb::new_(&Dog::make), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
-        .def("bark", &Dog::bark)
-        .def_rw("name", &Dog::name)
-        .def("get_refcount", &Kennel::get_refcount)
-        .def("inc_ref", &Dog::inc_ref)
-        .def("dec_ref", &Dog::dec_ref)
-        .def("__del__",
-           +[](const Dog&) -> void { 
-               std::cerr << "deleting C" << std::endl;
-           }
-        );
+nb::class_<Dog>(m, "Dog", nb::type_slots(slots))
+    // .def(nb::new_([]() { return Dog::make("floot", 0); }))
+    .def(nb::new_(&Dog::make), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+    .def("bark", &Dog::bark)
+    .def_rw("name", &Dog::name)
+    .def("get_refcount", &Dog::get_refcount)
+        // .def("inc_ref", &Dog::inc_ref)
+        // .def("dec_ref", &Dog::dec_ref)
+        // .def("__del__",
+        //    +[](const Dog&) -> void { 
+        //        std::cerr << "deleting C" << std::endl;
+        //    }
+        // );
 
         // .def_destructor([](Dog* self) {
         //     if(self) self->dec_ref();
@@ -287,8 +258,8 @@ NB_MODULE(my_ext, m) {
         // .def("bark", &Dog::bark)
         .def_rw("dog", &Kennel::dog, nb::rv_policy::reference)
         .def("get_refcount", &Kennel::get_refcount)
-        .def("inc_ref", &Kennel::inc_ref)
-        .def("dec_ref", &Kennel::dec_ref)
+        // .def("inc_ref", &Kennel::inc_ref)
+        // .def("dec_ref", &Kennel::dec_ref)
     ;
     // nb::detail::ref_registry::add_type<Kennel>();
         // .def(nb::init<>())

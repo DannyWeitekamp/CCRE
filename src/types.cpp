@@ -7,7 +7,8 @@
 #include <bitset>
 #include <fmt/format.h>
 
-// using namespace std;
+using std::cout;
+using std::endl;
 
 
 

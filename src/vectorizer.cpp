@@ -21,8 +21,10 @@ Vectorizer::Vectorizer(uint64_t max_heads, bool _one_hot_nominals, bool _encode_
 	flt_slot_map.reserve(max_heads);
 	inv_nom_slot_map.reserve(max_heads);
 	inv_flt_slot_map.reserve(max_heads);
-
 }
+
+// ------------------------------------------------------------
+// : apply()
 
 size_t Vectorizer::_get_nom_slot(Fact* fact){
 	// Typically slots are allocated by the head (all but the last item) 
@@ -139,7 +141,7 @@ void Vectorizer::_map_fact(Fact* fact){
 			nom_vec[slot] = nom_enc;	
 		}
 	}else{
-		cout << "Map float" << last_item->as_float() << endl;
+		// cout << "Map float" << last_item->as_float() << endl;
 		size_t slot = this->_get_flt_slot(fact);
 		flt_vec[slot] = last_item->as_float();
 	}
@@ -160,4 +162,40 @@ std::tuple<std::vector<uint64_t>, std::vector<double>>
 	nom_vec.resize(nom_size);
 	flt_vec.resize(flt_slot_map.size());
 	return std::make_tuple(nom_vec, flt_vec);
+}
+
+
+// ------------------------------------------------------------
+// : invert()
+
+// TODO: should probably return a reference
+
+Fact* Vectorizer::invert(size_t slot, size_t value){
+	bool is_not = false;
+
+	// If one-hot, map back to nom_slot + nom_enc
+	if(one_hot_nominals){
+		if(value == 0) is_not = true;
+		auto& [nom_slot, nom_enc] = inv_one_hot_map.at(slot);
+		slot = nom_slot;
+		value = nom_enc;
+	}
+
+	// 
+	Fact* fact_head = inv_nom_slot_map.at(slot);
+	if(fact_head->length == 1){
+		return fact_head;
+	}else{
+		Item item = inv_enumerize_map.at(value);
+		Fact* full_fact = fact_head->slice(0, int(fact_head->length+1));
+		full_fact->set_unsafe(fact_head->length, item);
+		return full_fact;
+	}
+}
+
+Fact* Vectorizer::invert(size_t slot, double value){
+	Fact* fact_head = inv_nom_slot_map.at(slot);
+	Fact* full_fact = fact_head->slice(0, int(fact_head->length+1));
+	full_fact->set_unsafe(fact_head->length, Item(value));
+	return fact_head;
 }

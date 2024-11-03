@@ -1,7 +1,8 @@
 #include "../include/types.h"
 #include "../include/context.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 // CRE_Context::_add_type implementation
 size_t CRE_Context::_add_type(CRE_Type* t) {
@@ -23,23 +24,38 @@ size_t CRE_Context::_add_type(CRE_Type* t) {
     return index;
 };
 
-FactType* CRE_Context::get_fact_type(const std::string_view& name) {
-	CRE_Type* ct = this->get_type(name);	
+FactType* CRE_Context::_get_fact_type(const std::string_view& name) noexcept {
+	CRE_Type* ct = this->_get_type(name);	
 	if(ct == nullptr || ct->builtin){
 		return nullptr;
 	}
 	return (FactType*) ct;
 }
 
-CRE_Type* CRE_Context::get_type(const std::string_view& name) {
-    // cout << "NAME: " << std::string(name.data()) << " " << name.length() << endl;
+FactType* CRE_Context::get_fact_type(const std::string_view& name) {
+    FactType* fact_type = this->_get_fact_type(name);
+    if(fact_type == nullptr){
+        throw std::runtime_error("Fact type '" + std::string(name) + "' not defined in CRE_Context: " + this->name);    
+    }
+    return fact_type;
+}
+
+CRE_Type* CRE_Context::_get_type(const std::string_view& name) noexcept{
 	auto itr = type_name_map.find(name);
 	if (itr != type_name_map.end()) {
-        uint16_t t_id = itr->second;
-        return types[t_id];
+        uint16_t type_ind = itr->second;
+        return types[type_ind];
     }else{
     	return nullptr;
     }
+}
+
+CRE_Type* CRE_Context::get_type(const std::string_view& name) {
+    CRE_Type* type = this->_get_type(name);
+    if(type == nullptr){
+        throw std::runtime_error("Type '" + std::string(name) + "' not defined in CRE_Context: " + this->name);    
+    }
+    return type;
 }
 
 
@@ -58,6 +74,16 @@ CRE_Context::CRE_Context(std::string _name) : name(_name) {
         _add_type((CRE_Type*) t);
     }
 };
+
+std::string CRE_Context::to_string() {
+    std::stringstream ss;
+    ss << "CRE_Context: " << name << endl;
+    for(auto t : types){
+        ss << "  " << t->name << endl;
+    }
+    return ss.str();
+}
+
 
 extern "C" CRE_Context* CRE_set_current_context(CRE_Context* context) {
     CRE_Context* old_context = current_context;

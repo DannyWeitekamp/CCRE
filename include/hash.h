@@ -15,7 +15,6 @@ class FactView;
 class UintPair;
 uint64_t hash_item(const Item& x);
 
-// using namespace std;
 
 extern const uint64_t _PyHASH_XXPRIME_1;
 extern const uint64_t _PyHASH_XXPRIME_2;

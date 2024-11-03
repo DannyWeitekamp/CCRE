@@ -10,11 +10,12 @@ set(CMAKE_CXX_STANDARD 23)
 # Note: Nanobind thing
 set(DEV_MODULE Development.Module)
 
+
 # Add compiler warnings
 if(MSVC)
   add_compile_options(/W4)
 else()
-  add_compile_options(-Wall -Wextra -Wno-sign-compare -pedantic)
+  add_compile_options(-Wall -Wextra -Wno-sign-compare -pedantic -fPIC)
 endif()
 
 # 
@@ -24,7 +25,9 @@ add_compile_options(-Wno-unused-variable
 
 add_compile_options(-std=c++2a -lstdc++)
 add_compile_options(-g)
-add_compile_options(-O3)
+
+# set(CMAKE_BUILD_TYPE Debug)
+# add_compile_options(-O0)
 
 add_subdirectory(external/fmt)
 add_subdirectory(external/nanobind)
@@ -57,8 +60,8 @@ target_link_libraries(app_lib fmt::fmt)
 # target_link_libraries(main PRIVATE app_lib)
 
 #  -- main2 -- 
-add_executable(main2 main2.cpp)
-target_link_libraries(main2 PRIVATE app_lib)
+# add_executable(main2 main2.cpp)
+# target_link_libraries(main2 PRIVATE app_lib)
 
 # ---------- TESTS ----------
 enable_testing()
@@ -99,4 +102,10 @@ add_test(
   COMMAND $<TARGET_FILE:test_transform>
   )
 
-nanobind_add_module(my_ext python/my_ext.cpp)
+nanobind_add_module(dummy_ext python/ext/dummy_ext.cpp)
+target_link_libraries(dummy_ext PRIVATE app_lib)
+
+
+nanobind_add_module(cre python/ext/cre_py_ext.cpp)
+target_link_libraries(cre PRIVATE app_lib)
+target_compile_options(cre PRIVATE -g -O0)

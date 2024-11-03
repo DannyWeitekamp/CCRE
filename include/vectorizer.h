@@ -30,7 +30,8 @@ struct UintPair{
 struct Vectorizer : public IncrementalProcessor{
 	// -- Members --
 
-
+	// A buffer for copying fact slices into
+	//   size is determined by 'max_heads'
 	AllocBuffer* buffer; 
 
 	// Map: Fact Head -> nominal slot
@@ -49,6 +50,7 @@ struct Vectorizer : public IncrementalProcessor{
 	HashMap<UintPair, size_t> one_hot_map = {};
 	std::vector<UintPair> inv_one_hot_map = {};
 
+	// The output vectors
 	std::vector<uint64_t> nom_vec = {};
 	std::vector<double> flt_vec = {};
 
@@ -71,6 +73,9 @@ struct Vectorizer : public IncrementalProcessor{
 	size_t _get_one_hot_slot(size_t slot, size_t enc);
 	void _init_new(FactSet* fs);
 	void _map_fact(Fact* fact);
+
+	Fact* invert(size_t slot, size_t value);
+	Fact* invert(size_t slot, double value);
 	// void insert_onehot(Fact* fact);
 };
 

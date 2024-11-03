@@ -14,7 +14,8 @@
 #include "fact.h"
 #include "alloc_buffer.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 
 // Forward Declaration
@@ -27,21 +28,21 @@ class FactSet : public CRE_Obj {
 
 public:
 	// -- Members --
-	vector<Fact*> facts;
-	vector<uint32_t> empty_f_ids;
+	std::vector<Fact*> facts;
+	std::vector<uint32_t> empty_f_ids;
 	uint64_t _size;
     std::vector<FactChange> change_queue;
 
 	// -- Methods -- 
 	FactSet(size_t n_facts=0);
-	FactSet(vector<Fact*> facts);
+	FactSet(std::vector<Fact*> facts);
     // ~FactSet();
 
     inline size_t size() const {return _size;}
 	uint32_t declare(Fact* fact);
 	void retract(uint32_t f_id);
 	void retract(Fact* fact);
-    vector<Fact*> get_facts();
+    std::vector<Fact*> get_facts();
     Fact* add_fact(FactType* type, const std::vector<Item>& items);
     std::string to_string(
         std::string_view format="FactSet{{\n  {}\n}}",
@@ -57,12 +58,12 @@ public:
         using reference         = Fact*&;
 
     private:
-        vector<Fact*>::iterator current;
-        vector<Fact*>::iterator end;
+        std::vector<Fact*>::iterator current;
+        std::vector<Fact*>::iterator end;
 
     public:
-        Iterator(vector<Fact*>::iterator s,
-                 vector<Fact*>::iterator e){
+        Iterator(std::vector<Fact*>::iterator s,
+                 std::vector<Fact*>::iterator e){
             current = s;
             end = e;
         }
@@ -87,7 +88,7 @@ public:
 
 };
 
-ostream& operator<<(std::ostream& out, FactSet* fs);
+std::ostream& operator<<(std::ostream& out, FactSet* fs);
 
 extern "C" bool is_declared(Fact* fact);
 extern "C" void assert_undeclared(FactSet* fs, Fact* fact);
@@ -140,13 +141,13 @@ extern "C" Fact* FactSetBuilder_add_fact(
         FactSetBuilder* fs,
         FactType* type, const Item* items, uint32_t _length);
 
-inline void _init_fact(Fact* fact, uint32_t _length, FactType* type){
-    fact->type = type;
-    fact->f_id = 0;
-    fact->hash = 0;
-    fact->length = _length;
-    fact->parent = (FactSet*) nullptr;
-}
+// inline void _init_fact(Fact* fact, uint32_t _length, FactType* type){
+//     fact->type = type;
+//     fact->f_id = 0;
+//     fact->hash = 0;
+//     fact->length = _length;
+//     fact->parent = (FactSet*) nullptr;
+// }
 
 
 // void _declare_from_empty(const FactSetBuilder& fsb, Fact* fact, uint32_t length, FactType* type);

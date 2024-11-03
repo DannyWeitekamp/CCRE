@@ -71,8 +71,8 @@ void test_flattener(){
 
 FactSet* random_cats(size_t N){
 	FactType* CatType = define_fact("Cat", {
-		 {"id", cre_int, {{"unique_id", true}} },
-	     {"name", cre_str, {{"semantic", true}} },
+		 // {"id", cre_int, {{"unique_id", true}} },
+	     {"name", cre_str, {{"unique_id", true}} },
 	     {"color", cre_str, {{"visible", true}} },
 	     {"legs", cre_int, {{"semantic", true}} },
 	     {"frisky", cre_bool, {{"visible", false}} },
@@ -90,7 +90,7 @@ FactSet* random_cats(size_t N){
 	FactSetBuilder* fs_builder = new FactSetBuilder(N, N*SIZEOF_FACT(M));
 	for(int i=0; i < N; i++){
 		std::vector<Item> items = {
-		 Item(i),
+		 // Item(i),
 		 Item(names[std::rand()%names.size()]),
 		 Item(colors[std::rand()%colors.size()]),
 		 Item(4),
@@ -123,8 +123,8 @@ FactSet* setup_factset(size_t N, size_t M){
 void bench_flattener(){
 	// FactSet* fs = setup_factset(10000, 3);
 	FactSet* fs = random_cats(10000);
-	// auto f = new Flattener(fs);
-	time_it_n("_update_init", (new Flattener(fs))->_update_init();, 500);
+	auto f = new Flattener(fs);
+	time_it_n("flattener apply()", (f->apply(fs));, 500);
 }
 
 void test_vectorizer(){
@@ -144,12 +144,18 @@ void test_vectorizer(){
 	std::tie(nom_vec, flt_vec) = vectorizer->apply(flat_fs);
 	cout << nom_vec << endl;
 	cout << flt_vec << endl;
+
+	// for(size_t v : nom_vec){
+	for(int i=0; i < nom_vec.size(); i++){
+		auto inverse = vectorizer->invert(i, nom_vec[i]);
+		cout << "nv[" << i << "]=" << nom_vec[i] << "  " << inverse << endl;
+	}
 }
 
 void bench_vectorizer(){
-
 	size_t N = 10000;
 	FactSet* fs = random_cats(N);
+	// FactSet* fs = setup_factset(N, 3);
 	auto flattener = new Flattener(fs);
 	flattener->_update_init();
 	FactSet* flat_fs = flattener->builder.fact_set;
@@ -172,10 +178,30 @@ void bench_vectorizer(){
 }
 
 
+// #include <type_traits>
+
+
+
+
 int main(){
-	test_flattener();
+	// cout << FACT_ALIGN_IS_POW2 << " <IS ALIGN 2" << endl;
+	// cout << FACT_NEED_ALIGN_PAD << " <NEED ALIGN PAD" << endl;
+	// cout << "ALIGN PAD:" << ALIGN_PADDING(SIZEOF_FACT(0)) << endl;
+	// cout << "ALIGN PAD:" << ALIGN_PADDING(SIZEOF_FACT(1)) << endl;
+	// cout << "ALIGN PAD:" << ALIGN_PADDING(SIZEOF_FACT(2)) << endl;
+	// cout << "ALIGN PAD:" << ALIGN_PADDING(SIZEOF_FACT(3)) << endl;
+	// cout << "ALIGN PAD:" << ALIGN_PADDING(SIZEOF_FACT(4)) << endl;
+	// cout << "ALIGN:" << alignof(Fact) << endl;
+	// cout << "SIZE:" << SIZEOF_FACT(0) << endl;
+	// cout << "SIZE:" << SIZEOF_FACT(1) << endl;
+	// cout << "SIZE:" << SIZEOF_FACT(2) << endl;
+	// cout << "SIZE:" << SIZEOF_FACT(3) << endl;
+	// cout << "SIZE:" << SIZEOF_FACT(4) << endl;
+
+
+	// test_flattener();
 	// bench_flattener();
-	// test_vectorizer();
+	test_vectorizer();
 	// bench_vectorizer();
 	return 0;
 }
