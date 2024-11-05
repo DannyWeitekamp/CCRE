@@ -238,7 +238,7 @@ std::string item_to_string(const Item& item) {
                     ss << "null";
                     break;
                 }else if(fact->type != nullptr){
-                    std::string unq_id = fact_to_unique_id(fact);
+                    std::string unq_id = fact->get_unique_id();
                     if(!unq_id.empty()){
                         ss << "@" << unq_id;
                         break;
@@ -248,7 +248,7 @@ std::string item_to_string(const Item& item) {
                 }
 
                 if(fact->immutable){
-                    ss << fact_to_string(fact, 2);
+                    ss << fact->to_string(2);
                 }else{
                     ss << "<fact f_id=" << fact->f_id << ">";    
                 }

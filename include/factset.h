@@ -43,11 +43,32 @@ public:
 	void retract(uint32_t f_id);
 	void retract(Fact* fact);
     std::vector<Fact*> get_facts();
+
+    Fact* add_fact(FactType* type, const Item* items, size_t n_items);
     Fact* add_fact(FactType* type, const std::vector<Item>& items);
+
     std::string to_string(
         std::string_view format="FactSet{{\n  {}\n}}",
         std::string_view delim="\n  "
     );
+
+    static FactSet* from_json(char* json_str, size_t length=-1, bool copy_buffer=true);
+    static FactSet* from_json_file(const char* json);
+    static char* to_json(FactSet* fs);
+
+
+    // std::string to_string();
+
+    inline void _declare_back(Fact* fact){
+
+        // Equivalent of declare(fs, fact) but don't bother with empties
+        // _init_fact(fact, length, type);
+        uint32_t f_id = (uint32_t) facts.size();
+        fact->f_id = f_id;
+        fact->parent = this;
+        facts.push_back(fact);
+        _size++;   
+    }
 
 // -- Iterator --
     class Iterator {
@@ -96,15 +117,17 @@ extern "C" uint32_t declare(FactSet* fs, Fact* fact);
 extern "C" void retract_f_id(FactSet* fs, uint32_t f_id);
 extern "C" void retract(FactSet* fs, Fact* fact);
 extern "C" void fs_dtor(FactSet* fs);
-extern "C" FactSet* FactSet_from_json(char* json_str, size_t length=-1, bool copy_buffer=true);
-extern "C" FactSet* FactSet_from_json_file(const char* json);
-extern "C" char* FactSet_to_json(FactSet*);
+// extern "C" FactSet* FactSet_from_json(char* json_str, size_t length=-1, bool copy_buffer=true);
+// extern "C" FactSet* FactSet_from_json_file(const char* json);
+// extern "C" char* FactSet_to_json(FactSet*);
 
 
 
 
 //--------------------------------------------------------------
 // : FactSetBuilder
+
+
 
 class FactSetBuilder{
 public:
@@ -116,30 +139,47 @@ public:
     FactSetBuilder(size_t size=0, size_t buffer_size=0);
 
     inline Fact* next_empty(size_t size){
-        Fact* fact;
-        AllocBuffer& buff = *this->alloc_buffer;
+        Fact* fact = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size));
+        fact = new (fact) Fact(size, nullptr, false);
+        return fact;
+        // uint8_t* next_head = buff.head + sizeof(Fact) + size * sizeof(Item);    
 
-        uint8_t* next_head = buff.head + sizeof(Fact) + size * sizeof(Item);    
+        // if(next_head <= buff.end){
+        //     fact = (Fact*) buff.head;
+        //     buff.head = next_head;
+        //     // cout << sizeof(Fact) << endl;
+        //     // cout << "Buff: " << uint64_t(buff.head) << " " << endl; 
+        // }else{
+        //     fact = empty_untyped_fact(size);
+        //     // cout << "ALLOCED! " << endl; 
+        // }
+        // fact->length = size;
+        // fact->type = NULL;
+        
+    }
+    inline Fact* add_fact(FactType* __restrict  type,
+                          const Item* __restrict items,
+                          uint32_t n_items, bool immutable=false){
 
-        if(next_head <= buff.end){
-            fact = (Fact*) buff.head;
-            buff.head = next_head;
-            // cout << sizeof(Fact) << endl;
-            // cout << "Buff: " << uint64_t(buff.head) << " " << endl; 
-        }else{
-            fact = empty_untyped_fact(size);
-            // cout << "ALLOCED! " << endl; 
-        }
-        fact->length = size;
-        fact->type = NULL;
+        uint32_t size =_resolve_fact_len(n_items, type);
+        Fact* fact = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size));
+        fact = new (fact) Fact(size, type, immutable);
+
+        memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, size * sizeof(Item));
+        fact_set->_declare_back(fact);
         return fact;
     }
-    Fact* add_fact(FactType* type, const std::vector<Item>& items);
+
+    inline Fact* add_fact(FactType* __restrict  type,
+                          const std::vector<Item>& items,
+                          bool immutable=false){
+        return add_fact(type, items.data(), items.size(), immutable);
+    }
 };
 
-extern "C" Fact* FactSetBuilder_add_fact(
-        FactSetBuilder* fs,
-        FactType* type, const Item* items, uint32_t _length);
+// extern "C" Fact* FactSetBuilder_add_fact(
+//         FactSetBuilder* fs,
+//         FactType* type, const Item* items, uint32_t _length);
 
 // inline void _init_fact(Fact* fact, uint32_t _length, FactType* type){
 //     fact->type = type;
@@ -151,17 +191,7 @@ extern "C" Fact* FactSetBuilder_add_fact(
 
 
 // void _declare_from_empty(const FactSetBuilder& fsb, Fact* fact, uint32_t length, FactType* type);
-inline void _declare_to_empty(FactSet* __restrict fs, Fact* fact,
-    uint32_t length, FactType* type){
 
-    // Equivalent of declare(fs, fact) but don't bother with empties
-    _init_fact(fact, length, type);
-    uint32_t f_id = (uint32_t) fs->facts.size();
-    fact->f_id = f_id;
-    fact->parent = fs;
-    fs->facts.push_back(fact);
-    fs->_size++;   
-}
 // -----------------------------------------------
 // FactChange
 

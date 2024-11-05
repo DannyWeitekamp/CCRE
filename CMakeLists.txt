@@ -28,6 +28,7 @@ add_compile_options(-g)
 
 # set(CMAKE_BUILD_TYPE Debug)
 # add_compile_options(-O0)
+# add_compile_options(-O3)
 
 add_subdirectory(external/fmt)
 add_subdirectory(external/nanobind)
@@ -104,6 +105,9 @@ add_test(
 
 nanobind_add_module(dummy_ext python/ext/dummy_ext.cpp)
 target_link_libraries(dummy_ext PRIVATE app_lib)
+
+nanobind_add_module(dummer_ext python/ext/dummer_ext.cpp)
+target_link_libraries(dummer_ext PRIVATE app_lib)
 
 
 nanobind_add_module(cre python/ext/cre_py_ext.cpp)

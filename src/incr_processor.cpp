@@ -2,5 +2,5 @@
 #include "../include/incr_processor.h"
 
 IncrementalProcessor::IncrementalProcessor(FactSet* _input) :
- 	input(_input), change_queue_head(0){
+ 	CRE_Obj(), input(_input), change_queue_head(0){
 }

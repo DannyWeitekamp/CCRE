@@ -139,6 +139,7 @@ struct FactType : public CRE_Type{
     CRE_Type* get_attr_type(std::string_view name);
     void ensure_finalized();
     bool try_finalized();
+    inline size_t size(){return members.size();}
 
 };
 

@@ -7,17 +7,7 @@
 #include <nanobind/nanobind.h>
 #include "../../include/cre_obj.h"
 #include "../../include/ref.h"
-//
-
-// #include <nanobind/nb_types.h>
-// #include <nanobind/intrusive/ref.h>
-// #include <nanobind/intrusive/counter.h>
 #include <nanobind/stl/string.h>
-// #include <../external/nanobind/src/nb_internals.h>
-
-
-
-
 
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -26,73 +16,6 @@ using std::shared_ptr;
 using std::cout;
 using std::endl;
 
-
-
-
-// class Object {
-// private:
-//     mutable std::atomic<int64_t> m_ref_count { 0 };
-    
-//     // nb::intrusive_counter m_ref_count ;
-
-// public:
-//     mutable PyObject* m_self_pyobj { nullptr };
-
-//     void inc_ref() const noexcept { 
-//         // cout << "incref: " << uint64_t(this) << endl;
-//         ++m_ref_count; 
-//     }
-
-//     void dec_ref() const noexcept {
-//         // cout << "decref:" << uint64_t(this) << endl;
-//         if (--m_ref_count <= 0){
-//             // cout << "delete" << endl;
-//             delete this;
-//             // return true;
-//         }
-//         // return false;
-//     }
-//     // void inc_ref() noexcept { m_ref_count.inc_ref(); }
-//     // bool dec_ref() noexcept { return m_ref_count.dec_ref(); }
-
-//     // Important: must declare virtual destructor
-//     virtual ~Object() = default;
-
-//     // void set_self_py(PyObject *self) noexcept {
-//     //     m_ref_count.set_self_py(self);
-//     // }
-
-//     int get_refcount() noexcept {
-//         // return int(*(int*)&m_ref_count);
-//         return int(m_ref_count);
-//     }
-
-//     PyObject* self_py() const noexcept {
-//         return m_self_pyobj;
-//     }
-// };
-
-// // Convenience function for increasing the reference count of an instance
-// inline void inc_ref(Object *o) noexcept {
-//     if (o)
-//        o->inc_ref();
-// }
-
-// // Convenience function for decreasing the reference count of an instance
-// // and potentially deleting it when the count reaches zero
-// inline void dec_ref(Object *o) noexcept {
-//     if (o && o->dec_ref())
-//         delete o;
-// }
-
-
-
-// #include <nanobind/intrusive/ref.h>
-// #include <nanobind/intrusive/counter.inl>
-
-
-//-------------------------------------------------------
-// : Dog
 
 struct Dog : public CRE_Obj{
     std::string name;
@@ -104,12 +27,10 @@ struct Dog : public CRE_Obj{
 
     Dog(std::string _name, int _age=1) : 
         name(_name), age(_age) {
-        // cout << "MADE DOGGO:" << name << endl;
     }
 
     static ref<Dog> make(std::string _name, int _age=1){
         return new Dog(_name, _age); 
-        // name(_name), age(_age) {
     }
 
     ~Dog(){
@@ -119,52 +40,17 @@ struct Dog : public CRE_Obj{
 
 struct Kennel : public CRE_Obj {
     ref<Dog> dog;
-    // Dog* dog;
-
-
     static ref<Kennel> make(std::string _name, int _age=1){
         ref<Kennel> kennel = new Kennel();
-        // Dog* _dog = 
-        // cout << "K dog refcount:" << _dog->get_refcount() << endl;
-        // _dog->inc_ref();
-        // _dog->inc_ref();
-        // _dog->inc_ref();
-        // cout << "K dog refcount(1):" << _dog->get_refcount() << endl;
         kennel->dog = new Dog(_name, _age);
-        // cout << "K refcount:" << kennel->get_refcount() << endl;
-        cout << "K dog refcount(2):" << kennel->dog->get_refcount() << endl;
+        // cout << "K dog refcount(2):" << kennel->dog->get_refcount() << endl;
         return kennel; 
-        // name(_name), age(_age) {
     }
 
     ~Kennel(){
         std::cout << "Kennel of " << dog->name << " Died:  @" << uint64_t(this) << std::endl;
     }
 };
-
-// void del_creobj_proxy(PyObject*){
-
-// }
-
-// PyObject* add_delete(PyObject*){
-//     ((PyTypeObject *) result)->tp_vectorcall = type_vectorcall;
-// }
-
-
-
-// auto dummy_mod = NB_MODULE(__dummy__, m) {
-//     nb::class_<Object>(m, "Object");
-// }
-// std::cout << dummy_mod.dummy << std::endl;
-
-// NB_MODULE(dummy_ext, m) {
-//     nb::class_<CRE_Obj>(m, "CRE_Obj"
-//       // ,nb::intrusive_ptr<Object>(
-//       //     [](Object *o, PyObject *po) noexcept { o->set_self_py(po); })
-//     )
-//     .def("get_refcount", &CRE_Obj::get_refcount)
-//     ;
-// }
 
 
 typedef void (*dealloc_ty)(PyObject *self);

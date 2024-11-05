@@ -55,7 +55,7 @@ FactSet* test_unbuffered_build(size_t N){
 	// Item str_item = Item("A");
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		FactSetBuilder_add_fact(fs_builder, NULL, items.data(), items.size());
+		fs_builder->add_fact(nullptr, items.data(), items.size());
 		// cout << fact << endl;
 	}
 	return fs_builder->fact_set;
@@ -68,7 +68,7 @@ FactSet* test_buffered_build(size_t N, size_t M){
 	// Item str_item = Item("A");
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		FactSetBuilder_add_fact(fs_builder, NULL, items.data(), items.size());
+		fs_builder->add_fact(nullptr, items.data(), items.size());
 		// cout << fact << endl;
 	}
 	return fs_builder->fact_set;
@@ -86,19 +86,19 @@ void test_build_from_json(){
 	);
 	cout << "HELLO2" << endl;
 
-	fs = FactSet_from_json_file((char *) "../data/small_test_state.json");
+	fs = FactSet::from_json_file((char *) "../data/small_test_state.json");
 	cout << "AFTER FS" << endl;
 	cout << fs << endl;
 
-	json_str = FactSet_to_json(fs);
+	json_str = FactSet::to_json(fs);
 
 	
 
 	cout << "Written JSON str" << endl;
 	cout << json_str << endl;
 	
-	time_it_n("from_json_file", fs=FactSet_from_json_file("../data/big_untyped_state.json"), 50);
-	time_it_n("to_json", FactSet_to_json(fs), 50);
+	time_it_n("from_json_file", fs=FactSet::from_json_file("../data/big_untyped_state.json"), 50);
+	time_it_n("to_json", FactSet::to_json(fs), 50);
 
 	fs = new FactSet();
 	Fact* a = fs->add_fact(nullptr, {Item(0), Item("A"), Item(false)});
@@ -107,10 +107,10 @@ void test_build_from_json(){
 	fs->add_fact(nullptr, {Item(a), Item(b), Item(c)});
 
 	cout << fs << endl;
-	json_str = FactSet_to_json(fs);
+	json_str = FactSet::to_json(fs);
 	cout << json_str << endl;
 
-	fs=FactSet_from_json(json_str);
+	fs=FactSet::from_json(json_str);
 	for (auto it = fs->begin(); it != fs->end(); ++it) {
 	 	Fact* fact = (*it);
       	cout << "f_id: " << fact->f_id << endl;
@@ -127,8 +127,8 @@ void bench_build(){
 	time_it_n("\ttraverse:", loop_fact_set(fs), 1000);
 	time_it_n("buffered", fs=test_buffered_build(1000, 3), 1000);
 	time_it_n("\ttraverse:", loop_fact_set(fs), 1000);
-	json_str = FactSet_to_json(fs);
-	time_it_n("from_json", fs=FactSet_from_json(json_str), 20);
+	json_str = FactSet::to_json(fs);
+	time_it_n("from_json", fs=FactSet::from_json(json_str), 20);
 	time_it_n("\ttraverse:", loop_fact_set(fs), 1000);
 
 	time_it_n("_update_init", (new Flattener(fs))->_update_init();, 500);
@@ -143,12 +143,12 @@ void test_json(){
 	FactSet* fs;
 	fs = test_buffered_build(10, 3);	
 	cout << fs << endl;
-	auto json_str = FactSet_to_json(fs);	
+	auto json_str = FactSet::to_json(fs);	
 	cout << "-START2-" << endl;
 	cout << json_str << endl;
-	fs = FactSet_from_json(json_str);
+	fs = FactSet::from_json(json_str);
 	cout << "-START3-" << endl;
-	fs = FactSet_from_json(json_str);
+	fs = FactSet::from_json(json_str);
 	cout << "END" << endl;
 }
 

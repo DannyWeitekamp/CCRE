@@ -141,7 +141,9 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		subj_fact->set_unsafe(0, id_item);	
 		subj_fact->immutable = true;
 		// _init_fact()
-		_declare_to_empty(builder.fact_set, subj_fact, 1, NULL);	
+		// builder->add_fact(s)
+		builder.fact_set->_declare_back(subj_fact);
+		// _declare_to_empty(builder.fact_set, subj_fact, 1, NULL);	
 		// id_item = Item(subj_fact);
 		// cout << "SUBJ FACT: " << subj_fact << endl;
 	}
@@ -160,7 +162,8 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		}
 		out_fact->set_unsafe(2, *in_fact->get(ind));	
 		out_fact->immutable = true;
-		_declare_to_empty(builder.fact_set, out_fact, 3, NULL);
+		builder.fact_set->_declare_back(out_fact);
+		// _declare_to_empty(builder.fact_set, out_fact, 3, NULL);
 
 		// cout << uint64_t(out_fact) <<  " OUT FACT: " << out_fact << " L=" << out_fact->length << endl;
 	};

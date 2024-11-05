@@ -12,6 +12,8 @@
 #include "../include/hash.h"
 #include "../include/intern.h"
 
+
+const uint8_t DEFAULT_VERBOSITY = 2;
 // Externally Defined Forward Declares
 struct FactSet;
 struct AllocBuffer;
@@ -98,7 +100,7 @@ public:
     return &data_ptr[a_id];
   }
   std::vector<Item*> get_items() const;
-  std::string to_string();
+  // std::string to_string();
   inline size_t size() const {return length;}
 
   std::tuple<size_t, size_t> _format_slice(int _start, int _end);
@@ -111,7 +113,9 @@ public:
   Fact* copy(bool deep_copy);
 
   bool operator==(const Fact& other) const;
-  
+
+  std::string get_unique_id();
+  std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
 
 
   class Iterator {
@@ -167,22 +171,38 @@ inline Fact* _alloc_fact(uint32_t _length){
 //     fact->parent = (FactSet*) nullptr;
 // }
 
+inline uint32_t _resolve_fact_len(size_t n_items, FactType* type){
+  // Resolve length + finalize type
+  uint32_t length;
+  if(type == nullptr){
+    length = uint32_t(n_items);
+  }else{
+    type->ensure_finalized();
+    length = std::max(uint32_t(type->members.size()), uint32_t(n_items));
+  }
+  return length;
+}
+
 inline void _init_fact(Fact* fact, uint32_t _length, FactType* _type=nullptr, bool _immutable=false){
   // Placement new
   new (fact) Fact(_length, _type, _immutable);
 }
 
-extern "C" Fact* empty_fact(FactType* type);
-extern "C" Fact* empty_untyped_fact(uint32_t _length);
-extern "C" Fact* new_fact(FactType* type, const Item* items, size_t _length);
+Fact* empty_fact(FactType* type);
+Fact* empty_untyped_fact(uint32_t _length);
+
+Fact* new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items);
+Fact* new_fact(FactType* type, const Item* items, size_t n_items);
+Fact* new_fact(Fact* fact, FactType* type, const std::vector<Item>& items);
 Fact* new_fact(FactType* type, const std::vector<Item>& items);
 
 
-const uint8_t DEFAULT_VERBOSITY = 2;
 
 
-extern "C" std::string fact_to_unique_id(Fact* fact);
-extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity=DEFAULT_VERBOSITY);
+
+// TODO ???
+// std::string fact_to_unique_id(Fact* fact);
+// std::string fact_to_string(Fact* fact, uint8_t verbosity=DEFAULT_VERBOSITY);
 // extern "C" Item fact_to_item(Fact* fact);
 
 

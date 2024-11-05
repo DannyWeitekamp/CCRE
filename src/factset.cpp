@@ -129,16 +129,20 @@ extern "C" std::vector<Fact*> fs_get_facts(FactSet* fs){
 std::string FactSet::to_string(
 			std::string_view format,
 			std::string_view delim){
-	
+
 	std::vector<std::string> fact_strs = {};
 	// cout << "size" << fs->size << endl;
 	fact_strs.reserve(size());
 	for (auto it = begin(); it != end(); ++it) {
 		Fact* fact = (*it);
-		fact_strs.emplace_back(fact_to_string(fact));
+		fact_strs.emplace_back(fact->to_string());
 	}
 	return fmt::format(fmt::runtime(format), fmt::join(fact_strs, delim));	
 }
+
+// std::string FactSet::to_string(){
+// 	return to_string("FactSet{{\n  {}\n}}", "\n  ");
+// }
 
 // extern "C" void fs_dtor(FactSet* fs){
 // 	for (auto& fact : fs->facts) {
@@ -187,6 +191,12 @@ std::ostream& operator<<(std::ostream& out, FactSet* fs){
 	return out << fs->to_string("FactSet{{ {} }} ", "");
 }
 
+Fact* FactSet::add_fact(FactType* type, const Item* items, size_t n_items){
+	Fact* fact = new_fact(type, items, n_items);
+	this->declare(fact);
+	return fact;
+}
+
 Fact* FactSet::add_fact(FactType* type, const std::vector<Item>& items){
 	Fact* fact = new_fact(type, items);
 	this->declare(fact);
@@ -205,27 +215,27 @@ FactSetBuilder::FactSetBuilder(size_t size, size_t buffer_size) :
 	fact_set(new FactSet(size)){
 }
 
-extern "C" Fact* FactSetBuilder_add_fact(
-		FactSetBuilder* fsb,
-		FactType* type, const Item* items, uint32_t _length){
+// extern "C" Fact* FactSetBuilder_add_fact(
+// 		FactSetBuilder* fsb,
+// 		FactType* type, const Item* items, uint32_t _length){
 
-	uint32_t length;
+// 	uint32_t length;
 
-	if(type == NULL){
-		length = _length;
-	}else{
-		length = std::max((uint32_t) type->members.size(), _length);
-	}
+// 	if(type == NULL){
+// 		length = _length;
+// 	}else{
+// 		length = std::max((uint32_t) type->members.size(), _length);
+// 	}
 
-	Fact* fact = fsb->next_empty(length);
+// 	Fact* fact = fsb->next_empty(length);
 
-	// cout << "L: " << length << "  sizeof ITEM: " << sizeof(Item) << endl ;
-	memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
+// 	// cout << "L: " << length << "  sizeof ITEM: " << sizeof(Item) << endl ;
+// 	memcpy(((uint8_t*)fact) + sizeof(Fact), (uint8_t*) items, length * sizeof(Item));
 
-	_declare_to_empty(fsb->fact_set, fact, length, type);
+// 	_declare_to_empty(fsb->fact_set, fact, length, type);
 
-	return fact;
-}
+// 	return fact;
+// }
 
 
 
@@ -250,10 +260,10 @@ extern "C" Fact* FactSetBuilder_add_fact(
 // }
 
 
-Fact* FactSetBuilder::add_fact(FactType* type, const std::vector<Item>& items){
-	return FactSetBuilder_add_fact(this, type, items.data(), (uint32_t) items.size());
+// Fact* FactSetBuilder::add_fact(FactType* type, const std::vector<Item>& items){
+// 	return FactSetBuilder_add_fact(this, type, items.data(), (uint32_t) items.size());
 	
-}	
+// }	
 
 
 

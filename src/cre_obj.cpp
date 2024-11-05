@@ -14,7 +14,7 @@ CRE_Obj::CRE_Obj(){//(CRE_dtor_function _dtor){
 	#endif
 	// this->ref_count = 1;
 	// this->dtor = _dtor;
-	this->alloc_buffer = (AllocBuffer*) NULL;
+	this->alloc_buffer = (AllocBuffer*) nullptr;
 }
 
 int64_t CRE_Obj::get_refcount() noexcept{

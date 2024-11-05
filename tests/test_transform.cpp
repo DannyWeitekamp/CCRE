@@ -71,8 +71,8 @@ void test_flattener(){
 
 FactSet* random_cats(size_t N){
 	FactType* CatType = define_fact("Cat", {
-		 // {"id", cre_int, {{"unique_id", true}} },
-	     {"name", cre_str, {{"unique_id", true}} },
+		 {"id", cre_int, {{"unique_id", true}} },
+	     {"name", cre_str, {{"visible", true}} },
 	     {"color", cre_str, {{"visible", true}} },
 	     {"legs", cre_int, {{"semantic", true}} },
 	     {"frisky", cre_bool, {{"visible", false}} },
@@ -90,7 +90,7 @@ FactSet* random_cats(size_t N){
 	FactSetBuilder* fs_builder = new FactSetBuilder(N, N*SIZEOF_FACT(M));
 	for(int i=0; i < N; i++){
 		std::vector<Item> items = {
-		 // Item(i),
+		 Item(i),
 		 Item(names[std::rand()%names.size()]),
 		 Item(colors[std::rand()%colors.size()]),
 		 Item(4),
@@ -115,7 +115,7 @@ FactSet* setup_factset(size_t N, size_t M){
 	FactSetBuilder* fs_builder = new FactSetBuilder(N, N*(sizeof(Fact) + sizeof(Item)*M));
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		FactSetBuilder_add_fact(fs_builder, BoopType, items.data(), items.size());
+		fs_builder->add_fact(BoopType, items.data(), items.size());
 	}
 	return fs_builder->fact_set;
 }
@@ -200,8 +200,8 @@ int main(){
 
 
 	// test_flattener();
-	// bench_flattener();
-	test_vectorizer();
-	// bench_vectorizer();
+	bench_flattener();
+	// test_vectorizer();
+	bench_vectorizer();
 	return 0;
 }

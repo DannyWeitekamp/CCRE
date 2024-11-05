@@ -63,10 +63,10 @@ void test_flags(){
 	IS_TRUE(snowball->type->members[2].get_flag(BIFLG_VERBOSITY) == 2);
 	IS_TRUE(snowball->type->members[3].get_flag(BIFLG_VERBOSITY) == 1);
 
-	cout << fact_to_string(snowball, 0) << endl;
-	cout << fact_to_string(snowball, 1) << endl;
-	cout << fact_to_string(snowball, 2) << endl;
-	cout << fact_to_string(snowball, 3) << endl;
+	cout << snowball->to_string(0) << endl;
+	cout << snowball->to_string(1) << endl;
+	cout << snowball->to_string(2) << endl;
+	cout << snowball->to_string(3) << endl;
 }
 
 void test_iterate_fact(){

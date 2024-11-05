@@ -49,7 +49,7 @@ public:
 
     /// Copy a reference, increases the reference count
     ref(const ref &r) : m_ptr(r.m_ptr) {
-        std::cout << "copy from ref" << std::endl;
+        // std::cout << "copy from ref" << std::endl;
         if(m_ptr) CRE_incref(m_ptr); 
     }
 
@@ -149,6 +149,8 @@ template <typename T> struct type_caster<ref<T>> {
 
     bool from_python(handle src, uint8_t flags,
                      cleanup_list *cleanup) noexcept {
+
+        std::cout << "INP IS READY: " << inst_ready(src) << std::endl;
         Caster caster;
         if (!caster.from_python(src, flags, cleanup))
             return false;
@@ -169,6 +171,9 @@ template <typename T> struct type_caster<ref<T>> {
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
+        // auto _is = inst_state(py_out);
+        // std::cout << "-- " << cast<std::string>(str(py_out)) << " STATE: ready=" <<  _is.first << ", destruct=" <<  _is.second << std::endl;
+        // std::cout << "STATE: " << _is.first << ", " << _is.second << std::endl;
         val->proxy_obj = (void*) py_out.ptr();
         return py_out;
     }

@@ -64,7 +64,7 @@ Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
 	immutable(_immutable)
 {}
 
-extern "C" Fact* empty_fact(FactType* type){
+Fact* empty_fact(FactType* type){
 	uint32_t _length = (uint32_t) type->members.size();
 	Fact* fact = _alloc_fact(_length);
 	_init_fact(fact, _length, type);
@@ -72,39 +72,52 @@ extern "C" Fact* empty_fact(FactType* type){
 	return fact;
 }
 
-extern "C" Fact* empty_untyped_fact(uint32_t _length){
+Fact* empty_untyped_fact(uint32_t _length){
 	Fact* fact = _alloc_fact(_length);
 	_init_fact(fact, _length, nullptr);
 	_zfill_fact(fact, 0, _length);
 	return fact;
 }
 
-extern "C" Fact* new_fact(FactType* type, const Item* items, size_t _length){
-	// Resolve length + finalize type
-	uint32_t length;
-	if(type == nullptr){
-		length = _length;
-	}else{
-		type->ensure_finalized();
-		length = std::max(type->members.size(), _length);
-	}
+// ---------------------
+// : new_fact()
 
-	// Initialize fact's head
-	Fact* fact = _alloc_fact(length);
-	_init_fact(fact, uint32_t(length), type);
+
+
+inline Fact* _new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items, uint32_t length){
+
+	fact = new (fact) Fact(length, type);
 
 	// Set items
-	for(int i=0; i < _length; i++){
+	for(int i=0; i < n_items; i++){
 		fact->set(i, items[i]);
 	}
 
 	// Zero-fill any trailing items
-	_zfill_fact(fact, _length, length);
+	_zfill_fact(fact, n_items, length);
 	return fact;
 }
 
+Fact* new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items){
+	uint32_t length = _resolve_fact_len(n_items, type);	
+	return _new_fact(fact, type, items, n_items, length);
+}
+
+Fact* new_fact(FactType* type, const Item* items, size_t n_items){
+	uint32_t length = _resolve_fact_len(n_items, type);	
+	Fact* fact = _alloc_fact(length);
+	return _new_fact(fact, type, items, n_items, length);
+}
+
+Fact* new_fact(Fact* fact, FactType* type, const std::vector<Item>& items){
+	uint32_t length = _resolve_fact_len(items.size(), type);	
+	return _new_fact(fact, type, items.data(), items.size(), length);
+}
+
 Fact* new_fact(FactType* type, const std::vector<Item>& items){
-	return new_fact(type, items.data(), items.size());
+	uint32_t length = _resolve_fact_len(items.size(), type);	
+	Fact* fact = _alloc_fact(length);
+	return _new_fact(fact, type, items.data(), items.size(), length);
 }
 
 std::vector<Item*> Fact::get_items() const{
@@ -159,7 +172,7 @@ std::tuple<size_t, size_t> Fact::_format_slice(int _start, int _end){
 		){
 		throw std::runtime_error(
 			"Bad slice: ["+std::to_string(start)+","+std::to_string(end)+"] " +
-			"for fact " + fact_to_string(this) + " with length=" + std::to_string(this->length));
+			"for fact " + this->to_string() + " with length=" + std::to_string(this->length));
 	}
 	return std::make_tuple(start,end);
 }
@@ -209,14 +222,14 @@ Fact* Fact::copy(bool deep_copy){
 	return new_fact;
 }
 
-extern "C" std::string fact_to_unique_id(Fact* fact){
+std::string Fact::get_unique_id(){
 	std::stringstream ss;
-	FactType* type = fact->type;
+	// FactType* type = fact->type;
 	int unique_id_index = get_unique_id_index(type);
 	// cout << "unique_id_index: " << unique_id_index << uint64_t(type) << endl ;
 	if(unique_id_index != -1){
 		// cout << "unique_id_index: " << unique_id_index << endl ;
-		Item item = *fact->get(unique_id_index);
+		Item item = *get(unique_id_index);
 		if(item.t_id == T_ID_STR){
 			UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
 			ss << std::string(uitem.data, uitem.length);
@@ -229,10 +242,10 @@ extern "C" std::string fact_to_unique_id(Fact* fact){
 }
 
 
-extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
-  FactType* type = fact->type;
+std::string Fact::to_string(uint8_t verbosity){
+  // FactType* type = fact->type;
   if(verbosity <= 1 && type != nullptr){
-  	auto unq_id = fact_to_unique_id(fact);
+  	auto unq_id = get_unique_id();
   	if(!unq_id.empty()){
   		return std::string(unq_id);
   	}
@@ -241,13 +254,13 @@ extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
 	std::stringstream ss;
 	if(type != nullptr){
 		ss << type->name << "(";  
-	}else if(fact->immutable){
+	}else if(immutable){
 		ss << "(";  
 	}else{
 		ss << "Fact(";  
 	}
 	
-	size_t L = fact->length;
+	size_t L = size();
 	// std::vector<std::string> mbr_strs = {};
 	// mbr_strs.reserve(L);
 	for(int i=0; i < L; i++){
@@ -261,7 +274,7 @@ extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
 				ss << mbr_spec->name << "=";
 			}
 		}
-		Item* item = fact->get(i);
+		Item* item = get(i);
 		ss << item_to_string(*item);
 		if(i != L-1){
 			ss << ", ";  
@@ -272,9 +285,6 @@ extern "C" std::string fact_to_string(Fact* fact, uint8_t verbosity){
 	return ss.str();
 }
 
-std::string Fact::to_string(){
-	return fact_to_string(this);
-}
 
 extern "C" void fact_dtor(Fact* fact){
 	for(size_t i=0; i < fact->length; i++){
@@ -292,7 +302,7 @@ extern "C" void fact_dtor(Fact* fact){
 
 
 std::ostream& operator<<(std::ostream& out, Fact* fact){
-	return out << fact_to_string(fact);
+	return out << fact->to_string();
 }
 
 

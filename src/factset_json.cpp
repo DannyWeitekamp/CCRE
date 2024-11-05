@@ -17,14 +17,17 @@
 //-----------------------------------------------------------------
 // : READ JSON to FactSet
 
+
 FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 	if(!d.IsObject()){
 		throw std::runtime_error("Input JSON is not an object.");
 	}
-
+	// Globals
 	auto type_ptr = rapidjson::Pointer("/type");
+	CRE_Context* context = current_context;
 
-	CRE_Context* context = default_context;
+	// --------------
+	// : First Pass: Mapping + Finding Size
 
 	std::vector<std::tuple<rapidjson::GenericObject<false, rapidjson::Value>, FactType*, size_t, size_t>> fact_infos;
 	HashMap<std::string_view, size_t> fact_map = {};
@@ -66,12 +69,14 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		if(!inserted){
 			throw std::runtime_error("Duplicate fact identifier: " + std::string(fact_id));
 		}
-		byte_offset += sizeof(Fact) + sizeof(Item) * length;
+		byte_offset += SIZEOF_FACT(length);//sizeof(Fact) + sizeof(Item) * length;
 		index++;
 	}
 
 	FactSetBuilder builder = FactSetBuilder(d.MemberCount(), byte_offset);
 
+	// --------------
+	// : Second Pass: Building Each object
 
 	for(auto& fact_info : fact_infos){
 		auto& fact_obj = std::get<0>(fact_info);
@@ -147,7 +152,10 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 			}
 			fact->set(index, item);
 		}
-		_declare_to_empty(builder.fact_set, fact, length, type);
+
+		_init_fact(fact, length, type);
+		builder.fact_set->_declare_back(fact);
+		// _declare_to_empty(builder.fact_set, fact, length, type);
 	}
 	FactSet* fact_set = builder.fact_set;
 	// delete builder;
@@ -168,7 +176,7 @@ char* _read_file(const char* filename){
 	return buffer;
 }
 
-extern "C" FactSet* FactSet_from_json_file(const char* filename){
+FactSet* FactSet::from_json_file(const char* filename){
 	char* buffer = _read_file(filename);
 
 	// cout << "buffer: " << buffer << endl;
@@ -180,7 +188,7 @@ extern "C" FactSet* FactSet_from_json_file(const char* filename){
 	return fact_set;
 }
 
-extern "C" FactSet* FactSet_from_json(char* json_str, size_t length, bool copy_buffer){
+FactSet* FactSet::from_json(char* json_str, size_t length, bool copy_buffer){
 	if(length == size_t(-1)){
 		length = strlen(json_str);
 	}
@@ -252,14 +260,18 @@ rapidjson::Document  _FactSet_to_doc(FactSet* fs){
 
 		// cout << "IS OBJECT0: " << fact_obj.IsObject() << endl;
 
-		
-		
 		FactType* type = fact->type;
-
 		// cout << "IS OBJECT: " << fact_obj.IsObject() << endl;
 
 		size_t i = 0;
 		if(type != nullptr){
+			// Add the "type" : whatever line
+			std::string_view type_name = type->name;
+			rapidjson::Value _type_obj("type", alloc);
+			rapidjson::Value type_name_obj(type_name.data(), type_name.size(), alloc);
+			fact_obj.AddMember(_type_obj, type_name_obj, alloc);
+
+
 			for(; i < type->members.size(); ++i){
 				std::string_view attr_name = std::string_view(type->members[i].name);
 				rapidjson::Value attr_name_obj(attr_name.data(), attr_name.size(), alloc);
@@ -300,7 +312,7 @@ rapidjson::Document  _FactSet_to_doc(FactSet* fs){
 	return d;
 };
 
-extern "C" char* FactSet_to_json(FactSet* fs){
+char* FactSet::to_json(FactSet* fs){
 
 	// cout << "Before Write Doc" << endl;
 	rapidjson::Document d = _FactSet_to_doc(fs);
