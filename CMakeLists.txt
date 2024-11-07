@@ -48,7 +48,7 @@ endif()
 
 # Find all source files in the current directory
 file(GLOB SOURCES "src/*.cpp")
-file(GLOB PY_SOURCES "python/*.cpp")
+# file(GLOB PY_SOURCES "python/*.cpp")
 
 
 # Build an application library, 
@@ -110,6 +110,8 @@ nanobind_add_module(dummer_ext python/ext/dummer_ext.cpp)
 target_link_libraries(dummer_ext PRIVATE app_lib)
 
 
-nanobind_add_module(cre python/ext/cre_py_ext.cpp)
+file(GLOB PY_SOURCES "python/src/*.cpp")
+
+nanobind_add_module(cre python/ext/cre_py_ext.cpp ${PY_SOURCES})
 target_link_libraries(cre PRIVATE app_lib)
 target_compile_options(cre PRIVATE -g -O0)

@@ -20,7 +20,7 @@ int total_allocated_objs = 0 ;
 class Object : public intrusive_base {
 public:
     Object () : intrusive_base() {
-        std::cout << "THIS REFCOUNT:" << this->get_refcount() << std::endl;
+        // std::cout << "THIS REFCOUNT:" << this->get_refcount() << std::endl;
     }
     uint64_t get_refcount() {
         // Needed to edit 
@@ -34,6 +34,7 @@ struct Dog : public Object{
 
     Dog(std::string _name, int _age=1) : 
         Object(), name(_name), age(_age) {
+        total_allocated_objs++;
     }
 
     static ref<Dog> make(std::string _name, int _age=1){
@@ -51,14 +52,18 @@ struct Kennel : public Object {
     ref<Dog> dog;
 
     Kennel() : Object() {}
-
+    Kennel(std::string _name, int _age) : Object() {
+        total_allocated_objs++;
+        dog = new Dog(_name, _age);
+    }
     static ref<Kennel> make(std::string _name, int _age=1){
-        total_allocated_objs += 2;
+        total_allocated_objs++;
         Kennel* kennel = new Kennel();
         kennel->dog = new Dog(_name, _age);
         // std::cout << "K dog refcount(2):" << kennel->dog->get_refcount() << std::endl;
         return kennel; 
     }
+
 
     ~Kennel(){
         total_allocated_objs--;
@@ -85,14 +90,18 @@ NB_MODULE(dummer_ext, m) {
     });
 
     nb::class_<Dog>(m, "Dog")
-        .def(nb::new_(&Dog::make), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+        .def(nb::init<std::string, int64_t>(), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+        // .def(nb::new_(&Dog::make), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+        .def_static("make", &Dog::make, "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
         .def_rw("name", &Dog::name)
         .def("get_refcount", &Object::get_refcount)
     ;
 
     nb::class_<Kennel>(m, "Kennel")
-        .def(nb::new_(&Kennel::make), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
-        .def_rw("dog", &Kennel::dog, nb::rv_policy::reference_internal)
+        .def(nb::init<std::string, int64_t>(), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+        // .def(nb::new_(&Kennel::make), "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+        .def_static("make", &Kennel::make, "name"_a="fido", "age"_a=1, nb::rv_policy::reference)
+        .def_rw("dog", &Kennel::dog, nb::rv_policy::reference)
         .def("get_refcount", &Object::get_refcount)
     ;
 

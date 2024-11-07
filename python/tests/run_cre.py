@@ -26,35 +26,35 @@ print("AFTER")
 print(fact, "len=", len(fact))
 
 
-# with PrintElapse("define cat"):
-#     Cat = define_fact("Cat", {
-#         "name" : "str",
-#         "legs" : "int",
-#     })
+with PrintElapse("define cat"):
+    Cat = define_fact("Cat", {
+        "name" : "str",
+        "legs" : "int",
+    })
 
-# Dog = define_fact("Dog", {
-#     "name" : str,
-#     "legs" : int,
-# })
+Dog = define_fact("Dog", {
+    "name" : str,
+    "legs" : int,
+})
 
-# print(Cat("fluffy", 4));
+print(Cat("fluffy", 4));
 
-# class PyCat():
-#     def __init__(self, *args, **kwargs):
-#         self.name = kwargs['name']
-#         self.legs = kwargs['legs']
+class PyCat():
+    def __init__(self, *args, **kwargs):
+        self.name = kwargs['name']
+        self.legs = kwargs['legs']
 
-# with PrintElapse("CATx1000"):
-#     for i in range(1000):
-#         Cat(name="fluffy", legs=4);
+with PrintElapse("CATx1000"):
+    for i in range(1000):
+        Cat(name="fluffy", legs=4);
 
-# with PrintElapse("PyCatx1000"):
-#     for i in range(1000):
-#         PyCat(name="fluffy", legs=4);
+with PrintElapse("PyCatx1000"):
+    for i in range(1000):
+        PyCat(name="fluffy", legs=4);
 
-# with PrintElapse("dictx1000"):
-#     for i in range(1000):
-#         dict(name="fluffy", legs=4);
+with PrintElapse("dictx1000"):
+    for i in range(1000):
+        dict(name="fluffy", legs=4);
 
 
 CatType = define_fact("Cat", 
