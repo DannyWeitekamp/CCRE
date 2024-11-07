@@ -17,19 +17,19 @@ k = None
 print("^  Kennel Shoulda died.")
 print("^ 'scratchy' Shoulda died.\n")
 
-k = Kennel("scrubs", 64)
-# print('k->scrubs (1)=2,', k.dog.get_refcount())
-# print('k->scrubs (2)=2,', k.dog.get_refcount())
-# print('k->scrubs (3)=2,', k.dog.get_refcount())
+k = Kennel("buddy", 64)
+# print('k->buddy (1)=2,', k.dog.get_refcount())
+# print('k->buddy (2)=2,', k.dog.get_refcount())
+# print('k->buddy (3)=2,', k.dog.get_refcount())
 # print("kennel:", k.get_refcount())
 d = k.dog
 print("k.dog is k.dog: ", d is k.dog)
-# print('k->scrubs (4)=3,', k.dog.get_refcount())
+# print('k->buddy (4)=3,', k.dog.get_refcount())
 k = None
 print("^  Kennel Shoulda died.")
-# print('k->scrubs (5)=2,', d.get_refcount())
+# print('k->buddy (5)=2,', d.get_refcount())
 d = None
-print("^ 'scrubs' Shoulda died.")
+print("^ 'buddy' Shoulda died.")
 
 print("\n--- End of Program --")
 print("Leaked Objects: ", leaked_objects())
