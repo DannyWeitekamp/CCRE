@@ -57,7 +57,7 @@ ref<Fact> NewFact(nb::args args, nb::kwargs kwargs) {
 
 
 void init_fact(nb::module_ & m){
-	nb::class_<Fact>(m, "Fact")
+	nb::class_<Fact>(m, "Fact", nb::type_slots(cre_obj_slots))
     .def(nb::new_(&NewFact), nb::rv_policy::reference)
     .def("__str__", &Fact::to_string, "verbosity"_a=2)
     .def("__len__", &Fact::size)

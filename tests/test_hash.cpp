@@ -212,6 +212,12 @@ void bench_hash() {
             intern(words[i]); 
         }, 100);
 
+    time_it_n("intern_words w/ context, mobydick\t",
+        CRE_Context* const context = current_context;
+        for (int i=0; i < words.size(); i++) { 
+            context->intern(words[i]); 
+        }, 100);
+
     time_it_n("copy words, mobydick\t",
         for (int i=0; i < words.size(); i++) { 
             new std::string(words[i]); 

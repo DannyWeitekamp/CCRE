@@ -6,6 +6,8 @@ using std::endl;
 
 // CRE_Context::_add_type implementation
 size_t CRE_Context::_add_type(CRE_Type* t) {
+    CRE_incref(t);
+
     size_t index;
     if (type_name_map.find(t->name) == type_name_map.end()) {
         // cout << "Adding type: " << t->name << endl;
@@ -20,6 +22,8 @@ size_t CRE_Context::_add_type(CRE_Type* t) {
     }    
     t->context = this;
     t->type_index = index;
+
+    cout << t->name << "(a):" << t->get_refcount() << endl; 
     // t->t_id = t_id;
     return index;
 };
@@ -62,7 +66,12 @@ CRE_Type* CRE_Context::get_type(const std::string_view& name) {
 
 // CRE_Context constructor implementation
 CRE_Context::CRE_Context(std::string _name) : name(_name) {
-    ensure_builtins();
+    if(_name == "default"){
+        cre_builtins = make_builtins();    
+    }else{
+        cre_builtins = default_context->cre_builtins;
+    }
+    
     // cout << "CRE_Context constructor " << cre_builtins.size() << endl;
     // cout << "WHATEVER";
     // for (auto t : cre_builtins) {
@@ -70,8 +79,9 @@ CRE_Context::CRE_Context(std::string _name) : name(_name) {
     //     // _add_type((CRE_Type*) t);
     // }
     for (auto t : cre_builtins) {
-        // cout << t->name << endl;
+        
         _add_type((CRE_Type*) t);
+        // cout << t->name << "(a):" << t->get_refcount() << endl; 
     }
 };
 
@@ -85,11 +95,49 @@ std::string CRE_Context::to_string() {
 }
 
 
-extern "C" CRE_Context* CRE_set_current_context(CRE_Context* context) {
+CRE_Context::~CRE_Context(){
+    for(auto type : types){
+        cout << type->name << "(d):" << type->get_refcount() << endl; 
+        CRE_decref(type);
+    }
+}
+
+
+CRE_Context* get_context(std::string_view name) {
+    auto it = __all_CRE_contexts.find(name);
+    if(it != __all_CRE_contexts.end()){
+        return (it->second.get());
+    }else{
+        throw std::runtime_error("No such context \"" + std::string(name) + "\"");
+    }
+}
+
+CRE_Context* set_current_context(CRE_Context* context) {
     CRE_Context* old_context = current_context;
     current_context = context;
     return old_context;
 }
 
-CRE_Context* default_context = new CRE_Context("default");
-CRE_Context* current_context = default_context;
+CRE_Context* set_current_context(std::string_view name) {
+    CRE_Context* context = nullptr;
+    auto it = __all_CRE_contexts.find(name);
+    if(it == __all_CRE_contexts.end()){
+        std::string _name = std::string(name);
+        auto unq_context = std::make_unique<CRE_Context>(_name);
+        auto [itr,_] = __all_CRE_contexts.insert({std::move(_name), std::move(unq_context)});
+        context = (itr->second.get());
+    }else{
+        context = (it->second.get());
+    }
+    return set_current_context(context);
+}
+
+HashMap<std::string, std::unique_ptr<CRE_Context>> __all_CRE_contexts = {};
+CRE_Context* current_context = nullptr;
+
+// Special lambda initializer before 
+CRE_Context* default_context = []()
+{   
+    set_current_context("default");
+    return get_context("default");
+}();

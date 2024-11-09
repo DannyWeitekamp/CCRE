@@ -15,6 +15,10 @@
 #pragma once
 #include <iostream>
 #include "../include/cre_obj.h"
+
+#if defined(NB_VERSION_MAJOR)
+#include "../external/nanobind/src/nb_internals.h"
+#endif
 // #include "counter.h"
 
 // NAMESPACE_BEGIN(nanobind)
@@ -150,7 +154,7 @@ template <typename T> struct type_caster<ref<T>> {
     bool from_python(handle src, uint8_t flags,
                      cleanup_list *cleanup) noexcept {
 
-        std::cout << "INP IS READY: " << inst_ready(src) << std::endl;
+        // std::cout << "INP IS READY: " << inst_ready(src) << std::endl;
         Caster caster;
         if (!caster.from_python(src, flags, cleanup))
             return false;
@@ -171,6 +175,10 @@ template <typename T> struct type_caster<ref<T>> {
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
+        nb_inst* out_inst = (nb_inst*) py_out.ptr();
+        out_inst->unused = 17;
+        std::cout << "CPP DELETE: "  << out_inst->cpp_delete << std::endl; 
+        std::cout << "INTRUSIVE: "  << out_inst->intrusive << std::endl; 
         // auto _is = inst_state(py_out);
         // std::cout << "-- " << cast<std::string>(str(py_out)) << " STATE: ready=" <<  _is.first << ", destruct=" <<  _is.second << std::endl;
         // std::cout << "STATE: " << _is.first << ", " << _is.second << std::endl;

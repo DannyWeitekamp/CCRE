@@ -19,6 +19,7 @@
 #include <iostream>
 #include "../include/hash.h"
 #include "../include/unordered_dense.h"
+#include "../include/context.h"
 
 
 using std::cout;
@@ -90,9 +91,11 @@ struct nb_unicode{
 // unordered_map<std::string, InternStr*> intern_map = {};
 
 std::ostream& operator<<(std::ostream& out, InternStr fs);
-InternStr intern(const std::string_view& sv);
+inline InternStr intern(const std::string_view& sv){
+	return current_context->intern(sv);
+}
 // std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv);
-extern HashSet<std::string_view> intern_set;
+// extern HashSet<std::string_view> intern_set;
 // void decref_intern(string& s){
 // 	auto itr = intern_map.find(s);
 // 	if(itr != intern_map.end()){

@@ -4,7 +4,7 @@
 
 
 void init_flattener(nb::module_ & m){
-	nb::class_<Flattener>(m, "Flattener")
+	nb::class_<Flattener>(m, "Flattener", nb::type_slots(cre_obj_slots))
     // No inputs constructor (not sure why but this is necessary)
     .def(nb::new_(
         [](){

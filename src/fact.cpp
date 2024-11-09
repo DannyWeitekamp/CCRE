@@ -79,6 +79,17 @@ Fact* empty_untyped_fact(uint32_t _length){
 	return fact;
 }
 
+// void Fact::operator delete(void* p){
+// 	CRE_Obj* x = (CRE_Obj*) p;
+// 	if(x->alloc_buffer == nullptr){
+//     	free(p);
+// 	}else{
+// 		// NOTE: We need to do this because cannot
+// 		//  write alloc_buffer as a ref<AllocBuffer> 
+// 		CRE_decref((CRE_Obj*) x->alloc_buffer);
+// 	}
+// }
+
 // ---------------------
 // : new_fact()
 
@@ -137,14 +148,12 @@ std::vector<Item*> Fact::get_items() const{
 void _copy_fact_slice(Fact* src, Fact* dest, size_t start, size_t end){
 	size_t length = end-start;
 
+	_init_fact(dest, length, nullptr);	
+	size_t src_end = std::min(size_t(src->length), end);
 
-	_init_fact(dest, length, nullptr);
-	dest->immutable = src->immutable;
-
-	size_t src_end = std::min(size_t(dest->length), end);
-
+	int j=0;
 	int i=start;
-	for(; i < src_end; i++){
+	for(; i < src_end; i++, j++){
 		Item* item = src->get(i);
 		
 		if(item->t_id == T_ID_FACT && item->val != 0){
@@ -154,12 +163,15 @@ void _copy_fact_slice(Fact* src, Fact* dest, size_t start, size_t end){
 			}
 		}else{
 			// Everything else can just be copied;
-			dest->set_unsafe(i, *item);
+			dest->set_unsafe(j, *item);
 		}
 	}
 	if(i < end){
-		_zfill_fact(dest, i, end);
+		_zfill_fact(dest, j, end-start);
 	}
+
+	dest->immutable = src->immutable;
+
 }
 
 std::tuple<size_t, size_t> Fact::_format_slice(int _start, int _end){
@@ -202,6 +214,7 @@ Fact* Fact::slice(int _start, int _end, bool deep_copy){
 	auto [start, end] = _format_slice(_start, _end);
 	size_t length = end-start;
 	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
+
 	_copy_fact_slice(this, new_fact, start, end);
 	return new_fact;
 }

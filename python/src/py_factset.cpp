@@ -134,7 +134,7 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
 }   
 
 void init_factset(nb::module_ & m){
-	nb::class_<FactSet>(m, "FactSet")
+	nb::class_<FactSet>(m, "FactSet", nb::type_slots(cre_obj_slots))
     .def("__str__", &FactSet::to_string, "format"_a="FactSet{{\n  {}\n}}", "delim"_a="\n  ")
     .def("__len__", &FactSet::size)
     .def_static("from_dict", &_FactSet_from_dict, nb::rv_policy::reference)

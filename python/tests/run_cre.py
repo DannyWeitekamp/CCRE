@@ -131,7 +131,7 @@ with PrintElapse("from_json"):
     fs = FactSet.from_json(json_str)
 
 flattener = Flattener()
-vectorizer = Vectorizer(7*N)
+vectorizer = Vectorizer(7*N, one_hot_nominals=False, encode_missing=True)
 
 with PrintElapse("Flatten"):
     flat_fs = flattener.apply(fs)
@@ -147,7 +147,20 @@ flat_fs2 = flattener.apply(fs)
 with PrintElapse("Vectorize second run"):
     vectors = vectorizer.apply(flat_fs2)
 
-    
+print("START")
+
+for i, val in enumerate(vectors[0]):
+    print(vectorizer.invert(i,val))
+
+# print(vectorizer.invert(0,10000))
+# print(vectorizer.invert(i+1,val))
+# print(vectorizer.invert(-1,val))
+
+for i, val in enumerate(vectors[1]):
+    print(vectorizer.invert(i,val))
+
+# print(vectorizer.invert(i+1,val))
+# print(vectorizer.invert(-1,val))
 # print(vectors)
 
 

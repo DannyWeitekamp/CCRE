@@ -1,7 +1,15 @@
 #include "../include/py_cre_core.h"
+#include "../../external/nanobind/src/nb_internals.h"
 
 // ---------------------------------------------------------------
 // : Deallocator For decref()'ing on Garbage Collect  
+
+// Forward declare nb::detail::inst_dealloc()
+// NAMESPACE_BEGIN(NB_NAMESPACE)
+// NAMESPACE_BEGIN(detail)
+// static void inst_dealloc(PyObject *self);
+// NAMESPACE_END(detail)
+// NAMESPACE_END(NB_NAMESPACE)
 
 typedef void (*dealloc_ty)(PyObject *self);
 dealloc_ty nb_inst_dealloc = nullptr;
@@ -11,26 +19,29 @@ static void cre_obj_dealloc(PyObject *self){
     CRE_Obj* cpp_self = (CRE_Obj*) nb::inst_ptr<CRE_Obj>(self_handle);
 
 
-    // nb::print("DIED: ", self_handle);
-    // cout << "~Before Die~:" << cpp_self->get_refcount() << endl;    
-
-    if(nb_inst_dealloc){
-        (*nb_inst_dealloc)(self);
-    }
+    
+    // inst_dealloc(self);
+    // if(nb_inst_dealloc){
+    (*nb_inst_dealloc)(self);
+    // }
     // When the Python proxy object is collected remove 
     //   the C++ object's reference to it so it isn't reused
     cpp_self->proxy_obj = nullptr;
-    CRE_decref(cpp_self);//->dec_ref();
+    if(((nb::detail::nb_inst*) self)->unused == 17){
+    	// nb::print("~Borrowed Died~: " + nb::cast<std::string>(nb::str(self_handle)) + "refs=" + std::to_string(cpp_self->get_refcount()));
+    	// cout << "~Borrowed Died~:" << cpp_self->get_refcount() << endl;    
+    	cout << "~Borrowed Died~: " << nb::cast<std::string>(nb::str(self_handle)) << "refs=" << std::to_string(cpp_self->get_refcount()) << endl;    
+    	CRE_decref(cpp_self);//->dec_ref();	
+    }else{
+    	cout << "~Ptr Died~:" << cpp_self->get_refcount() << endl;    
+    }
 }
 
-// PyObject *myclass_tp_add(PyObject *a, PyObject *b) {
-//     return PyNumber_Multiply(a, b);
-// }
-
-PyType_Slot slots[] = {
+PyType_Slot cre_obj_slots[] = {
     { Py_tp_dealloc, (void *) cre_obj_dealloc },
     { 0, nullptr }
 };
+
 
 class CREDummy : public CRE_Obj{
     int a;
@@ -50,9 +61,13 @@ Item Item_from_py(nb::handle py_obj){
         InternStr intern_str = intern(nb::cast<std::string_view>(py_obj));
         // cout << "Interned: " << intern_str << endl;
         return Item(intern_str);
-    
+
+    } else if (nb::isinstance<Fact>(py_obj)) {
+    	return Item(nb::cast<Fact*>(py_obj));
+
     } else {
         throw std::runtime_error("Item cannot be created from: " + nb::cast<std::string>(nb::str(py_obj)));
+        return Item();
     }
 }
 
@@ -64,6 +79,9 @@ std::string_view Type_name_from_py(nb::handle py_obj){
     std::string_view type_name = "";
     if(nb::isinstance<nb::str>(py_obj)){
         type_name = nb::cast<std::string_view>(py_obj);
+    }else if(nb::isinstance<CRE_Type>(py_obj)){
+    	type_name = nb::cast<CRE_Type*>(py_obj)->name;
+    	cout << "IS CRE_TYPE: " << type_name << endl;
     }else if(py_obj.is_type() && !py_obj.is_none()){
         type_name = nb::cast<std::string_view>(nb::getattr(py_obj, "__name__"));
     }else{
@@ -137,13 +155,14 @@ FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
             }
         }
 
-        CRE_Type* mbr_type = nullptr;
+        // CRE_Type* mbr_type = nullptr;
         // if(nb::isinstance<nb::str>(type_handle)){
             // auto type_name = Type_from_py(type_handle);//::cast<std::string>(type_handle);
-        mbr_type = Type_from_py(type_handle);//current_context->get_type(type_name);
-        if(mbr_type == nullptr){
-            throw std::runtime_error("Fact type not found.");
-        }
+        // mbr_type = Type_from_py(type_handle);//current_context->get_type(type_name);
+        std::string_view mbr_type_name = Type_name_from_py(type_handle);
+        // if(mbr_type == nullptr){
+        //     throw std::runtime_error("Fact type not found.");
+        // }
         // }
 
         HashMap<std::string, Item> flags = {};
@@ -155,9 +174,9 @@ FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
         }
 
         std::string attr_name = nb::cast<std::string>(py_attr_name);
-        MemberSpec member_spec = py_flags ? 
-            MemberSpec(attr_name, mbr_type, flags) :
-            MemberSpec(attr_name, mbr_type);
+        MemberSpec member_spec = MemberSpec(attr_name, mbr_type_name, flags);//py_flags ? 
+        // MemberSpec(attr_name, mbr_type_name, flags);// :
+            // MemberSpec(attr_name, mbr_type_name, {});
         members.push_back(member_spec);
     }
     std::string name = nb::cast<std::string>(py_name);
@@ -178,20 +197,47 @@ void init_core(nb::module_& m) {
         nb_inst_dealloc = obj_ty->tp_dealloc;
     }
 
-	// A very minimal wrapper for a CRE_obj Python side 
-	nb::class_<CRE_Obj>(m, "CRE_Obj")
+	// -- CRE_Obj --
+	nb::class_<CRE_Obj>(m, "CRE_Obj", nb::type_slots(cre_obj_slots))
     .def("get_refcount", &CRE_Obj::get_refcount)
     ;
 
-    nb::class_<CRE_Type>(m, "CRE_Type")
+    // -- CRE_Type --
+    nb::class_<CRE_Type>(m, "CRE_Type", nb::type_slots(cre_obj_slots))
     ;
 
-    nb::class_<FactType>(m, "Fact_Type")
-    // Constructor MyFactType(...)
+    // -- FactType ---
+    nb::class_<FactType, CRE_Type>(m, "Fact_Type", nb::type_slots(cre_obj_slots))
     .def("__call__", [](FactType& self, nb::args args, nb::kwargs kwargs){
         return _py_new_fact(&self, args.size(), args.begin(), args.end(), kwargs);
-    })
+    }, nb::rv_policy::reference)
     ;
+
+    // -- DefferedType ---
+    nb::class_<DefferedType, CRE_Type>(m, "DefferedType", nb::type_slots(cre_obj_slots))
+    .def(nb::init<std::string_view>(), "name"_a)
+    ;
+
+    // -- CRE_Context --
+    nb::class_<CRE_Context>(m, "CRE_Context", nb::type_slots(cre_obj_slots))
+    .def("get_type", &CRE_Context::get_type, nb::rv_policy::reference)
+    .def("get_fact_type", &CRE_Context::get_fact_type, nb::rv_policy::reference)
+    .def("__str__", &CRE_Context::to_string)
+    .def(nb::new_([](){
+    	return current_context;
+    }), nb::rv_policy::reference)
+    .def(nb::new_([](std::string_view name){
+    	return get_context(name);
+    }), nb::rv_policy::reference)
+
+    // .def_static("__call__", [](){
+    // 	return current_context;
+    // })
+    // .def_static("__call__", [](std::string_view name){
+    // 	return get_context(name);
+    // })
+    ;
+
 
     nb::class_<Item>(m, "Item")
     ;

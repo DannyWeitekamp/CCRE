@@ -4,7 +4,9 @@
 #include <cstdint>
 #include <string>
 // #include <bit>
+#include <unordered_map>
 #include "../include/unordered_dense.h"
+
 
 // NOTE: Do not import types.h here
 
@@ -79,7 +81,8 @@ struct CREHash {
 
 
 template<class T, class U>
-using HashMap = ankerl::unordered_dense::map<T, U, CREHash, std::equal_to<>>;
+using HashMap = std::unordered_map<T, U, CREHash, std::equal_to<>>;
+// using HashMap = ankerl::unordered_dense::map<T, U, CREHash, std::equal_to<>>;
 
 template<class T>
 using HashSet = ankerl::unordered_dense::set<T, CREHash, std::equal_to<>>;

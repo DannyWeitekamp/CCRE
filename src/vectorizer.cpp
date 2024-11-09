@@ -42,7 +42,7 @@ size_t Vectorizer::_get_nom_slot(Fact* fact){
 		// Hot-swap pointer to sliced copy of fact into the emplaced key. Copy
 		//  avoids borrowing a reference to 'fact' and possibly leaking its
 		//  AllocBuffer (in the case where it wasn't alloced with malloc);
-		FactView* fv_ptr = &(it->first);
+		FactView* fv_ptr = (FactView*) &(it->first);
 		Fact* fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
 		fv_ptr->fact = fact_slice;
 
@@ -62,7 +62,7 @@ size_t Vectorizer::_get_flt_slot(Fact* fact){
 
 	auto [it, inserted] = flt_slot_map.try_emplace(fv, slot);
 	if(inserted){
-		FactView* fv_ptr = &(it->first);
+		FactView* fv_ptr = (FactView*) &(it->first);
 		Fact* fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
 		fv_ptr->fact = fact_slice;
 		inv_flt_slot_map.push_back(fact_slice);
@@ -194,8 +194,10 @@ Fact* Vectorizer::invert(size_t slot, size_t value){
 }
 
 Fact* Vectorizer::invert(size_t slot, double value){
-	Fact* fact_head = inv_nom_slot_map.at(slot);
+	Fact* fact_head = inv_flt_slot_map.at(slot);
+	// cout << "head: " << uint64_t(fact_head) << endl;
+	// cout << "head: " << fact_head << endl;
 	Fact* full_fact = fact_head->slice(0, int(fact_head->length+1));
 	full_fact->set_unsafe(fact_head->length, Item(value));
-	return fact_head;
+	return full_fact;
 }

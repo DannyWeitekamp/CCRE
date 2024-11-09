@@ -27,7 +27,7 @@
 
 // ankerl::unordered_dense::set<std::string_view, CREHash, std::equal_to<>> intern_set = {};
 // std::unordered_map<std::string, InternStr*, CREHash, std::equal_to<>> intern_map;
-HashSet<std::string_view> intern_set = {};
+// HashSet<std::string_view> intern_set = {};
 
 // std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv){
 // 	// Note: Optimizer will probably reused hash, should be free.
@@ -40,20 +40,20 @@ InternStr::InternStr(const std::string_view& sv, uint64_t _hash) :
 	std::string_view(sv), hash(_hash) {
 }
 
-
-InternStr intern(const std::string_view& sv){
+InternStr CRE_Context::intern(const std::string_view& sv) noexcept{
 	uint64_t hash = CREHash{}(sv);
 	auto it = intern_set.find(sv);
     if (it != intern_set.end()) {
         return InternStr(*it, hash);
     }    
     // If not found, create a new string and insert it into the intern set
-	std::string* new_str = new std::string(sv);
-    auto itr = intern_set.insert(*new_str);
+	auto new_str = std::string(sv);
+    auto itr = intern_set.insert(std::move(new_str));
 	return InternStr(*itr.first, hash);
-
-    // return inserted;
 }
+
+
+
 
 // If not found, create a new string and insert it into the intern set
 

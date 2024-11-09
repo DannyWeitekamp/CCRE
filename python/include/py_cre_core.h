@@ -39,3 +39,7 @@ ref<Fact> _py_new_fact(
     nb::detail::fast_iterator args_end,
     nb::kwargs kwargs
 );
+
+static void cre_obj_dealloc(PyObject *self);
+
+extern PyType_Slot cre_obj_slots[];

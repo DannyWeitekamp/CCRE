@@ -41,9 +41,10 @@ public:
   // Fact(void* type);
   Fact(uint32_t _length, FactType* _type=nullptr, bool _immutable=false);
 
-  ~Fact(){
+  // ~Fact(){}
+
+  // void operator delete(void * p);
     //
-  };
 
   
 

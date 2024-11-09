@@ -70,6 +70,7 @@ void test_flattener(){
 
 
 FactSet* random_cats(size_t N){
+
 	FactType* CatType = define_fact("Cat", {
 		 {"id", cre_int, {{"unique_id", true}} },
 	     {"name", cre_str, {{"visible", true}} },
@@ -150,6 +151,11 @@ void test_vectorizer(){
 		auto inverse = vectorizer->invert(i, nom_vec[i]);
 		cout << "nv[" << i << "]=" << nom_vec[i] << "  " << inverse << endl;
 	}
+
+	for(int i=0; i < flt_vec.size(); i++){
+		auto inverse = vectorizer->invert(i, flt_vec[i]);
+		cout << "fv[" << i << "]=" << flt_vec[i] << "  " << inverse << endl;
+	}
 }
 
 void bench_vectorizer(){
@@ -200,8 +206,8 @@ int main(){
 
 
 	// test_flattener();
-	bench_flattener();
-	// test_vectorizer();
-	bench_vectorizer();
+	// bench_flattener();
+	test_vectorizer();
+	// bench_vectorizer();
 	return 0;
 }

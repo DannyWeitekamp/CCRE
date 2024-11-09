@@ -3,6 +3,7 @@
 #include "../include/hash.h"
 #include "../include/context.h"
 #include "../include/item.h"
+#include "../include/cre_obj.h"
 #include <iostream>
 #include <bitset>
 #include <fmt/format.h>
@@ -19,13 +20,17 @@ CRE_Type::CRE_Type(
            uint16_t _t_id,
            std::vector<CRE_Type*> _sub_types, 
            uint8_t _builtin) : 
-    name(std::string(_name)), t_id(_t_id),
+    CRE_Obj(), name(std::string(_name)), t_id(_t_id),
     sub_types(_sub_types), builtin(_builtin),
     context(nullptr), type_index(0) {
 
     if(builtin){
         this->kind = TYPE_KIND_BUILTIN;
     }
+}
+
+CRE_Type::~CRE_Type(){
+    cout << "destroy: " << this << endl;
 }
 
 
@@ -65,7 +70,7 @@ void _MemberSpec_init_flags(
 MemberSpec::MemberSpec(
             std::string_view _name,
             CRE_Type* _type,
-            HashMap<std::string, Item> _flags) :
+            const HashMap<std::string, Item>& _flags) :
     name(_name), type(_type), flags(default_mbr_flags){
     _MemberSpec_init_flags(this, _flags);
 }
@@ -73,9 +78,9 @@ MemberSpec::MemberSpec(
 MemberSpec::MemberSpec(
             std::string_view _name,
             std::string_view _type_name,
-            HashMap<std::string, Item> _flags) :
+            const HashMap<std::string, Item>& _flags) :
     name(_name){
-    CRE_Type* _type  = current_context->get_type(_type_name);
+    CRE_Type* _type  = current_context->_get_type(_type_name);
     if(_type == nullptr){
         _type = new DefferedType(_type_name);
     }
@@ -125,7 +130,7 @@ bool _try_finalized(FactType* _this, bool do_throw){
         MemberSpec* mbr_spec = &_this->members[i];
         CRE_Type* mbr_type = mbr_spec->type;
         if(mbr_type->kind == TYPE_KIND_DEFFERED){
-            CRE_Type* resolved_type = context->get_type(mbr_type->name);
+            CRE_Type* resolved_type = context->_get_type(mbr_type->name);
             if(resolved_type != nullptr){
                 // If found free deffered types and replace
                 // std::cout << "RESOLVE TYPE" << std::endl;
@@ -164,9 +169,9 @@ uint64_t MemberSpec::get_flag(uint64_t flag){
 
 
 FactType::FactType(std::string_view _name, 
-           std::vector<CRE_Type*> _sub_types, 
-           std::vector<MemberSpec> _members,
-           HashMap<std::string, Item> _flags)
+           const std::vector<CRE_Type*>& _sub_types, 
+           const std::vector<MemberSpec>& _members,
+           const HashMap<std::string, Item>& _flags)
     : CRE_Type(_name, T_ID_FACT, _sub_types,  0),
       members(_members), flags(_flags) {
     finalized = false;
@@ -198,7 +203,7 @@ FactType::FactType(std::string_view _name,
 // define_type implementation
 CRE_Type* define_type(std::string_view name,
                   uint16_t t_id, 
-                  std::vector<CRE_Type*> sub_types,
+                  const std::vector<CRE_Type*>& sub_types,
                   CRE_Context* context) {
     if(context == nullptr){
         context = current_context;
@@ -210,9 +215,9 @@ CRE_Type* define_type(std::string_view name,
 }
 
 FactType* define_fact(std::string_view name, 
-                  std::vector<MemberSpec> members,
-                  std::vector<CRE_Type*> sub_types,
-                  HashMap<std::string, Item> flags,
+                  const std::vector<MemberSpec>& members,
+                  const std::vector<CRE_Type*>& sub_types,
+                  const HashMap<std::string, Item>& flags,
                   CRE_Context* context) {
     if(context == nullptr){
         context = current_context;
@@ -294,9 +299,11 @@ CRE_Type* cre_Conditions;// = new CRE_Type("Conditions",{}, 1);
 CRE_Type* cre_Rule;// = new CRE_Type("Rule",{}, 1);
 
 
-std::vector<CRE_Type*> cre_builtins;// = {};
 
-void ensure_builtins(){
+
+std::vector<CRE_Type*> make_builtins(){
+    std::vector<CRE_Type*> cre_builtins;// = {};
+
     if(cre_builtins.size() == 0){
         cre_undefined = new CRE_Type("undefined", T_ID_UNDEFINED, {}, 1);
         cre_bool = new CRE_Type("bool", T_ID_BOOL, {}, 1);
@@ -329,7 +336,12 @@ void ensure_builtins(){
             cre_Rule,
         };    
     }
+    return cre_builtins;
 }
+
+// void destroy_builtins(){
+
+// }
 
 DefferedType::DefferedType(std::string_view _name) :
     CRE_Type(_name, 0, {}, 0) {
