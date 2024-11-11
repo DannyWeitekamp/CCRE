@@ -11,6 +11,10 @@ uint64_t CREHash::operator()(const UintPair& x) const {
 	return *((uint64_t*)&x);
 }
 
+void Vectorizer_dtor(const CRE_Obj* x) {
+	delete ((Vectorizer* ) x);
+}
+
 Vectorizer::Vectorizer(uint64_t max_heads, bool _one_hot_nominals, bool _encode_missing) :
 	IncrementalProcessor(0), 
 	one_hot_nominals(_one_hot_nominals),
@@ -21,6 +25,7 @@ Vectorizer::Vectorizer(uint64_t max_heads, bool _one_hot_nominals, bool _encode_
 	flt_slot_map.reserve(max_heads);
 	inv_nom_slot_map.reserve(max_heads);
 	inv_flt_slot_map.reserve(max_heads);
+	dtor = &Vectorizer_dtor;
 }
 
 // ------------------------------------------------------------

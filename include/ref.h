@@ -14,12 +14,14 @@
 
 #pragma once
 #include <iostream>
-#include "../include/cre_obj.h"
+// #include "../include/cre_obj.h"
 
 #if defined(NB_VERSION_MAJOR)
 #include "../external/nanobind/src/nb_internals.h"
 #endif
 // #include "counter.h"
+
+struct CRE_Obj;
 
 // NAMESPACE_BEGIN(nanobind)
 
@@ -48,13 +50,13 @@ public:
     ref(T *ptr) : m_ptr(ptr) { 
         // std::cout << "constr from ptr" << std::endl;
 
-        if(m_ptr) CRE_incref(m_ptr); 
+        if(m_ptr) m_ptr->inc_ref();
     }
 
     /// Copy a reference, increases the reference count
     ref(const ref &r) : m_ptr(r.m_ptr) {
         // std::cout << "copy from ref" << std::endl;
-        if(m_ptr) CRE_incref(m_ptr); 
+        if(m_ptr) m_ptr->inc_ref();
     }
 
     /// Move a reference witout changing the reference count
@@ -63,13 +65,13 @@ public:
     /// Destroy this reference
     ~ref() { 
         // std::cout << "destroy " << std::endl;
-        if(m_ptr) CRE_decref(m_ptr);
+        if(m_ptr) m_ptr->dec_ref();
     }
 
     /// Move-assign another reference into this one
     ref &operator=(ref &&r) noexcept {
         // std::cout << "move" << std::endl;
-        if(m_ptr) CRE_decref(m_ptr);
+        if(m_ptr) m_ptr->dec_ref();
         m_ptr = r.m_ptr;
         r.m_ptr = nullptr;
         return *this;
@@ -78,8 +80,8 @@ public:
     /// Copy-assign another reference into this one
     ref &operator=(const ref &r) {
         // std::cout << "& OP ver const" << std::endl;
-        if(r.m_ptr) CRE_incref(r.m_ptr);
-        if(m_ptr) CRE_decref(m_ptr);
+        if(r.m_ptr) r.m_ptr->inc_ref();
+        if(m_ptr) m_ptr->dec_ref();
         m_ptr = r.m_ptr;
         return *this;
     }
@@ -87,9 +89,9 @@ public:
     /// Overwrite this reference with a pointer to another object
     ref &operator=(T *ptr) {
         // std::cout << "& OP ver" << std::endl;
-        if(ptr) CRE_incref(ptr);
+        if(ptr) ptr->inc_ref();
         // std::cout << "&&" << std::endl;
-        if(m_ptr) CRE_decref(m_ptr);
+        if(m_ptr) m_ptr->dec_ref();
         // std::cout << "**" << std::endl;
         m_ptr = ptr;
         // std::cout << "end" << std::endl;
@@ -98,7 +100,7 @@ public:
 
     /// Clear the currently stored reference
     void reset() {
-        CRE_decref(m_ptr);
+        m_ptr->dec_ref();
         m_ptr = nullptr;
     }
 
@@ -171,7 +173,7 @@ template <typename T> struct type_caster<ref<T>> {
             if (PyObject* obj = (PyObject*) value->proxy_obj){
                 return handle(obj).inc_ref();
             }else{
-                CRE_incref(val);
+                val->inc_ref();
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);

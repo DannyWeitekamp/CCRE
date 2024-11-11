@@ -20,11 +20,11 @@
 
 
 #include "../include/hash.h"
-#include <chrono>
 
 
-using namespace std;
-using namespace chrono;
+using std::cout;
+using std::endl;
+using std::string;
 
 
 
@@ -52,7 +52,7 @@ std::hash<std::string> string_hash;
 
 class FastHash {
 public:
-    uint64_t operator()(const string& s) const
+    uint64_t operator()(const std::string& s) const
     {
         return rapidhash(s.c_str(), s.length());
     }
@@ -60,7 +60,7 @@ public:
 
 class STDHash {
 public:
-    uint64_t operator()(const string& s) const
+    uint64_t operator()(const std::string& s) const
     {
         return string_hash(s);
     }
@@ -68,7 +68,7 @@ public:
 
 class FNV1AHash {
 public:
-    uint64_t operator()(const string& s) const
+    uint64_t operator()(const std::string& s) const
     {
         return fnv1a((const uint8_t*) s.c_str(), s.length());
     }
@@ -78,7 +78,7 @@ public:
 
 class XXHash {
 public:
-    uint64_t operator()(const string& s) const
+    uint64_t operator()(const std::string& s) const
     {
         return xxh::xxhash<64>((const uint8_t*) s.c_str(), s.length(), 0xFF);
     }
@@ -86,7 +86,7 @@ public:
 
 class MurmurHash {
 public:
-    uint64_t operator()(const string& s) const
+    uint64_t operator()(const std::string& s) const
     {
         return MurmurHash64A((const uint8_t*) s.c_str(), s.length(), 0xFF);
     }
@@ -94,7 +94,7 @@ public:
 
 class SipHash {
 public:
-    uint64_t operator()(const string& s) const
+    uint64_t operator()(const std::string& s) const
     {
         return siphash24(
             siphash_k0_default,
@@ -156,8 +156,8 @@ void test_intern(){
 // Test for function1()
 // You would need to write these even when using a framework
 void bench_hash() {
-    const string str1 = string("Hellooooooooooooo");
-    const string str2 = string("Hello");
+    const std::string str1 = std::string("Hellooooooooooooo");
+    const std::string str2 = std::string("Hello");
     
     cout << "Hash of str1 as string: " << hash_string(str1) << endl;
     cout << "Hash of str2 as string: " << hash_string(str2) << endl;

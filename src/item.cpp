@@ -118,6 +118,8 @@ Item::Item(const std::string_view& arg) {
     item.length = intern_str.length();
 
     *this = std::bit_cast<Item>(item);
+
+    cout << "ME: " << *this << ", " << uint64_t(data) << endl;
     // Item generic_item = std::bit_cast<Item>(item);
     // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
     // return generic_item;
@@ -229,7 +231,7 @@ std::string item_to_string(const Item& item) {
             ss << flt_to_str(item.as_float());
             break;
         case T_ID_STR:
-            ss << "'" << item.as_string() << "'";
+            ss << "'" << std::string(item.as_string()) << "'";
             break;
         case T_ID_FACT:
             {

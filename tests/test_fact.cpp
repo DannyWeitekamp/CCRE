@@ -20,9 +20,12 @@
 #include "../include/flattener.h"
 #include "test_macros.h"
 
-#include <chrono>
-using namespace std;
-using namespace std::chrono;
+// #include <chrono>
+// using namespace std;
+// using namespace std::chrono;
+
+using std::cout;
+using std::endl;
 
 
 void test_errors(){
@@ -51,7 +54,7 @@ void test_flags(){
 	 	}
 	);
 	// // Okay
-	Fact* snowball = make_fact(CatType, "snowball", "white", 3, false);
+	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
 
 	IS_TRUE(snowball->type->members[0].get_flag(BIFLG_UNIQUE_ID) == true);
 	IS_TRUE(snowball->type->members[1].get_flag(BIFLG_UNIQUE_ID) == false);
@@ -70,7 +73,7 @@ void test_flags(){
 }
 
 void test_iterate_fact(){
-	Fact* fact = make_fact(NULL, "A", 0, false, "Q");
+	ref<Fact> fact = make_fact(NULL, "A", 0, false, "Q");
 
 	cout << "LENGTH: " << fact->length << endl;
 	// for(auto& item : &fact){
@@ -123,9 +126,7 @@ void test_iterate_fact(){
 
 	EXPECT_THROW(( FactView(fact,3, 0) ));
 	EXPECT_THROW(( FactView(fact, 2,-3) ));
-
 }
-
 
 
 int main(){

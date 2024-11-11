@@ -81,7 +81,7 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
         size_t length = std::get<2>(fact_info);
         // size_t offset = std::get<3>(fact_info);
 
-        Fact* __restrict fact = builder.next_empty(length);
+        Fact* __restrict fact = builder.add_empty(length, type);
         fact->type = type;
 
         if(nb::isinstance<nb::dict>(fact_obj)){
@@ -126,9 +126,11 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
                 }
                 fact->set(index, item);
             }
-            _init_fact(fact, length, type);
+            // _init_fact(fact, length, type);
+            // fact->alloc_buffer = builder.alloc_buffer;
             builder.fact_set->_declare_back(fact);
         }
+        // builder.alloc_buffer->add_ref(fact_infos.size());
     }
     return builder.fact_set;
 }   

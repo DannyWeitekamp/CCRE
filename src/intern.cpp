@@ -47,9 +47,18 @@ InternStr CRE_Context::intern(const std::string_view& sv) noexcept{
         return InternStr(*it, hash);
     }    
     // If not found, create a new string and insert it into the intern set
-	auto new_str = std::string(sv);
-    auto itr = intern_set.insert(std::move(new_str));
-	return InternStr(*itr.first, hash);
+	// auto new_str = ;
+	// cout << "INTERN IT:" << std::string(sv) << endl;
+	// cout << "BEFORE: " << std::string(sv) << endl;
+	// cout << "BEFORE: " << uint64_t(sv.data()) << endl;
+    char* copy = (char*)malloc(sv.size() + 1); 
+    std::memcpy(copy, sv.data(), sv.size());
+    copy[sv.size()] = '\0';
+
+    auto itr = intern_set.insert(std::string_view(copy, sv.size()));
+    auto intern_str = InternStr(*itr.first, hash);
+    // cout << "AFTER: " << uint64_t(intern_str.data()) << endl;
+	return intern_str;
 }
 
 

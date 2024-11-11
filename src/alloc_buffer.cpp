@@ -2,13 +2,21 @@
 #include <stddef.h>
 #include <cstring>
 #include <iostream>
+#include "../include/cre_obj.h"
 #include "../include/alloc_buffer.h"
 
 //--------------------------------------------------------------
 // : AllocBuffer
 
+void AllocBuffer_dtor(const CRE_Obj* x){
+	// std::cout << "Free AllocBuffer" << std::endl;
+	AllocBuffer* self = ((AllocBuffer* ) x);
+	delete self;
+}
 
-AllocBuffer::AllocBuffer(size_t n_bytes, bool _resizeable){
+AllocBuffer::AllocBuffer(size_t n_bytes, bool _resizeable) :
+	CRE_Obj(&AllocBuffer_dtor)
+	{
 	
 	// NOTE: Might play with explicit alignment requirements later
 	// cout << "Buffer size: " << n_bytes << " " << endl; 
@@ -28,6 +36,10 @@ AllocBuffer::AllocBuffer(size_t n_bytes, bool _resizeable){
 	// this->size = size;
 };
 
+AllocBuffer::~AllocBuffer(){
+	delete[] data;
+}
+
 uint8_t* AllocBuffer::resize(size_t n_bytes){
 	if(!this->resizeable){
 		throw std::runtime_error("Attempt to resize unresizeable AllocBuffer.");
@@ -42,7 +54,7 @@ uint8_t* AllocBuffer::resize(size_t n_bytes){
 
 uint8_t* AllocBuffer::alloc_bytes(size_t n_bytes, bool& did_malloc){
 	// return (uint8_t*) malloc(n_bytes);
-	if(this->head + n_bytes >= this->end){
+	if(this->head + n_bytes > this->end){
 		// if(this->resizeable){
 		// 	std::cout << "RESIZE: " << this->resizeable << std::endl;
 		// 	// Grow by at least n_bytes. By default double the size, 

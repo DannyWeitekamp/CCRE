@@ -4,6 +4,7 @@
 #include "../include/context.h"
 #include "../include/item.h"
 #include "../include/cre_obj.h"
+#include "../include/intern.h"
 #include <iostream>
 #include <bitset>
 #include <fmt/format.h>
@@ -12,26 +13,29 @@ using std::cout;
 using std::endl;
 
 
-
+void CRE_Type_dtor(const CRE_Obj* ptr){
+    delete ((CRE_Type* ) ptr);
+}
 
 // Type constructor implementation
 CRE_Type::CRE_Type(
            std::string_view _name, 
            uint16_t _t_id,
            std::vector<CRE_Type*> _sub_types, 
-           uint8_t _builtin) : 
-    CRE_Obj(), name(std::string(_name)), t_id(_t_id),
+           uint8_t _builtin,
+           CRE_Context* context) : 
+    CRE_Obj(&CRE_Type_dtor), name(std::string(_name)), t_id(_t_id),
     sub_types(_sub_types), builtin(_builtin),
-    context(nullptr), type_index(0) {
+    context(context), type_index(0) {
 
     if(builtin){
         this->kind = TYPE_KIND_BUILTIN;
     }
 }
 
-CRE_Type::~CRE_Type(){
-    cout << "destroy: " << this << endl;
-}
+// CRE_Type::~CRE_Type(){
+//     cout << "destroy: " << this << endl;
+// }
 
 
 const FlagGroup default_mbr_flags = 
@@ -168,19 +172,31 @@ uint64_t MemberSpec::get_flag(uint64_t flag){
 }
 
 
+void FactType_dtor(const CRE_Obj* ptr){
+    cout << "Type_dtor: " << ((FactType* ) ptr)->name << endl;
+    delete ((FactType* ) ptr);
+}
+
 FactType::FactType(std::string_view _name, 
            const std::vector<CRE_Type*>& _sub_types, 
            const std::vector<MemberSpec>& _members,
-           const HashMap<std::string, Item>& _flags)
-    : CRE_Type(_name, T_ID_FACT, _sub_types,  0),
+           const HashMap<std::string, Item>& _flags,
+           CRE_Context* _context)
+    : CRE_Type(_name, T_ID_FACT, _sub_types,  0, _context), 
       members(_members), flags(_flags) {
+    dtor = &FactType_dtor; 
     finalized = false;
     kind = TYPE_KIND_FACT;
+
 
     member_names_as_items = {};
     member_names_as_items.reserve(_members.size());
     for(auto& mbr_spec : _members){
-        member_names_as_items.push_back(Item(mbr_spec.name));
+
+        auto interned_mbr_name = context->intern(mbr_spec.name);
+        // auto interned_mbr_name = std::string_view(mbr_spec.name);
+        // cout << "INTERN STR:" << interned_mbr_name << endl;
+        member_names_as_items.push_back(Item(interned_mbr_name));
     }
 }
 
@@ -208,7 +224,7 @@ CRE_Type* define_type(std::string_view name,
     if(context == nullptr){
         context = current_context;
     };
-    CRE_Type* t = new CRE_Type(name, t_id, sub_types, 1);
+    CRE_Type* t = new CRE_Type(name, t_id, sub_types, 1, context);
     // cout << "DEFINE TYPE" << t->name << endl;
     uint16_t index = context->_add_type(t);
     return context->types[t_id];
@@ -223,7 +239,7 @@ FactType* define_fact(std::string_view name,
         context = current_context;
     };
     // cout << "DEFINE FACT0: " << name << endl;
-    FactType* t = new FactType(name, sub_types, members, flags);
+    FactType* t = new FactType(name, sub_types, members, flags, context);
     // std::cout << "DEFINE FACT[0]" << t->members[0].builtin_flags << std::endl;
     size_t index = context->_add_type(t);
     // std::cout << uint64_t(t) << " <<KIND" << int(t->kind) << std::endl;

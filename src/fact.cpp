@@ -54,8 +54,20 @@ extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 	}
 }
 
+void Fact_dtor(const CRE_Obj* x){
+		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
+		if(x->alloc_buffer == nullptr){
+	    	free((void*) x);
+		}else{
+			// NOTE: We need to do this because cannot
+			//  write alloc_buffer as a ref<AllocBuffer> 
+			// cout << "alloc buff refcount=" << x->alloc_buffer->get_refcount() << endl;
+			x->alloc_buffer->dec_ref();
+		}
+}
+
 Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
-	CRE_Obj(),
+	CRE_Obj(&Fact_dtor),
 	type(_type),
 	parent(nullptr),
 	f_id(-1),
@@ -64,7 +76,7 @@ Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
 	immutable(_immutable)
 {}
 
-Fact* empty_fact(FactType* type){
+ref<Fact> empty_fact(FactType* type){
 	uint32_t _length = (uint32_t) type->members.size();
 	Fact* fact = _alloc_fact(_length);
 	_init_fact(fact, _length, type);
@@ -72,7 +84,7 @@ Fact* empty_fact(FactType* type){
 	return fact;
 }
 
-Fact* empty_untyped_fact(uint32_t _length){
+ref<Fact> empty_untyped_fact(uint32_t _length){
 	Fact* fact = _alloc_fact(_length);
 	_init_fact(fact, _length, nullptr);
 	_zfill_fact(fact, 0, _length);
@@ -100,32 +112,39 @@ inline Fact* _new_fact(Fact* fact, FactType* type, const Item* items, size_t n_i
 	fact = new (fact) Fact(length, type);
 
 	// Set items
-	for(int i=0; i < n_items; i++){
-		fact->set(i, items[i]);
+	try{
+		for(int i=0; i < n_items; i++){
+			fact->set(i, items[i]);
+		}
+	} catch (const std::exception& e) {
+		// Make sure that fact is freed on error
+		Fact_dtor(fact);
+		throw;
 	}
+	
 
 	// Zero-fill any trailing items
 	_zfill_fact(fact, n_items, length);
 	return fact;
 }
 
-Fact* new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items){
+ref<Fact> new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items){
 	uint32_t length = _resolve_fact_len(n_items, type);	
 	return _new_fact(fact, type, items, n_items, length);
 }
 
-Fact* new_fact(FactType* type, const Item* items, size_t n_items){
+ref<Fact> new_fact(FactType* type, const Item* items, size_t n_items){
 	uint32_t length = _resolve_fact_len(n_items, type);	
 	Fact* fact = _alloc_fact(length);
 	return _new_fact(fact, type, items, n_items, length);
 }
 
-Fact* new_fact(Fact* fact, FactType* type, const std::vector<Item>& items){
+ref<Fact> new_fact(Fact* fact, FactType* type, const std::vector<Item>& items){
 	uint32_t length = _resolve_fact_len(items.size(), type);	
 	return _new_fact(fact, type, items.data(), items.size(), length);
 }
 
-Fact* new_fact(FactType* type, const std::vector<Item>& items){
+ref<Fact> new_fact(FactType* type, const std::vector<Item>& items){
 	uint32_t length = _resolve_fact_len(items.size(), type);	
 	Fact* fact = _alloc_fact(length);
 	return _new_fact(fact, type, items.data(), items.size(), length);
@@ -190,7 +209,7 @@ std::tuple<size_t, size_t> Fact::_format_slice(int _start, int _end){
 }
 
 
-Fact* Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy){
+ref<Fact> Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy){
 	
 	// cout << "<< start: " << uint64_t(start) <<
 	// 				"<< end: " << uint64_t(end) <<
@@ -202,7 +221,7 @@ Fact* Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy){
 	return new_fact;
 }
 
-Fact* Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy){
+ref<Fact> Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy){
 	auto [start, end] = _format_slice(_start, _end);
 	size_t length = end-start;
 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length));
@@ -210,7 +229,7 @@ Fact* Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy
 	return new_fact;
 }
 
-Fact* Fact::slice(int _start, int _end, bool deep_copy){
+ref<Fact> Fact::slice(int _start, int _end, bool deep_copy){
 	auto [start, end] = _format_slice(_start, _end);
 	size_t length = end-start;
 	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
@@ -219,13 +238,13 @@ Fact* Fact::slice(int _start, int _end, bool deep_copy){
 	return new_fact;
 }
 
-Fact* Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
+ref<Fact> Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length));
 	_copy_fact_slice(this, new_fact, 0, this->length);
 	return new_fact;
 }
 
-Fact* Fact::copy(bool deep_copy){
+ref<Fact> Fact::copy(bool deep_copy){
 	// Fact* fact = () _alloc_fact(_length);
 	// AllocBuffer buffer = AllocBuffer(SIZEOF_FACT(this->length), true);
 	// cout << "MALLOC" << SIZEOF_FACT(this->length) << endl; 
@@ -304,11 +323,13 @@ extern "C" void fact_dtor(Fact* fact){
 		Item* item = fact->get(i);
 		if(item->t_id == T_ID_OBJ){
 			ObjItem* o_item = (ObjItem*) item;
-			CRE_decref((CRE_Obj*) o_item->data);	
+			((CRE_Obj*) o_item->data)->dec_ref();
+			// CRE_decref((CRE_Obj*) o_item->data);	
 		}
 	}
 	if(fact->alloc_buffer != (void *) NULL){
-		CRE_decref((CRE_Obj*) fact->alloc_buffer);
+		fact->alloc_buffer->dec_ref();
+		// CRE_decref((CRE_Obj*) fact->alloc_buffer);
 	}
 	free(fact);
 }
@@ -356,7 +377,7 @@ Fact::Iterator end(const Fact* fact){return fact->end();}
 // -------------------------------------------------------
 // : Fact Hashing 
 
-uint64_t _hash_fact_range(Fact* x, uint16_t start, uint16_t end){
+uint64_t _hash_fact_range(const Fact* x, uint16_t start, uint16_t end){
 	uint64_t constexpr fnv_prime = 1099511628211ULL;
   uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
 
@@ -384,7 +405,7 @@ uint64_t CREHash::operator()(Fact* x) {
 }
 
 uint64_t CREHash::operator()(const FactView& x) const{
-    return _hash_fact_range(x.fact, x.start, x.end_);
+    return _hash_fact_range((const Fact*) x.fact, x.start, x.end_);
 
     
 }
@@ -441,8 +462,8 @@ bool Fact::operator==(const Fact& other) const {
 
 bool FactView::operator==(const FactView& other) const {
 	if(this->size() != other.size()) return false;
-	Fact* fact_a = this->fact;
-	Fact* fact_b = other.fact;
+	const Fact* fact_a = (const Fact*) this->fact;
+	const Fact* fact_b = (const Fact*) other.fact;
 	for(size_t i=0; i < this->size(); i++){
 		Item* ia = fact_a->get(this->start + i);
 		Item* ib = fact_b->get(other.start + i);

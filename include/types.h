@@ -5,6 +5,7 @@
 #include "../include/hash.h"
 #include "../include/cre_obj.h"
 #include "../include/item.h"
+// #include "../include/context.h"
 #include <iostream>
 #include <string>
 #include <inttypes.h>
@@ -89,10 +90,11 @@ struct CRE_Type : CRE_Obj{
     CRE_Type(std::string_view _name, 
         uint16_t _t_id,
         std::vector<CRE_Type*> _sub_types = {}, 
-        uint8_t _builtin = 0
+        uint8_t _builtin = 0,
+        CRE_Context* context = nullptr
     );    
 
-    ~CRE_Type();
+    // ~CRE_Type();
 };
 
 const uint64_t BIFLG_UNIQUE_ID =  0;
@@ -134,7 +136,8 @@ struct FactType : public CRE_Type{
     FactType(std::string_view _name, 
          const std::vector<CRE_Type*>& _sub_types = {}, 
          const std::vector<MemberSpec>& _members = {},
-         const HashMap<std::string, Item>& flags = {}
+         const HashMap<std::string, Item>& flags = {},
+         CRE_Context* context=nullptr
     );
 
     int get_attr_index(std::string_view key);

@@ -44,6 +44,10 @@ std::vector<FlagGroup> Flattener::default_flags ={
 // 	return flag_groups;
 // }
 
+void Flattener_dtor(const CRE_Obj* x) {
+	delete ((Flattener* ) x);
+}
+
 // Main Constructor
 Flattener::Flattener(
 		FactSet* _input, 
@@ -57,6 +61,8 @@ Flattener::Flattener(
 	subj_ind(_triple_order == TRIPLE_ORDER_SPO ? 0 : 1),
 	pred_ind(_triple_order == TRIPLE_ORDER_SPO ? 1 : 0)
 	{
+	cout << "CONSTRUCT:" << _input->get_refcount() << endl;
+	dtor = &Flattener_dtor;
 }
 
 Flattener::Flattener(FactSet* _input,
@@ -113,8 +119,8 @@ size_t Flattener::_calc_buffer_size(){
 		if(mbr_inds != nullptr){
 			L = mbr_inds->size();
 		}
-		_size += this->subj_as_fact*(sizeof(Fact) + sizeof(Item));
-		_size += L*(sizeof(Fact) + 3*sizeof(Item));
+		_size += this->subj_as_fact*(SIZEOF_FACT(1));
+		_size += L*(SIZEOF_FACT(3));
 	}
 	return _size;
 }
@@ -136,10 +142,12 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 
 	// cout << "SUJECT AS FACT: " << this->subj_as_fact<< endl;
 	if(this->subj_as_fact){
-		Fact* __restrict subj_fact = builder.next_empty(1);
-		subj_fact->length = 1;
+		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
+		// subj_fact->length = 1;
 		subj_fact->set_unsafe(0, id_item);	
-		subj_fact->immutable = true;
+		// subj_fact->immutable = true;
+		// subj_fact->alloc_buffer = builder.alloc_buffer;
+		// builder.alloc_buffer->inc_ref();
 		// _init_fact()
 		// builder->add_fact(s)
 		builder.fact_set->_declare_back(subj_fact);
@@ -149,7 +157,7 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 	}
 	
 	auto make_preds = [&](size_t ind){
-		Fact* __restrict out_fact = builder.next_empty(3);
+		ref<Fact> out_fact = builder.add_empty(3, nullptr, true);
 		out_fact->length = 3;
 
 		out_fact->set_unsafe(subj_ind /* 0 or 1 */, id_item);
@@ -157,12 +165,15 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		if(type != nullptr && ind < type->members.size()){
 			out_fact->set_unsafe(pred_ind /* 1 or 0 */,
 			 			type->member_names_as_items[ind]);
+			cout << "FLAT PRED: " << type->member_names_as_items[ind] << uint64_t(type->member_names_as_items[ind].val) << endl;
 		}else{
 			out_fact->set(pred_ind /* 1 or 0 */, int(ind));
 		}
 		out_fact->set_unsafe(2, *in_fact->get(ind));	
-		out_fact->immutable = true;
+		// out_fact->immutable = true;
 		builder.fact_set->_declare_back(out_fact);
+		// out_fact->alloc_buffer = builder.alloc_buffer;
+		// builder.alloc_buffer->inc_ref();
 		// _declare_to_empty(builder.fact_set, out_fact, 3, NULL);
 
 		// cout << uint64_t(out_fact) <<  " OUT FACT: " << out_fact << " L=" << out_fact->length << endl;
@@ -186,6 +197,7 @@ size_t Flattener::_update_init(){
 	size_t buffer_size = _calc_buffer_size();
 	builder = FactSetBuilder(input->size(), buffer_size);
 
+	cout << "OUTPUT:" <<  builder.fact_set->get_refcount() << endl;
 	for (auto it = input->begin(); it != input->end(); ++it) {
 		Fact* fact = *it;
 		_flatten_fact(fact);
@@ -193,7 +205,8 @@ size_t Flattener::_update_init(){
 	return 0;
 }
 
-FactSet* Flattener::apply(FactSet* fs){
+ref<FactSet> Flattener::apply(FactSet* fs){
+	cout << "INPUTT:" <<  fs->get_refcount() << endl;
 	input = fs;
 	_update_init();
 	return builder.fact_set;

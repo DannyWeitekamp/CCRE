@@ -81,8 +81,8 @@ struct CREHash {
 
 
 template<class T, class U>
-using HashMap = std::unordered_map<T, U, CREHash, std::equal_to<>>;
-// using HashMap = ankerl::unordered_dense::map<T, U, CREHash, std::equal_to<>>;
+// using HashMap = std::unordered_map<T, U, CREHash, std::equal_to<>>;
+using HashMap = ankerl::unordered_dense::map<T, U, CREHash, std::equal_to<>>;
 
 template<class T>
 using HashSet = ankerl::unordered_dense::set<T, CREHash, std::equal_to<>>;

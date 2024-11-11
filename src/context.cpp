@@ -6,10 +6,11 @@ using std::endl;
 
 // CRE_Context::_add_type implementation
 size_t CRE_Context::_add_type(CRE_Type* t) {
-    CRE_incref(t);
+    t->inc_ref();
 
     size_t index;
-    if (type_name_map.find(t->name) == type_name_map.end()) {
+    auto itr = type_name_map.find(t->name);
+    if (itr == type_name_map.end()) {
         // cout << "Adding type: " << t->name << endl;
         index = types.size();
         types.push_back(t);
@@ -17,13 +18,16 @@ size_t CRE_Context::_add_type(CRE_Type* t) {
         type_name_map[t->name] = index;
     } else {
         // cout << "Replacing type: " << t->name << endl;
+
+        // When a type is replaced push it to overwritten_types 
+        overwritten_types.push_back(types[itr->second]);
         index = type_name_map[t->name];
         types[index] = t;
     }    
     t->context = this;
     t->type_index = index;
 
-    cout << t->name << "(a):" << t->get_refcount() << endl; 
+    // cout << t->name << "(a):" << t->get_refcount() << endl; 
     // t->t_id = t_id;
     return index;
 };
@@ -97,8 +101,14 @@ std::string CRE_Context::to_string() {
 
 CRE_Context::~CRE_Context(){
     for(auto type : types){
-        cout << type->name << "(d):" << type->get_refcount() << endl; 
-        CRE_decref(type);
+        // cout << type->name << "(d):" << type->get_refcount() << endl; 
+        type->dec_ref();
+    }
+    for(auto type : overwritten_types){
+        type->dec_ref();   
+    }
+    for(auto sv : intern_set){
+        free((void*) sv.data());
     }
 }
 

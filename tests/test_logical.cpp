@@ -10,9 +10,8 @@
 
 #include "test_macros.h"
 
-#include <chrono>
-using namespace std;
-using namespace std::chrono;
+using std::cout;
+using std::endl;
 
 #include "../include/var.h"
 #include "../include/fact.h"

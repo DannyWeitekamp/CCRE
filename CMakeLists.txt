@@ -28,6 +28,7 @@ add_compile_options(-g)
 
 set(CMAKE_BUILD_TYPE Debug)
 add_compile_options(-O0)
+
 # add_compile_options(-O3)
 
 add_subdirectory(external/fmt)
@@ -56,7 +57,7 @@ file(GLOB SOURCES "src/*.cpp")
 # (So we don't rebuild the source for each target)
 add_library(app_lib ${SOURCES})
 target_link_libraries(app_lib fmt::fmt)
-target_link_libraries(app_lib tsl::robin_map) # for nanobind internals
+target_link_libraries(app_lib tsl::robin_map) # for nanobind
 
 #  -- main -- 
 # add_executable(main main.cpp)
@@ -114,7 +115,7 @@ target_link_libraries(dummer_ext PRIVATE app_lib)
 
 file(GLOB PY_SOURCES "python/src/*.cpp")
 
-nanobind_add_module(cre python/ext/cre_py_ext.cpp ${PY_SOURCES}
-  external/nanobind/src/nb_type.cpp)
+nanobind_add_module(cre python/ext/cre_py_ext.cpp ${PY_SOURCES})
 target_link_libraries(cre PRIVATE app_lib)
 target_compile_options(cre PRIVATE -g -O0)
+# target_compile_options(cre PRIVATE -g -O3)

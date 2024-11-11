@@ -9,6 +9,7 @@
 #include "../include/factset.h"
 #include "../include/item.h"
 #include "../include/intern.h"
+#include "../include/ref.h"
 
 
 #include <iostream>
@@ -18,7 +19,7 @@
 // : READ JSON to FactSet
 
 
-FactSet*  _FactSet_from_doc(rapidjson::Document& d){
+ref<FactSet>  _FactSet_from_doc(rapidjson::Document& d){
 	if(!d.IsObject()){
 		throw std::runtime_error("Input JSON is not an object.");
 	}
@@ -84,7 +85,8 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 		size_t length = std::get<2>(fact_info);
 		// size_t offset = std::get<3>(fact_info);
 
-		Fact* __restrict fact = builder.next_empty(length);
+		ref<Fact> fact_ref = builder.add_empty(length, type);
+		Fact* __restrict fact = fact_ref.get();
 		fact->type = type;
 		// cout << uint64_t(builder->alloc_buffer->data) + offset << endl;
 		// cout << uint64_t(fact) << endl;
@@ -153,11 +155,13 @@ FactSet*  _FactSet_from_doc(rapidjson::Document& d){
 			fact->set(index, item);
 		}
 
-		_init_fact(fact, length, type);
-		builder.fact_set->_declare_back(fact);
+		// _init_fact(fact, length, type);
+		// fact->alloc_buffer = builder.alloc_buffer;
+		builder.fact_set->_declare_back(fact_ref);
 		// _declare_to_empty(builder.fact_set, fact, length, type);
 	}
-	FactSet* fact_set = builder.fact_set;
+	// builder.alloc_buffer->add_ref(fact_infos.size());
+	ref<FactSet> fact_set = builder.fact_set;
 	// delete builder;
 	return fact_set;
 }
@@ -176,25 +180,25 @@ char* _read_file(const char* filename){
 	return buffer;
 }
 
-FactSet* FactSet::from_json_file(const char* filename){
+ref<FactSet> FactSet::from_json_file(const char* filename){
 	char* buffer = _read_file(filename);
 
 	// cout << "buffer: " << buffer << endl;
 	rapidjson::Document d;
 	d.ParseInsitu(buffer);
-	FactSet* fact_set = _FactSet_from_doc(d);
+	ref<FactSet> fact_set = _FactSet_from_doc(d);
 	// FactSet* fact_set = new FactSet();
 	delete[] buffer;
 	return fact_set;
 }
 
-FactSet* FactSet::from_json(char* json_str, size_t length, bool copy_buffer){
+ref<FactSet> FactSet::from_json(char* json_str, size_t length, bool copy_buffer){
 	if(length == size_t(-1)){
 		length = strlen(json_str);
 	}
 	char* buffer;
 	if(copy_buffer){
-		buffer = (char*)malloc(length + 1);
+		buffer = new char[length + 1];
 		std::memcpy(buffer, json_str, length);
 		buffer[length] = '\0';
 	}else{
@@ -203,7 +207,12 @@ FactSet* FactSet::from_json(char* json_str, size_t length, bool copy_buffer){
 
 	rapidjson::Document d;
 	d.ParseInsitu(buffer);
-	return _FactSet_from_doc(d);
+	ref<FactSet> out = _FactSet_from_doc(d);
+
+	if(copy_buffer){
+		delete[] buffer;
+	}
+	return out;
 }
 
 

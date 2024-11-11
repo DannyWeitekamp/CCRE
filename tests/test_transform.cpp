@@ -7,10 +7,12 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
-#include <chrono>
-using namespace std;
-using namespace std::chrono;
+// #include <chrono>
+// using namespace std;
+// using namespace std::chrono;
 
+using std::cout;
+using std::endl;
 
 
 
@@ -39,26 +41,29 @@ void test_flattener(){
 	 	}
 	);
 
-	Fact* snowball = make_fact(CatType, "snowball", "white", 3, false);
-	FactSet* fs = new FactSet();
-	FactSet* flat_fs;
+	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
+	ref<FactSet> fs = new FactSet();
 	fs->declare(snowball);
 
-	auto f = new Flattener(fs);
-	flat_fs = f->apply(fs);
+	cout << "INP:\n" << fs <<endl;
+
+	ref<Flattener> f = new Flattener(fs);
+	ref<FactSet> flat_fs = f->apply(fs);
 	IS_TRUE(f->get_member_inds(snowball->type)->size() == 3);
 	IS_TRUE(flat_fs->size() == 3);
 	cout << "F1:" << *f->get_member_inds(snowball->type) << endl;
 	cout << flat_fs->to_string() << endl;
 
-	auto f2 = new Flattener(fs, {{"semantic", Item(true)}});
+	cout << "INP:\n" << fs <<endl;
+
+	ref<Flattener> f2 = new Flattener(fs, {{"semantic", Item(true)}});
 	flat_fs = f2->apply(fs);
 	IS_TRUE(f2->get_member_inds(snowball->type)->size() == 1);
 	IS_TRUE(flat_fs->size() == 1);
 	cout << "F2:" << *f2->get_member_inds(snowball->type) << endl;
 	cout << flat_fs->to_string() << endl;
 
-	auto f3 = new Flattener(fs, Flattener::default_flags, true);
+	ref<Flattener> f3 = new Flattener(fs, Flattener::default_flags, true);
 	flat_fs = f3->apply(fs);
 	// IS_TRUE(f->get_member_inds(snowball->type)->size() == 3);
 	// IS_TRUE(flat_fs->size() == 3);
@@ -69,7 +74,7 @@ void test_flattener(){
 
 
 
-FactSet* random_cats(size_t N){
+ref<FactSet> random_cats(size_t N){
 
 	FactType* CatType = define_fact("Cat", {
 		 {"id", cre_int, {{"unique_id", true}} },
@@ -105,7 +110,7 @@ FactSet* random_cats(size_t N){
 }
 
 
-FactSet* setup_factset(size_t N, size_t M){
+ref<FactSet> setup_factset(size_t N, size_t M){
 	FactType* BoopType = define_fact("Boop", 
 	    {{"index", cre_str, {{"visible", true}} },
 	     {"name", cre_str, {{"visible", true}}},
@@ -122,16 +127,16 @@ FactSet* setup_factset(size_t N, size_t M){
 }
 
 void bench_flattener(){
-	// FactSet* fs = setup_factset(10000, 3);
-	FactSet* fs = random_cats(10000);
-	auto f = new Flattener(fs);
+	// ref<FactSet> fs = setup_factset(10000, 3);
+	ref<FactSet> fs = random_cats(10000);
+	ref<Flattener> f = new Flattener(fs);
 	time_it_n("flattener apply()", (f->apply(fs));, 500);
 }
 
 void test_vectorizer(){
-	FactSet* fs = random_cats(4);
-	Flattener* flattener = new Flattener(fs);
-	Vectorizer* vectorizer = new Vectorizer();
+	ref<FactSet> fs = random_cats(4);
+	ref<Flattener> flattener = new Flattener(fs);
+	ref<Vectorizer> vectorizer = new Vectorizer();
 
 	auto flat_fs = flattener->apply(fs);
 	cout << "FLAT STATE :" << endl << flat_fs->to_string() << endl;
@@ -160,14 +165,14 @@ void test_vectorizer(){
 
 void bench_vectorizer(){
 	size_t N = 10000;
-	FactSet* fs = random_cats(N);
-	// FactSet* fs = setup_factset(N, 3);
-	auto flattener = new Flattener(fs);
+	ref<FactSet> fs = random_cats(N);
+	// ref<FactSet> fs = setup_factset(N, 3);
+	ref<Flattener> flattener = new Flattener(fs);
 	flattener->_update_init();
-	FactSet* flat_fs = flattener->builder.fact_set;
+	ref<FactSet> flat_fs = flattener->builder.fact_set;
 
 	// for (auto it = flat_fs->begin(); it != flat_fs->end(); ++it) {
-	// 	Fact* fact = *it;
+	// 	ref<Fact> fact = *it;
 	// 	cout << "Fact" << fact << endl;
 	// 	cout << "HASH: " << CREHash{}(fact) << endl;
 	// }
@@ -175,9 +180,10 @@ void bench_vectorizer(){
 	// Vectorizer* vectorizer = new Vectorizer();
 	// vectorizer->apply(flat_fs);
 	// size_t buff_size = //10000*SIZEOF_FACT(3);
-	time_it_n("vectorize new",(new Vectorizer(3*N))->apply(flat_fs); , 100);
+	ref<Vectorizer> vectorizer = new Vectorizer(3*N);
+	time_it_n("vectorize new",(vectorizer=new Vectorizer(3*N))->apply(flat_fs); , 100);
 
-	Vectorizer* vectorizer = new Vectorizer(3*N);
+	
 	vectorizer->apply(flat_fs);
 
 	time_it_n("vectorize reuse",vectorizer->apply(flat_fs);, 100);
@@ -205,9 +211,9 @@ int main(){
 	// cout << "SIZE:" << SIZEOF_FACT(4) << endl;
 
 
-	// test_flattener();
+	test_flattener();
 	// bench_flattener();
-	test_vectorizer();
+	// test_vectorizer();
 	// bench_vectorizer();
 	return 0;
 }

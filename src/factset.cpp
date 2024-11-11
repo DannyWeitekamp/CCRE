@@ -30,7 +30,7 @@ using std::endl;
 // ---- Main C interface ----
 
 extern "C" bool is_declared(Fact* fact){
-	return fact->parent != (FactSet*) NULL;
+	return fact->parent != nullptr;
 }
 
 extern "C" void assert_undeclared(FactSet* fs, Fact* fact){
@@ -50,7 +50,7 @@ extern "C" uint32_t declare(FactSet* fs, Fact* fact){
 	assert_undeclared(fs, fact);
 	
 	// cout << "A" << endl;
-
+	// cout << "refcount before:" << fact->get_refcount() << endl;
 	uint32_t f_id;
 	if(fs->empty_f_ids.size() > 0){
 		// cout << "Insert: " << fs->empty_f_ids.size() << endl;
@@ -62,13 +62,16 @@ extern "C" uint32_t declare(FactSet* fs, Fact* fact){
 	}else{
 		// cout << "Pushback" <<  endl;
 		f_id = (uint32_t) fs->facts.size();	
+		
 		fs->facts.push_back(fact);
+		
 	}
+	// cout << "refcount after:" << fact->get_refcount() << endl;
 	// cout << "B" << endl;
 
 	fact->f_id = f_id;
 	fact->parent = fs;
-	CRE_incref(fact);
+	// fact->inc_ref();
 
 	// cout << "C" << endl;
 	fs->_size++;
@@ -84,26 +87,26 @@ extern "C" void retract_f_id(FactSet* fs, uint32_t f_id){
 	}
 	Fact* fact = fs->facts[f_id];
 
-	if(fact == (Fact*) NULL){
+	if(fact == nullptr){
 		std::stringstream err;
 		err << "Attempt to retract retracted f_id.";
 		throw std::runtime_error(err.str());
 	}
 	
-	fs->facts[f_id] = NULL;
+	fs->facts[f_id] = nullptr;
 	fs->empty_f_ids.push_back(f_id);
 	fs->_size--;
 
 	fact->f_id = 0;
-	fact->parent = (FactSet*) NULL;
-	CRE_decref(fact);
+	fact->parent = nullptr;
+	// fact->dec_ref();
 }
 
 extern "C" void retract(FactSet* fs, Fact* fact){
 	if(fact->parent != fs){
 		std::stringstream err;
 		err << "Attempt to retract ";
-		if(fact->parent == (FactSet *) NULL){
+		if(fact->parent == nullptr){
 			err << "undeclared fact:";
 		}else{
 			err << "fact declared to other FactSet:";
@@ -116,8 +119,8 @@ extern "C" void retract(FactSet* fs, Fact* fact){
 	retract_f_id(fs, f_id);
 }
 
-extern "C" std::vector<Fact*> fs_get_facts(FactSet* fs){
-	std::vector<Fact*> facts = {};
+extern "C" std::vector<ref<Fact>> fs_get_facts(FactSet* fs){
+	std::vector<ref<Fact>> facts = {};
 	facts.reserve(fs->size());
 	for (auto it = fs->begin(); it != fs->end(); ++it) { 
 		Fact* fact = (*it);
@@ -154,10 +157,17 @@ std::string FactSet::to_string(
 
 // ---- Method Declarations ----
 
+void FactSet_dtor(const CRE_Obj* x){
+	cout << "FactSet_dtor:" << uint64_t(x) << endl;
+	// cout << (FactType* ) x << endl; 
+	delete ((FactSet*) x);
+}
+
 FactSet::FactSet(size_t n_facts) :
 	facts({}), empty_f_ids({}), _size(0)
 {
 	this->facts.reserve(n_facts);
+	dtor = &FactSet_dtor;
 	// this->facts = {};
 	// this->empty_f_ids = {};
 	
@@ -188,17 +198,17 @@ void FactSet::retract(Fact* fact){
 }
 
 std::ostream& operator<<(std::ostream& out, FactSet* fs){
-	return out << fs->to_string("FactSet{{ {} }} ", "");
+	return out << fs->to_string("FactSet{{{}}} ", ", ");
 }
 
-Fact* FactSet::add_fact(FactType* type, const Item* items, size_t n_items){
-	Fact* fact = new_fact(type, items, n_items);
+ref<Fact> FactSet::add_fact(FactType* type, const Item* items, size_t n_items){
+	ref<Fact> fact = new_fact(type, items, n_items);
 	this->declare(fact);
 	return fact;
 }
 
-Fact* FactSet::add_fact(FactType* type, const std::vector<Item>& items){
-	Fact* fact = new_fact(type, items);
+ref<Fact> FactSet::add_fact(FactType* type, const std::vector<Item>& items){
+	ref<Fact> fact = new_fact(type, items);
 	this->declare(fact);
 	return fact;
 }

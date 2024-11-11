@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include "../include/cre_obj.h"
+#include "../include/ref.h"
 #include "../include/factset.h"
 #include "../include/incr_processor.h"
 
@@ -21,13 +22,14 @@ std::vector<FlagGroup> _format_flags(
 // std::vector<FlagGroup> default_flags();
 
 
+
 struct Flattener : public IncrementalProcessor {
 	static std::vector<FlagGroup> default_flags;
 		// {FlagGroup()};
 
 
 // -- Members --
-	FactSet* output;
+	ref<FactSet> output;
 
 	// Which flags to target as criteria for flattening
 	std::vector<FlagGroup> flag_groups;	
@@ -79,7 +81,7 @@ struct Flattener : public IncrementalProcessor {
 	size_t _calc_buffer_size();
 	size_t _flatten_fact(Fact* in_fact);
 	size_t _update_init();
-	FactSet* apply(FactSet* fs);
+	ref<FactSet> apply(FactSet* fs);
 };
 
 #endif /* #ifndef _CRE_FLATTENER_H_ */

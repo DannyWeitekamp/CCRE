@@ -4,6 +4,7 @@
 #include <vector>
 #include <bit>
 #include <iostream>
+#include "../include/ref.h"
 #include "../include/alloc_buffer.h"
 #include "../include/item.h"
 #include "../include/cre_obj.h"
@@ -11,6 +12,7 @@
 #include "../include/context.h"
 #include "../include/hash.h"
 #include "../include/intern.h"
+
 
 
 const uint8_t DEFAULT_VERBOSITY = 2;
@@ -105,13 +107,13 @@ public:
   inline size_t size() const {return length;}
 
   std::tuple<size_t, size_t> _format_slice(int _start, int _end);
-  Fact* slice_into(Fact* new_fact,      int start, int end, bool deep_copy=false);
-  Fact* slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy=false);
-  Fact* slice(int start, int end, bool deep_copy=false);
+  ref<Fact> slice_into(Fact* new_fact,      int start, int end, bool deep_copy=false);
+  ref<Fact> slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy=false);
+  ref<Fact> slice(int start, int end, bool deep_copy=false);
 
-  Fact* copy_into(Fact* new_fact, bool deep_copy=false);
-  Fact* copy_into(AllocBuffer& buffer, bool deep_copy=false);
-  Fact* copy(bool deep_copy);
+  ref<Fact> copy_into(Fact* new_fact, bool deep_copy=false);
+  ref<Fact> copy_into(AllocBuffer& buffer, bool deep_copy=false);
+  ref<Fact> copy(bool deep_copy);
 
   bool operator==(const Fact& other) const;
 
@@ -189,13 +191,13 @@ inline void _init_fact(Fact* fact, uint32_t _length, FactType* _type=nullptr, bo
   new (fact) Fact(_length, _type, _immutable);
 }
 
-Fact* empty_fact(FactType* type);
-Fact* empty_untyped_fact(uint32_t _length);
+ref<Fact> empty_fact(FactType* type);
+ref<Fact> empty_untyped_fact(uint32_t _length);
 
-Fact* new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items);
-Fact* new_fact(FactType* type, const Item* items, size_t n_items);
-Fact* new_fact(Fact* fact, FactType* type, const std::vector<Item>& items);
-Fact* new_fact(FactType* type, const std::vector<Item>& items);
+ref<Fact> new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items);
+ref<Fact> new_fact(FactType* type, const Item* items, size_t n_items);
+ref<Fact> new_fact(Fact* fact, FactType* type, const std::vector<Item>& items);
+ref<Fact> new_fact(FactType* type, const std::vector<Item>& items);
 
 
 
@@ -208,7 +210,7 @@ Fact* new_fact(FactType* type, const std::vector<Item>& items);
 
 
 template <class ... Ts>
-Fact* make_fact(FactType* type, Ts && ... inputs){
+ref<Fact> make_fact(FactType* type, Ts && ... inputs){
   // std::cout << std::endl;
   Item items[sizeof...(Ts)];
   // std::vector<Item> items = {};
@@ -232,7 +234,7 @@ Fact* make_fact(FactType* type, Ts && ... inputs){
 
 struct FactView {
     // -- Members --
-    Fact* fact;
+    ref<Fact> fact;
     uint16_t start;
     uint16_t end_;
 

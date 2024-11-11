@@ -18,9 +18,13 @@ struct CRE_Context {
     std::string name;
     std::vector<CRE_Type*> cre_builtins = {};
     std::vector<CRE_Type*> types = {};
+    std::vector<CRE_Type*> overwritten_types = {};
     // std::unordered_map<std::string, uint16_t> type_name_map;
     HashMap<std::string, uint16_t> type_name_map = {};
-    HashSet<std::string> intern_set;
+
+    // Note, is a set of std::string_view instead of std::string
+    //  because std::string will re-allocate data on copy
+    HashSet<std::string_view> intern_set;
 
     CRE_Context(std::string _name);
     size_t _add_type(CRE_Type* t);

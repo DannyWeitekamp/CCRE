@@ -31,7 +31,7 @@ static void cre_obj_dealloc(PyObject *self){
     	// nb::print("~Borrowed Died~: " + nb::cast<std::string>(nb::str(self_handle)) + "refs=" + std::to_string(cpp_self->get_refcount()));
     	// cout << "~Borrowed Died~:" << cpp_self->get_refcount() << endl;    
     	cout << "~Borrowed Died~: " << nb::cast<std::string>(nb::str(self_handle)) << "refs=" << std::to_string(cpp_self->get_refcount()) << endl;    
-    	CRE_decref(cpp_self);//->dec_ref();	
+    	cpp_self->dec_ref();	
     }else{
     	cout << "~Ptr Died~:" << cpp_self->get_refcount() << endl;    
     }

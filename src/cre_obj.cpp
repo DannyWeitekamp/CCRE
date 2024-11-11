@@ -6,7 +6,8 @@
 using std::cout;
 using std::endl;
 
-CRE_Obj::CRE_Obj(){//(CRE_dtor_function _dtor){
+CRE_Obj::CRE_Obj(CRE_dtor_function _dtor):
+	dtor(_dtor), alloc_buffer(nullptr){
 	#ifndef CRE_NONATOMIC_REFCOUNT
 		atomic_init(&this->ref_count, 0);
 		// this->ref_count.store(1, std::memory_order_relaxed);
@@ -15,24 +16,24 @@ CRE_Obj::CRE_Obj(){//(CRE_dtor_function _dtor){
 	#endif
 	// this->ref_count = 1;
 	// this->dtor = _dtor;
-	this->alloc_buffer = (AllocBuffer*) nullptr;
+	// this->alloc_buffer = (AllocBuffer*) nullptr;
 }
 
 int64_t CRE_Obj::get_refcount() noexcept{
 	return ref_count;
 }
 
-void CRE_Obj::operator delete(void* p){
-	CRE_Obj* x = (CRE_Obj*) p;
-	cout << "DELETE:" << x->alloc_buffer << endl;
-	if(x->alloc_buffer == nullptr){
-    	delete p;
-	}else{
-		// NOTE: We need to do this because cannot
-		//  write alloc_buffer as a ref<AllocBuffer> 
-		CRE_decref((CRE_Obj*) x->alloc_buffer);
-	}
-}
+// void CRE_Obj::operator delete(void* p){
+// 	CRE_Obj* x = (CRE_Obj*) p;
+// 	// cout << "DELETE:" << x->alloc_buffer << endl;
+// 	if(x->alloc_buffer == nullptr){
+//     	x->dtor(x);
+// 	}else{
+// 		// NOTE: We need to do this because cannot
+// 		//  write alloc_buffer as a ref<AllocBuffer> 
+// 		((CRE_Obj*) x->alloc_buffer)->dec_ref();
+// 	}
+// }
 
 // extern "C" int64_t CRE_get_refcount(const CRE_Obj* x){
 // 	return x->ref_count;

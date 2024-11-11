@@ -8,11 +8,11 @@
 // Forward Declarations
 class CRE_Obj;
 class AllocBuffer;
-extern "C" void CRE_incref(const CRE_Obj* x);
-extern "C" void CRE_addref(const CRE_Obj* x, size_t n);
-extern "C" void CRE_decref(const CRE_Obj* x);
-extern "C" void CRE_subref(const CRE_Obj* x, size_t n);
-extern "C" int64_t CRE_get_refcount(const CRE_Obj* x);
+// extern "C" void CRE_incref(const CRE_Obj* x);
+// extern "C" void CRE_addref(const CRE_Obj* x, size_t n);
+// extern "C" void CRE_decref(const CRE_Obj* x);
+// extern "C" void CRE_subref(const CRE_Obj* x, size_t n);
+// extern "C" int64_t CRE_get_refcount(const CRE_Obj* x);
 
 // Alias CRE_dtor_function as pointer to void(void*)
 typedef void (*CRE_dtor_function)(const CRE_Obj* ptr);
@@ -32,7 +32,7 @@ private:
 public :
     // When using nanobind proxy_object is a PyObject*
     mutable void*               proxy_obj = nullptr; 
-    // CRE_dtor_function   dtor;
+    CRE_dtor_function   dtor;
     // ref<AllocBuffer>        alloc_buffer = nullptr;
 
     // NOTE: Cannot Use ref<AllocBuffer> becuase would 
@@ -40,8 +40,8 @@ public :
     AllocBuffer*        alloc_buffer = nullptr;
 
     // --- Methods ---
-    // CRE_Obj(CRE_dtor_function dtor = NULL);
-    CRE_Obj();
+    CRE_Obj(CRE_dtor_function dtor = nullptr);
+    // CRE_Obj();
     // ~CRE_Obj(){};
     int64_t get_refcount() noexcept;
 
@@ -61,48 +61,49 @@ public :
     // friend int64_t CRE_get_refcount(const CRE_Obj* x);
 
 
-    inline bool _check_destroy(){
-        if (x->ref_count <= 0) {
-            delete x;
+    inline bool _check_destroy() const noexcept{
+        if (ref_count <= 0) {
+            // delete this;
+            this->dtor(this);
             return true;
         }
         return false;
     }
-    inline void inc_ref(){
+    inline void inc_ref() const noexcept{
         #ifndef CRE_NONATOMIC_REFCOUNT
-            x->ref_count.fetch_add(1, std::memory_order_relaxed);
+            ref_count.fetch_add(1, std::memory_order_relaxed);
         #else
-            x->ref_count++; 
+            ref_count++; 
         #endif
     }
-    inline void add_ref(){
+    inline void add_ref(size_t n) const noexcept{
         #ifndef CRE_NONATOMIC_REFCOUNT
-            x->ref_count.fetch_add(n, std::memory_order_relaxed);
+            ref_count.fetch_add(n, std::memory_order_relaxed);
         #else
-            x->ref_count += n; 
+            ref_count += n; 
         #endif
     }
-    inline bool dec_ref(){
+    inline bool dec_ref() const noexcept{
         #ifndef CRE_NONATOMIC_REFCOUNT
-            x->ref_count.fetch_sub(1, std::memory_order_relaxed);
+            ref_count.fetch_sub(1, std::memory_order_relaxed);
         #else
-            x->ref_count--;
+            ref_count--;
         #endif
 
-        return _check_destroy(x);
+        return _check_destroy();
     }
-    inline bool sub_ref(){
+    inline bool sub_ref(size_t n) const noexcept{
         // cout << "INCREF" << endl;
         #ifndef CRE_NONATOMIC_REFCOUNT
-            x->ref_count.fetch_sub(n, std::memory_order_relaxed);
+            ref_count.fetch_sub(n, std::memory_order_relaxed);
         #else
-            x->ref_count -= n; 
+            ref_count -= n; 
         #endif
 
-        return _check_destroy(x);
+        return _check_destroy();
     }
 
-    void operator delete(void * p);
+    // void operator delete(void * p);
 };
 
 #endif /* _CRE_OBJ_H_ */

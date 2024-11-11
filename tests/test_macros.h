@@ -1,8 +1,12 @@
 #include <chrono>
 #include <cassert>
 
-using namespace std;
-using namespace chrono;
+using std::cout;
+using std::endl;
+using std::fixed;
+using std::chrono::duration_cast;
+using std::chrono::high_resolution_clock;
+using std::chrono::microseconds;
 // If parameter is not true, test fails
 // This check function would be provided by the test framework
 #define IS_TRUE(x) { if (!(x)) cout << __FUNCTION__ << " failed on line " << __LINE__ << endl; }

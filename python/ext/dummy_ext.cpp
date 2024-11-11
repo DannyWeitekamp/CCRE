@@ -68,7 +68,7 @@ static void cre_obj_dealloc(PyObject *self){
     // When the Python proxy object is collected remove 
     //   the C++ object's reference to it so it isn't reused
     cpp_self->proxy_obj = nullptr;
-    CRE_decref(cpp_self);//->dec_ref();
+    cpp_self->dec_ref();
 }
 
 // PyObject *myclass_tp_add(PyObject *a, PyObject *b) {
