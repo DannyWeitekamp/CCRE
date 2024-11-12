@@ -224,8 +224,13 @@ ref<Fact> Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy)
 ref<Fact> Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy){
 	auto [start, end] = _format_slice(_start, _end);
 	size_t length = end-start;
-	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length));
+	bool did_malloc = false;
+	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length), did_malloc);
 	_copy_fact_slice(this, new_fact, start, end);
+	if(!did_malloc){
+		new_fact->alloc_buffer = &buffer;
+		buffer.inc_ref();
+	}
 	return new_fact;
 }
 
@@ -233,14 +238,18 @@ ref<Fact> Fact::slice(int _start, int _end, bool deep_copy){
 	auto [start, end] = _format_slice(_start, _end);
 	size_t length = end-start;
 	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
-
 	_copy_fact_slice(this, new_fact, start, end);
 	return new_fact;
 }
 
 ref<Fact> Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
-	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length));
+	bool did_malloc = false;
+	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length), did_malloc);
 	_copy_fact_slice(this, new_fact, 0, this->length);
+	if(!did_malloc){
+		new_fact->alloc_buffer = &buffer;
+		buffer.inc_ref();
+	}
 	return new_fact;
 }
 

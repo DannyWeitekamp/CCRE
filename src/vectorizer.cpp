@@ -48,11 +48,11 @@ size_t Vectorizer::_get_nom_slot(Fact* fact){
 		//  avoids borrowing a reference to 'fact' and possibly leaking its
 		//  AllocBuffer (in the case where it wasn't alloced with malloc);
 		FactView* fv_ptr = (FactView*) &(it->first);
-		Fact* fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
+		ref<Fact> fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
 		fv_ptr->fact = fact_slice;
 
 		// The sliced copy is used directly by inverse maps
-		inv_nom_slot_map.push_back(fact_slice);
+		inv_nom_slot_map.push_back(std::move(fact_slice));
 	}else{
 		slot = it->second;
 	}
@@ -68,9 +68,9 @@ size_t Vectorizer::_get_flt_slot(Fact* fact){
 	auto [it, inserted] = flt_slot_map.try_emplace(fv, slot);
 	if(inserted){
 		FactView* fv_ptr = (FactView*) &(it->first);
-		Fact* fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
+		ref<Fact> fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
 		fv_ptr->fact = fact_slice;
-		inv_flt_slot_map.push_back(fact_slice);
+		inv_flt_slot_map.push_back(std::move(fact_slice));
 	}else{
 		slot = it->second;
 	}
@@ -175,7 +175,7 @@ std::tuple<std::vector<uint64_t>, std::vector<double>>
 
 // TODO: should probably return a reference
 
-Fact* Vectorizer::invert(size_t slot, size_t value){
+ref<Fact> Vectorizer::invert(size_t slot, size_t value){
 	bool is_not = false;
 
 	// If one-hot, map back to nom_slot + nom_enc
@@ -192,17 +192,17 @@ Fact* Vectorizer::invert(size_t slot, size_t value){
 		return fact_head;
 	}else{
 		Item item = inv_enumerize_map.at(value);
-		Fact* full_fact = fact_head->slice(0, int(fact_head->length+1));
+		ref<Fact> full_fact = fact_head->slice(0, int(fact_head->length+1));
 		full_fact->set_unsafe(fact_head->length, item);
 		return full_fact;
 	}
 }
 
-Fact* Vectorizer::invert(size_t slot, double value){
+ref<Fact> Vectorizer::invert(size_t slot, double value){
 	Fact* fact_head = inv_flt_slot_map.at(slot);
 	// cout << "head: " << uint64_t(fact_head) << endl;
 	// cout << "head: " << fact_head << endl;
-	Fact* full_fact = fact_head->slice(0, int(fact_head->length+1));
+	ref<Fact> full_fact = fact_head->slice(0, int(fact_head->length+1));
 	full_fact->set_unsafe(fact_head->length, Item(value));
 	return full_fact;
 }

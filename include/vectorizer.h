@@ -32,15 +32,15 @@ struct Vectorizer : public IncrementalProcessor{
 
 	// A buffer for copying fact slices into
 	//   size is determined by 'max_heads'
-	AllocBuffer* buffer; 
+	ref<AllocBuffer> buffer; 
 
 	// Map: Fact Head -> nominal slot
 	HashMap<FactView, size_t> nom_slot_map = {};
-	std::vector<Fact*> inv_nom_slot_map = {};
+	std::vector<ref<Fact>> inv_nom_slot_map = {};
 	
 	// Map: Fact Head -> float slot
-	std::vector<Fact*> inv_flt_slot_map = {};
 	HashMap<FactView, size_t> flt_slot_map = {};
+	std::vector<ref<Fact>> inv_flt_slot_map = {};
 
 	// Map: Fact Value (last item) -> nominal_encoding
 	HashMap<Item, size_t> enumerize_map = {{Item(), 0}};
@@ -74,8 +74,8 @@ struct Vectorizer : public IncrementalProcessor{
 	void _init_new(FactSet* fs);
 	void _map_fact(Fact* fact);
 
-	Fact* invert(size_t slot, size_t value);
-	Fact* invert(size_t slot, double value);
+	ref<Fact> invert(size_t slot, size_t value);
+	ref<Fact> invert(size_t slot, double value);
 	// void insert_onehot(Fact* fact);
 };
 

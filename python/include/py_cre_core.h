@@ -16,6 +16,7 @@
 
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
+#include <nanobind/make_iterator.h>
 #include <nanobind/ndarray.h>
 
 namespace nb = nanobind;
@@ -25,7 +26,8 @@ using std::endl;
 
 // Defined in py_cre_core.cpp
 Item Item_from_py(nb::handle py_obj);
-std::string_view Type_name_from_py(nb::handle py_obj);
+nb::object Item_to_py(Item item);
+std::string Type_name_from_py(nb::handle py_obj);
 FactType* FactType_from_py(nb::handle py_obj);
 CRE_Type* Type_from_py(nb::handle py_obj);
 FlagGroup dict_to_flag_group(nb::dict py_dict);

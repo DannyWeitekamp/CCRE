@@ -93,7 +93,7 @@ ref<FactSet> random_cats(size_t N){
 	std::vector<bool> friskies = {true, false};
 
 	size_t M = CatType->members.size();
-	FactSetBuilder* fs_builder = new FactSetBuilder(N, N*SIZEOF_FACT(M));
+	FactSetBuilder fs_builder = FactSetBuilder(N, N*SIZEOF_FACT(M));
 	for(int i=0; i < N; i++){
 		std::vector<Item> items = {
 		 Item(i),
@@ -104,13 +104,13 @@ ref<FactSet> random_cats(size_t N){
 		 Item(rand_flt()),
 		 Item(rand_flt())
 		};
-		fs_builder->add_fact(CatType, items);
+		fs_builder.add_fact(CatType, items);
 	}
-	return fs_builder->fact_set;
+	return fs_builder.fact_set;
 }
 
 
-ref<FactSet> setup_factset(size_t N, size_t M){
+ref<FactSet> setup_factset(size_t N){
 	FactType* BoopType = define_fact("Boop", 
 	    {{"index", cre_str, {{"visible", true}} },
 	     {"name", cre_str, {{"visible", true}}},
@@ -118,19 +118,19 @@ ref<FactSet> setup_factset(size_t N, size_t M){
 	 	}
 	);
 
-	FactSetBuilder* fs_builder = new FactSetBuilder(N, N*(sizeof(Fact) + sizeof(Item)*M));
+	FactSetBuilder fs_builder = FactSetBuilder(N, N*SIZEOF_FACT(3));
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		fs_builder->add_fact(BoopType, items.data(), items.size());
+		fs_builder.add_fact(BoopType, items.data(), items.size());
 	}
-	return fs_builder->fact_set;
+	return fs_builder.fact_set;
 }
 
-void bench_flattener(){
+void bench_flattener(size_t N = 1000, size_t reps = 500){
 	// ref<FactSet> fs = setup_factset(10000, 3);
-	ref<FactSet> fs = random_cats(10000);
+	ref<FactSet> fs = random_cats(N);
 	ref<Flattener> f = new Flattener(fs);
-	time_it_n("flattener apply()", (f->apply(fs));, 500);
+	time_it_n("flattener apply()", (f->apply(fs));, reps);
 }
 
 void test_vectorizer(){
@@ -151,7 +151,6 @@ void test_vectorizer(){
 	cout << nom_vec << endl;
 	cout << flt_vec << endl;
 
-	// for(size_t v : nom_vec){
 	for(int i=0; i < nom_vec.size(); i++){
 		auto inverse = vectorizer->invert(i, nom_vec[i]);
 		cout << "nv[" << i << "]=" << nom_vec[i] << "  " << inverse << endl;
@@ -163,8 +162,8 @@ void test_vectorizer(){
 	}
 }
 
-void bench_vectorizer(){
-	size_t N = 10000;
+void bench_vectorizer(size_t N = 1000, size_t reps=500){
+	
 	ref<FactSet> fs = random_cats(N);
 	// ref<FactSet> fs = setup_factset(N, 3);
 	ref<Flattener> flattener = new Flattener(fs);
@@ -181,12 +180,12 @@ void bench_vectorizer(){
 	// vectorizer->apply(flat_fs);
 	// size_t buff_size = //10000*SIZEOF_FACT(3);
 	ref<Vectorizer> vectorizer = new Vectorizer(3*N);
-	time_it_n("vectorize new",(vectorizer=new Vectorizer(3*N))->apply(flat_fs); , 100);
+	time_it_n("vectorize new",(vectorizer=new Vectorizer(3*N))->apply(flat_fs); , reps);
 
 	
 	vectorizer->apply(flat_fs);
 
-	time_it_n("vectorize reuse",vectorizer->apply(flat_fs);, 100);
+	time_it_n("vectorize reuse",vectorizer->apply(flat_fs);, reps);
 }
 
 
@@ -211,9 +210,11 @@ int main(){
 	// cout << "SIZE:" << SIZEOF_FACT(4) << endl;
 
 
-	test_flattener();
-	// bench_flattener();
+	// test_flattener();
+	// bench_flattener(10, 1);
+	bench_flattener(1000, 500);
 	// test_vectorizer();
-	// bench_vectorizer();
+	// bench_vectorizer(10, 1);
+	bench_vectorizer(1000, 500);
 	return 0;
 }

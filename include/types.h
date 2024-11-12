@@ -140,10 +140,10 @@ struct FactType : public CRE_Type{
          CRE_Context* context=nullptr
     );
 
-    int get_attr_index(std::string_view key);
+    int get_attr_index(const std::string_view& attr);
     std::string get_item_attr(int index);
     CRE_Type* get_item_type(int index);
-    CRE_Type* get_attr_type(std::string_view name);
+    CRE_Type* get_attr_type(const std::string_view& name);
     void ensure_finalized();
     bool try_finalized();
     inline size_t size(){return members.size();}

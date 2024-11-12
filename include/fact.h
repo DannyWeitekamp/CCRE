@@ -96,12 +96,49 @@ public:
     data_ptr[a_id] = val;
   }
 
+  
+  /* TODO: What is up with these?
+  inline Item& operator[](uint32_t a_id) {
+    Item* data_ptr = std::bit_cast<Item*>(
+        std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    );
+    return data_ptr[a_id];
+  }
+
+  inline Item operator[](uint32_t a_id) const {
+    Item* data_ptr = std::bit_cast<Item*>(
+        std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    );
+    return data_ptr[a_id];
+  }
+  */
+
   inline Item* get(uint32_t a_id) const {
     Item* data_ptr = std::bit_cast<Item*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)
     );
     return &data_ptr[a_id];
   }
+
+  inline Item* get(const std::string_view& attr) const {
+    if(type == nullptr){
+      throw std::invalid_argument("Attribute name [\"" + std::string(attr) +
+          "\"] undefined for untyped Fact.");
+    }
+
+    int index = type->get_attr_index(attr);
+    if(index == -1){
+      throw std::invalid_argument("No attribute [\"" + std::string(attr) +
+          "\"] in Fact of type \"" + type->name + "\".");
+    }
+
+    Item* data_ptr = std::bit_cast<Item*>(
+        std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    );
+    return &data_ptr[index];
+  }
+  
+  
   std::vector<Item*> get_items() const;
   // std::string to_string();
   inline size_t size() const {return length;}
@@ -240,7 +277,9 @@ struct FactView {
 
 
     // -- Methods --
-    explicit FactView(Fact* _fact, int _start, int _end) : fact(_fact) {
+    explicit FactView(Fact* _fact, int _start, int _end) :
+        fact(_fact) {
+
         start = uint16_t(_start >= 0 ? _start : fact->length + _start);
         end_ = uint16_t(_end >= 0 ? _end : fact->length + _end);
 
@@ -281,6 +320,7 @@ struct FactView {
       }
       return fact->get(start + index);
     }
+    
 
     // Subscript operator for direct access
     Item operator[](size_t index) {

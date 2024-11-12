@@ -22,7 +22,7 @@ static void cre_obj_dealloc(PyObject *self){
     
     // inst_dealloc(self);
     // if(nb_inst_dealloc){
-    (*nb_inst_dealloc)(self);
+    
     // }
     // When the Python proxy object is collected remove 
     //   the C++ object's reference to it so it isn't reused
@@ -30,11 +30,13 @@ static void cre_obj_dealloc(PyObject *self){
     if(((nb::detail::nb_inst*) self)->unused == 17){
     	// nb::print("~Borrowed Died~: " + nb::cast<std::string>(nb::str(self_handle)) + "refs=" + std::to_string(cpp_self->get_refcount()));
     	// cout << "~Borrowed Died~:" << cpp_self->get_refcount() << endl;    
-    	cout << "~Borrowed Died~: " << nb::cast<std::string>(nb::str(self_handle)) << "refs=" << std::to_string(cpp_self->get_refcount()) << endl;    
+    	// cout << "~Borrowed Died~: " << nb::cast<std::string>(nb::str(self_handle)) << "refs=" << std::to_string(cpp_self->get_refcount()) << endl;    
     	cpp_self->dec_ref();	
     }else{
-    	cout << "~Ptr Died~:" << cpp_self->get_refcount() << endl;    
+    	// cout << "~Ptr Died~:" << cpp_self->get_refcount() << endl;    
     }
+
+    (*nb_inst_dealloc)(self);
 }
 
 PyType_Slot cre_obj_slots[] = {
@@ -71,19 +73,39 @@ Item Item_from_py(nb::handle py_obj){
     }
 }
 
+nb::object Item_to_py(Item item){
+	uint16_t t_id = item.t_id;
+	switch(t_id) {
+        case T_ID_NULL:
+           	return nb::none();
+        case T_ID_BOOL:
+            return nb::cast(item.as_bool());
+        case T_ID_INT:
+        	return nb::cast(item.as_int());
+        case T_ID_FLOAT:
+        	return nb::cast(item.as_float());
+        case T_ID_STR:
+        	return nb::cast(item.as_string());
+        case T_ID_FACT:
+            return nb::cast(ref<Fact>(std::bit_cast<Fact*>(item.val)));
+        default:
+        	throw std::runtime_error("Conversion Not Implemented t_id="+std::to_string(t_id));    
+    }
+}
+
 // ------------------------------------------------------------------
 // : Type Conversion
 
-std::string_view Type_name_from_py(nb::handle py_obj){
+std::string Type_name_from_py(nb::handle py_obj){
     // nb:print("Type name from py: ", py_obj);
-    std::string_view type_name = "";
+    std::string type_name = "";
     if(nb::isinstance<nb::str>(py_obj)){
-        type_name = nb::cast<std::string_view>(py_obj);
+        type_name = nb::cast<std::string>(py_obj);
     }else if(nb::isinstance<CRE_Type>(py_obj)){
     	type_name = nb::cast<CRE_Type*>(py_obj)->name;
-    	cout << "IS CRE_TYPE: " << type_name << endl;
+    	// cout << "IS CRE_TYPE: " << type_name << endl;
     }else if(py_obj.is_type() && !py_obj.is_none()){
-        type_name = nb::cast<std::string_view>(nb::getattr(py_obj, "__name__"));
+        type_name = nb::cast<std::string>(nb::getattr(py_obj, "__name__"));
     }else{
         throw std::runtime_error("Expecting string or type object to resolve type name, but got: \"" + nb::cast<std::string>(nb::str(py_obj)) + "\"");
     }
@@ -91,12 +113,12 @@ std::string_view Type_name_from_py(nb::handle py_obj){
 }
 
 FactType* FactType_from_py(nb::handle py_obj){
-    std::string_view type_name = Type_name_from_py(py_obj);
+    std::string type_name = Type_name_from_py(py_obj);
     return current_context->get_fact_type(type_name); // throws if not found
 }
 
 CRE_Type* Type_from_py(nb::handle py_obj){
-    std::string_view type_name = Type_name_from_py(py_obj);
+    std::string type_name = Type_name_from_py(py_obj);
     return current_context->get_type(type_name); // throws if not found
 }
 
@@ -159,7 +181,7 @@ FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
         // if(nb::isinstance<nb::str>(type_handle)){
             // auto type_name = Type_from_py(type_handle);//::cast<std::string>(type_handle);
         // mbr_type = Type_from_py(type_handle);//current_context->get_type(type_name);
-        std::string_view mbr_type_name = Type_name_from_py(type_handle);
+        std::string mbr_type_name = Type_name_from_py(type_handle);
         // if(mbr_type == nullptr){
         //     throw std::runtime_error("Fact type not found.");
         // }

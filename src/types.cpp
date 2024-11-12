@@ -83,7 +83,7 @@ MemberSpec::MemberSpec(
             std::string_view _name,
             std::string_view _type_name,
             const HashMap<std::string, Item>& _flags) :
-    name(_name){
+    name(_name), flags(default_mbr_flags){
     CRE_Type* _type  = current_context->_get_type(_type_name);
     if(_type == nullptr){
         _type = new DefferedType(_type_name);
@@ -140,7 +140,7 @@ bool _try_finalized(FactType* _this, bool do_throw){
                 // std::cout << "RESOLVE TYPE" << std::endl;
                 delete mbr_type;
                 mbr_spec->type = resolved_type;    
-                std::cout << "RESOLVE TYPE: " << uint64_t(resolved_type) << " " << resolved_type << std::endl;
+                // std::cout << "RESOLVE TYPE: " << uint64_t(resolved_type) << " " << resolved_type << std::endl;
             }else{
                 // std::cout << "FAIL RESOLVE TYPE" << std::endl;
                 if(!do_throw){
@@ -173,7 +173,7 @@ uint64_t MemberSpec::get_flag(uint64_t flag){
 
 
 void FactType_dtor(const CRE_Obj* ptr){
-    cout << "Type_dtor: " << ((FactType* ) ptr)->name << endl;
+    // cout << "Type_dtor: " << ((FactType* ) ptr)->name << endl;
     delete ((FactType* ) ptr);
 }
 
@@ -259,9 +259,9 @@ inline void _ensure_index_okay(FactType* type, int index, const std::string& des
 }
 
 
-int FactType::get_attr_index(std::string_view key){
+int FactType::get_attr_index(const std::string_view& attr){
     for(size_t i = 0; i < this->members.size(); i++){
-        if(this->members[i].name == key){
+        if(this->members[i].name == attr){
             return i;
         }
     }
@@ -278,11 +278,11 @@ CRE_Type* FactType::get_item_type(int index){
     return this->members[index].type;
 }
 
-CRE_Type* FactType::get_attr_type(std::string_view name){
+CRE_Type* FactType::get_attr_type(const std::string_view& name){
     int index = this->get_attr_index(name);
     if(index == -1){
-        std::cout << uint64_t(this) << " L=" << this->name.length() << std::endl;
-        std::cout << "<<" << name << ", " << this->name << std::endl;
+        // std::cout << uint64_t(this) << " L=" << this->name.length() << std::endl;
+        // std::cout << "<<" << name << ", " << this->name << std::endl;
         throw std::runtime_error("get_attr_type('" + 
             std::string(name) + "') failed for type " + this->name + 
             " with " + std::to_string(this->members.size()) + " members." 

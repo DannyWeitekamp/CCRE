@@ -61,7 +61,7 @@ Flattener::Flattener(
 	subj_ind(_triple_order == TRIPLE_ORDER_SPO ? 0 : 1),
 	pred_ind(_triple_order == TRIPLE_ORDER_SPO ? 1 : 0)
 	{
-	cout << "CONSTRUCT:" << _input->get_refcount() << endl;
+	// cout << "CONSTRUCT:" << _input->get_refcount() << endl;
 	dtor = &Flattener_dtor;
 }
 
@@ -150,7 +150,7 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		// builder.alloc_buffer->inc_ref();
 		// _init_fact()
 		// builder->add_fact(s)
-		builder.fact_set->_declare_back(subj_fact);
+		builder.fact_set->_declare_back(std::move(subj_fact));
 		// _declare_to_empty(builder.fact_set, subj_fact, 1, NULL);	
 		// id_item = Item(subj_fact);
 		// cout << "SUBJ FACT: " << subj_fact << endl;
@@ -165,13 +165,13 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		if(type != nullptr && ind < type->members.size()){
 			out_fact->set_unsafe(pred_ind /* 1 or 0 */,
 			 			type->member_names_as_items[ind]);
-			cout << "FLAT PRED: " << type->member_names_as_items[ind] << uint64_t(type->member_names_as_items[ind].val) << endl;
+			// cout << "FLAT PRED: " << type->member_names_as_items[ind] << uint64_t(type->member_names_as_items[ind].val) << endl;
 		}else{
 			out_fact->set(pred_ind /* 1 or 0 */, int(ind));
 		}
 		out_fact->set_unsafe(2, *in_fact->get(ind));	
 		// out_fact->immutable = true;
-		builder.fact_set->_declare_back(out_fact);
+		builder.fact_set->_declare_back(std::move(out_fact));
 		// out_fact->alloc_buffer = builder.alloc_buffer;
 		// builder.alloc_buffer->inc_ref();
 		// _declare_to_empty(builder.fact_set, out_fact, 3, NULL);
@@ -197,7 +197,7 @@ size_t Flattener::_update_init(){
 	size_t buffer_size = _calc_buffer_size();
 	builder = FactSetBuilder(input->size(), buffer_size);
 
-	cout << "OUTPUT:" <<  builder.fact_set->get_refcount() << endl;
+	// cout << "OUTPUT:" <<  builder.fact_set->get_refcount() << endl;
 	for (auto it = input->begin(); it != input->end(); ++it) {
 		Fact* fact = *it;
 		_flatten_fact(fact);
@@ -206,7 +206,7 @@ size_t Flattener::_update_init(){
 }
 
 ref<FactSet> Flattener::apply(FactSet* fs){
-	cout << "INPUTT:" <<  fs->get_refcount() << endl;
+	// cout << "INPUTT:" <<  fs->get_refcount() << endl;
 	input = fs;
 	_update_init();
 	return builder.fact_set;

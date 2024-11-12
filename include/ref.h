@@ -179,8 +179,8 @@ template <typename T> struct type_caster<ref<T>> {
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
         nb_inst* out_inst = (nb_inst*) py_out.ptr();
         out_inst->unused = 17;
-        std::cout << "CPP DELETE: "  << out_inst->cpp_delete << std::endl; 
-        std::cout << "INTRUSIVE: "  << out_inst->intrusive << std::endl; 
+        // std::cout << "CPP DELETE: "  << out_inst->cpp_delete << std::endl; 
+        // std::cout << "INTRUSIVE: "  << out_inst->intrusive << std::endl; 
         // auto _is = inst_state(py_out);
         // std::cout << "-- " << cast<std::string>(str(py_out)) << " STATE: ready=" <<  _is.first << ", destruct=" <<  _is.second << std::endl;
         // std::cout << "STATE: " << _is.first << ", " << _is.second << std::endl;

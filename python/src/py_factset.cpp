@@ -2,6 +2,7 @@
 #include "../../include/factset.h"
 
 
+
 static ref<FactSet> _FactSet_from_dict(nb::dict d) {
     // Globals
     // cout << "START" << endl;
@@ -81,7 +82,7 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
         size_t length = std::get<2>(fact_info);
         // size_t offset = std::get<3>(fact_info);
 
-        Fact* __restrict fact = builder.add_empty(length, type);
+        ref<Fact> fact = builder.add_empty(length, type);
         fact->type = type;
 
         if(nb::isinstance<nb::dict>(fact_obj)){
@@ -137,8 +138,30 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
 
 void init_factset(nb::module_ & m){
 	nb::class_<FactSet>(m, "FactSet", nb::type_slots(cre_obj_slots))
+
+	// NOTE: Dumb issue where new_ doesn't take 
+	.def(nb::new_([](){
+		return ref<FactSet>(new FactSet());
+	}), nb::rv_policy::reference)
+
+	.def(nb::new_([](size_t n_facts){
+		return ref<FactSet>(new FactSet(n_facts));
+	}), "n_facts"_a, nb::rv_policy::reference)
+
     .def("__str__", &FactSet::to_string, "format"_a="FactSet{{\n  {}\n}}", "delim"_a="\n  ")
     .def("__len__", &FactSet::size)
+
+
+    .def("__iter__",  [](FactSet& fs) {
+            return nb::make_iterator(nb::type<FactSet>(), "iterator",
+                                     fs.begin(), fs.end());
+        }, nb::keep_alive<0, 1>(), nb::rv_policy::reference
+    )
+
+    .def("declare", &FactSet::declare)
+    // .def("declare", [](FactSet& self, ref<Fact> fact){
+    // 	return self.declare(fact);
+    // })
     .def_static("from_dict", &_FactSet_from_dict, nb::rv_policy::reference)
     .def_static("from_json", [](nb::str json)->ref<FactSet>{
         std::string json_str = nb::cast<std::string>(json);

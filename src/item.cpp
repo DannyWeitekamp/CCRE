@@ -119,7 +119,7 @@ Item::Item(const std::string_view& arg) {
 
     *this = std::bit_cast<Item>(item);
 
-    cout << "ME: " << *this << ", " << uint64_t(data) << endl;
+    // cout << "ME: " << *this << ", " << uint64_t(data) << endl;
     // Item generic_item = std::bit_cast<Item>(item);
     // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
     // return generic_item;
