@@ -2,28 +2,30 @@
 #include "../../include/factset.h"
 
 
-
-static ref<FactSet> _FactSet_from_dict(nb::dict d) {
-    // Globals
-    // cout << "START" << endl;
+std::tuple<
+	std::vector<std::tuple<nb::handle, FactType*, size_t, size_t>>,
+	HashMap<std::string_view, size_t>,
+	size_t
+>
+_collect_fact_infos(nb::handle py_collection){
     auto ref_type_obj = nb::str("type");
-    CRE_Context* context = current_context;
+    // CRE_Context* context = current_context;
 
     std::vector<std::tuple<nb::handle, FactType*, size_t, size_t>> fact_infos;
     HashMap<std::string_view, size_t> fact_map = {};
 
-    // cout << "A" << endl;
-
-    fact_infos.reserve(d.size());
-    fact_map.reserve(d.size());
-    size_t byte_offset = 0;
     size_t index = 0;
-    for (auto [key, val] : d) {
+    size_t byte_offset = 0;
 
-        // TODO: Handle integer keys
+    // Lambda Function
+    auto make_fact_info = [&](
+    	const std::string_view& fact_id,
+    	nb::handle val
+    ){
+    	// TODO: Handle integer keys
         // if(nb::isinstance<nb::int>(key)):
             // std::to_string()
-        std::string_view fact_id = nb::cast<std::string_view>(key);
+        
         size_t length; 
         FactType* type = nullptr;
 
@@ -66,12 +68,126 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
         if(!inserted){
             throw std::runtime_error("Duplicate fact identifier: " + std::string(fact_id));
         }
-        byte_offset += SIZEOF_FACT(length);//sizeof(Fact) + sizeof(Item) * length;
-        index++;
+        byte_offset += SIZEOF_FACT(length);//sizeof(Fact) + sizeof(Item) * length;   
+    };
+
+    if(nb::isinstance<nb::dict>(py_collection)){
+    	nb::dict d = nb::cast<nb::dict>(py_collection);
+	    fact_infos.reserve(d.size());
+	    fact_map.reserve(d.size());
+	    for (auto [key, val] : d) {
+	    	std::string_view fact_id = nb::cast<std::string_view>(key);
+	        make_fact_info(fact_id, val);
+	        index++;
+	    }
+	}else if(nb::isinstance<nb::list>(py_collection)) {
+		nb::list lst = nb::cast<nb::list>(py_collection);
+		fact_infos.reserve(lst.size());
+	    fact_map.reserve(lst.size());
+	    for (auto val : lst) {
+	    	std::string fact_id = std::to_string(index);
+	    	make_fact_info(fact_id, val);
+	        index++;
+	    }
+	}
+	return std::make_tuple(fact_infos, fact_map, byte_offset);
+}
+
+Item _resolve_possible_ref(Item item, 
+						   CRE_Type* mbr_type,
+						   const std::string_view& ref_prefix,
+						   HashMap<std::string_view, size_t>& fact_map,
+						   const std::vector<std::tuple<nb::handle, FactType*, size_t, size_t>>& fact_infos,
+						   const FactSetBuilder& builder 
+	){
+	if(item.t_id == T_ID_STR){
+        std::string_view item_str = item.as_string();
+
+        // Reference to another fact
+        size_t ref_len = ref_prefix.size();
+        std::string_view ref_str = {};
+
+        // If the prefix is present like "@bob"
+        if(item_str.length() > 0 && 
+           !item_str.compare(0, ref_len, ref_prefix)
+           ){
+            ref_str = std::string_view(
+            	item_str.data()+ref_len,
+            	item_str.length()-ref_len
+            );
+
+        // If or if the member's type is FactType
+        }else if(mbr_type && 
+        		 mbr_type->t_id == T_ID_FACT){
+        	ref_str = item_str;
+        }
+
+        if(ref_str.size() > 0){
+        	auto itr = fact_map.find(ref_str);
+        	if(itr == fact_map.end()){
+        		throw std::invalid_argument(
+        			"Cannot resolve identifier \"" + std::string(item_str) + "\" for Fact reference." 
+        		);
+        	}
+        	size_t index = itr->second;
+            size_t offset = std::get<3>(fact_infos[index]);
+            Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
+            item = Item(fact_ptr);
+        }
     }
+    return item;
+}
+
+// template <
+// 	// Main Types
+// 	typename container_t,
+// 	typename dict_t,
+// 	typename list_t,
+// 	typename obj_t,
+// 	typename attr_get_t,
+
+// 	typename is_dict,
+// 	typename is_list,
+
+// 	typename to_dict,
+// 	typename to_list,
+// 	typename to_item,	
+// >
+// class FactSetTranslator {
+//     std::string_view type_attr="type";
+//     std::string_view ref_prefix="@";
+//     HashMap<std::string_view, size_t> fact_map = {};
+//     std::vector<std::tuple<obj_t, FactType*, size_t, size_t>>& fact_infos = {};
+//     FactSetBuilder builder;
+
+//     FactSetTranslator(
+//     	const std::string_view& type_attr="type", 
+// 		const std::string_view& ref_prefix="@") : type_attr(_type_attr), ref_prefix(_ref_prefix){
+//     }
+
+//     void _collect_fact_infos(container_t container){
+
+//     }
+
+//     ref<FactSet> translate(container_t container){
+//     	fact_infos = {};
+//     	fact_map = {};
+
+
+//     }
+// }
+
+
+static ref<FactSet> _FactSet_from_py(
+	nb::handle py_collection,
+	const std::string_view& type_attr="type", 
+	const std::string_view& ref_prefix="@") {
+
+
+	auto [fact_infos, fact_map, n_bytes] = _collect_fact_infos(py_collection);
 
     // cout << "byte_offset:" << byte_offset << endl;
-    FactSetBuilder builder = FactSetBuilder(d.size(), byte_offset);
+    FactSetBuilder builder = FactSetBuilder(fact_infos.size(), n_bytes);
 
     // --------------
     // : Second Pass: Building Each object
@@ -91,13 +207,13 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
 
                 std::string_view key_str = nb::cast<std::string_view>(key);
                 // Ignore the 'type' member (handled above)
-                if(key_str == "type"){
+                if(key_str == type_attr){
                     continue;
                 }
 
                 // If the key is a number then used it as the index
                 char* p;
-                int64_t index = strtol (key_str.data(),&p,10);
+                int64_t index = strtol(key_str.data(),&p,10);
                 if(*p != 0) index = -1;
 
                 // Otherwise get the key's index from the fact type
@@ -113,18 +229,11 @@ static ref<FactSet> _FactSet_from_dict(nb::dict d) {
                 }
 
                 Item item = Item_from_py(val);
-                if(item.t_id == T_ID_STR){
-                    std::string_view item_str = item.as_string();
-
-                    // Reference to another fact
-                    if(item_str.length() > 0 && item_str[0] == '@'){
-                        std::string_view ref_str = std::string_view(item_str.data()+1, item_str.length()-1);
-                        size_t index = fact_map[ref_str];
-                        size_t offset = std::get<3>(fact_infos[index]);
-                        Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
-                        item = Item(fact_ptr);
-                    }
-                }
+                item = _resolve_possible_ref(item,
+                	index == -1 ? nullptr : type->members[index].type,
+                	ref_prefix, fact_map, fact_infos, builder
+                );
+                
                 fact->set(index, item);
             }
             // _init_fact(fact, length, type);
@@ -162,7 +271,8 @@ void init_factset(nb::module_ & m){
     // .def("declare", [](FactSet& self, ref<Fact> fact){
     // 	return self.declare(fact);
     // })
-    .def_static("from_dict", &_FactSet_from_dict, nb::rv_policy::reference)
+    .def_static("from_py", &_FactSet_from_py,
+     	"obj"_a, "type_attr"_a="type", "ref_prefix"_a="@",  nb::rv_policy::reference)
     .def_static("from_json", [](nb::str json)->ref<FactSet>{
         std::string json_str = nb::cast<std::string>(json);
         return FactSet::from_json(json_str.data(), json_str.size());

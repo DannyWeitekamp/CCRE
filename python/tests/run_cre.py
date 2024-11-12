@@ -90,7 +90,7 @@ def random_cats_dict(N):
     return d
 
 def random_cats(N):
-    return FactSet.from_dict(random_cats_dict(N))
+    return FactSet.from_py(random_cats_dict(N))
 
 
 
