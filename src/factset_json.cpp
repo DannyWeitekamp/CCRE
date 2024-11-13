@@ -18,6 +18,45 @@
 //-----------------------------------------------------------------
 // : READ JSON to FactSet
 
+// struct FactSetFromJSON_impl{
+// 	// using container_t =  nb::handle;
+// 	// using dict_t = 	     nb::dict;
+// 	// using list_t = 	     nb::list;
+// 	// using tuple_t = 	 nb::tuple;
+// 	// using obj_t = 	     nb::handle;
+// 	// using attr_getter_t =nb::str;
+
+// 	typedef const nb::handle container_t;
+// 	typedef const nb::dict dict_t;
+// 	typedef const nb::list list_t;
+// 	typedef const nb::tuple tuple_t;
+// 	typedef const nb::handle obj_t;
+// 	typedef const nb::str attr_getter_t;
+
+// 	inline static bool is_dict(obj_t x){return nb::isinstance<nb::dict>(x);}
+// 	inline static bool is_list(obj_t x){return nb::isinstance<nb::list>(x);}
+// 	inline static bool is_tuple(obj_t x){return nb::isinstance<nb::tuple>(x);}
+
+// 	inline static std::string_view to_string_view(obj_t x){return nb::cast<std::string_view>(x);}
+// 	inline static dict_t 			to_dict(obj_t x){return nb::cast<nb::dict>(x);}
+// 	inline static list_t 			to_list(obj_t x){return nb::cast<nb::list>(x);}
+// 	inline static tuple_t 			to_tuple(obj_t x){return nb::cast<nb::tuple>(x);}
+// 	inline static Item 			to_item(obj_t x){return Item_from_py(x);}
+// 	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){return nb::str(x.data(), x.size());}
+// 	inline static FactType* 		to_fact_type(obj_t x){return FactType_from_py(x);}
+
+// 	inline static bool has_attr(dict_t d, attr_getter_t x){
+// 		return d.contains(x);
+// 	}
+
+// 	inline static obj_t get_attr(dict_t d, attr_getter_t x){
+// 		return d[x];
+// 	}
+// };
+
+// using FactSetFromJSON = ToFactSetTranslator<FactSetFromJSON_impl>;
+
+
 
 ref<FactSet>  _FactSet_from_doc(rapidjson::Document& d){
 	if(!d.IsObject()){

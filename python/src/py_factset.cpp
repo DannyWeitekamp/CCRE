@@ -138,47 +138,14 @@ Item _resolve_possible_ref(Item item,
     return item;
 }
 
-// template <
-// 	// Main Types
-// 	typename container_t,
-// 	typename dict_t,
-// 	typename list_t,
-// 	typename obj_t,
-// 	typename attr_get_t,
-
-// 	typename is_dict,
-// 	typename is_list,
-
-// 	typename to_dict,
-// 	typename to_list,
-// 	typename to_item,	
-// >
-// class FactSetTranslator {
-//     std::string_view type_attr="type";
-//     std::string_view ref_prefix="@";
-//     HashMap<std::string_view, size_t> fact_map = {};
-//     std::vector<std::tuple<obj_t, FactType*, size_t, size_t>>& fact_infos = {};
-//     FactSetBuilder builder;
-
-//     FactSetTranslator(
-//     	const std::string_view& type_attr="type", 
-// 		const std::string_view& ref_prefix="@") : type_attr(_type_attr), ref_prefix(_ref_prefix){
-//     }
-
-//     void _collect_fact_infos(container_t container){
-
-//     }
-
-//     ref<FactSet> translate(container_t container){
-//     	fact_infos = {};
-//     	fact_map = {};
 
 
-//     }
-// }
 
 
-static ref<FactSet> _FactSet_from_py(
+
+
+
+ref<FactSet> _FactSet_from_py(
 	nb::handle py_collection,
 	const std::string_view& type_attr="type", 
 	const std::string_view& ref_prefix="@") {
@@ -243,7 +210,45 @@ static ref<FactSet> _FactSet_from_py(
         // builder.alloc_buffer->add_ref(fact_infos.size());
     }
     return builder.fact_set;
-}   
+};  
+
+struct FactSetFromPy_impl{
+	// using container_t =  nb::handle;
+	// using dict_t = 	     nb::dict;
+	// using list_t = 	     nb::list;
+	// using tuple_t = 	 nb::tuple;
+	// using obj_t = 	     nb::handle;
+	// using attr_getter_t =nb::str;
+
+	typedef const nb::handle container_t;
+	typedef const nb::dict dict_t;
+	typedef const nb::list list_t;
+	typedef const nb::tuple tuple_t;
+	typedef const nb::handle obj_t;
+	typedef const nb::str attr_getter_t;
+
+	inline static bool is_dict(obj_t x){return nb::isinstance<nb::dict>(x);}
+	inline static bool is_list(obj_t x){return nb::isinstance<nb::list>(x);}
+	inline static bool is_tuple(obj_t x){return nb::isinstance<nb::tuple>(x);}
+
+	inline static std::string_view to_string_view(obj_t x){return nb::cast<std::string_view>(x);}
+	inline static dict_t 			to_dict(obj_t x){return nb::cast<nb::dict>(x);}
+	inline static list_t 			to_list(obj_t x){return nb::cast<nb::list>(x);}
+	inline static tuple_t 			to_tuple(obj_t x){return nb::cast<nb::tuple>(x);}
+	inline static Item 			to_item(obj_t x){return Item_from_py(x);}
+	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){return nb::str(x.data(), x.size());}
+	inline static FactType* 		to_fact_type(obj_t x){return FactType_from_py(x);}
+
+	inline static bool has_attr(dict_t d, attr_getter_t x){
+		return d.contains(x);
+	}
+
+	inline static obj_t get_attr(dict_t d, attr_getter_t x){
+		return d[x];
+	}
+};
+
+using FactSetFromPy = ToFactSetTranslator<FactSetFromPy_impl>;
 
 void init_factset(nb::module_ & m){
 	nb::class_<FactSet>(m, "FactSet", nb::type_slots(cre_obj_slots))
@@ -271,7 +276,15 @@ void init_factset(nb::module_ & m){
     // .def("declare", [](FactSet& self, ref<Fact> fact){
     // 	return self.declare(fact);
     // })
-    .def_static("from_py", &_FactSet_from_py,
+    // .def_static("from_py", &_FactSet_from_py,
+    //  	"obj"_a, "type_attr"_a="type", "ref_prefix"_a="@",  nb::rv_policy::reference)
+    .def_static("from_py", &FactSetFromPy::apply, //[](
+    	//  nb::handle obj,
+    	//  const std::string_view& type_attr="type",
+    	//  const std::string_view& ref_prefix="@"){
+    	// 	auto trans = FactSetFromPy(type_attr, ref_prefix);
+    	// 	return trans.translate(obj);
+    	// },
      	"obj"_a, "type_attr"_a="type", "ref_prefix"_a="@",  nb::rv_policy::reference)
     .def_static("from_json", [](nb::str json)->ref<FactSet>{
         std::string json_str = nb::cast<std::string>(json);
