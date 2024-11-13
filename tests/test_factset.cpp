@@ -150,9 +150,10 @@ void test_json(){
 	cout << "-START2-" << endl;
 	cout << json_str << endl;
 	fs = FactSet::from_json(json_str);
-	cout << fs << endl;
+	cout << endl << fs << endl;
 	cout << "-START3-" << endl;
 	fs = FactSet::from_json(json_str);
+	cout << endl << fs << endl;
 	cout << "END" << endl;
 
 	delete[] json_str;

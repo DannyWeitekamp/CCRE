@@ -220,12 +220,27 @@ struct FactSetFromPy_impl{
 	// using obj_t = 	     nb::handle;
 	// using attr_getter_t =nb::str;
 
-	typedef const nb::handle container_t;
-	typedef const nb::dict dict_t;
-	typedef const nb::list list_t;
-	typedef const nb::tuple tuple_t;
-	typedef const nb::handle obj_t;
-	typedef const nb::str attr_getter_t;
+	typedef const nb::handle 				container_t;
+	typedef const nb::dict 					dict_t;
+	typedef const nb::list 					list_t;
+	typedef const nb::tuple 				tuple_t;
+	typedef const nb::handle 				obj_t;
+	// NOTE: ptr same as obj
+	typedef const nb::handle     			obj_t_ptr; 
+	typedef const nb::str 					attr_getter_t;
+	typedef const nb::detail::dict_iterator dict_itr_t;
+	typedef const nb::detail::fast_iterator list_itr_t;
+
+
+	inline static auto& deref_obj_ptr(const auto& x){
+		// Note: Object is already a pointer wrapper 
+		return x;
+	}	
+
+	inline static auto& get_obj_ptr(const auto& x){
+		// Note: Object is already a pointer wrapper 
+		return x;
+	}	
 
 	inline static bool is_dict(obj_t x){return nb::isinstance<nb::dict>(x);}
 	inline static bool is_list(obj_t x){return nb::isinstance<nb::list>(x);}
@@ -239,13 +254,55 @@ struct FactSetFromPy_impl{
 	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){return nb::str(x.data(), x.size());}
 	inline static FactType* 		to_fact_type(obj_t x){return FactType_from_py(x);}
 
-	inline static bool has_attr(dict_t d, attr_getter_t x){
+	inline static bool has_attr(const dict_t& d, const attr_getter_t& x){
 		return d.contains(x);
 	}
 
-	inline static obj_t get_attr(dict_t d, attr_getter_t x){
+	inline static obj_t get_attr(const dict_t& d, const attr_getter_t& x){
 		return d[x];
 	}
+
+	inline static auto dict_itr_begin(const dict_t& d){
+		return d.begin();
+	}
+	inline static auto dict_itr_end(const dict_t& d){
+		return d.end();
+	}
+
+	inline static auto dict_itr_key_ptr(const auto& itr){
+		// auto& pair = (*itr); 
+		return (*itr).first;
+	}
+	inline static auto dict_itr_val_ptr(const auto& itr){
+		// auto& pair = (*itr); 
+		return (*itr).second;
+	}
+		// auto& start = d.begin();
+		// auto& end = d.end();
+		// return std::make_tuple(start, end);
+	// }
+	inline static auto list_itr_begin(const list_t& lst){
+		return lst.begin();
+	}
+	inline static auto list_itr_end(const list_t& lst){
+		return lst.end();
+	}
+
+	inline static auto list_itr_val_ptr(const auto& itr){
+		return (*itr);
+	}
+
+	inline static size_t dict_size(const dict_t& d){
+		return d.size();
+	}
+
+	inline static size_t list_size(const list_t& lst){
+		return lst.size();
+	}
+	// 	auto& start = lst.begin();
+	// 	auto& end = lst.end();
+	// 	return std::make_tuple(start, end);
+	// }
 };
 
 using FactSetFromPy = ToFactSetTranslator<FactSetFromPy_impl>;

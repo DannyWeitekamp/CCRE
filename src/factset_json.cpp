@@ -18,43 +18,159 @@
 //-----------------------------------------------------------------
 // : READ JSON to FactSet
 
-// struct FactSetFromJSON_impl{
-// 	// using container_t =  nb::handle;
-// 	// using dict_t = 	     nb::dict;
-// 	// using list_t = 	     nb::list;
-// 	// using tuple_t = 	 nb::tuple;
-// 	// using obj_t = 	     nb::handle;
-// 	// using attr_getter_t =nb::str;
+#define RAPIDJSON_HAS_CXX11_RVALUE_REFS 1
 
-// 	typedef const nb::handle container_t;
-// 	typedef const nb::dict dict_t;
-// 	typedef const nb::list list_t;
-// 	typedef const nb::tuple tuple_t;
-// 	typedef const nb::handle obj_t;
-// 	typedef const nb::str attr_getter_t;
+// #define RAPIDJSON_DEFAULT_ALLOCATOR ::RAPIDJSON_NAMESPACE::MemoryPoolAllocator<::RAPIDJSON_NAMESPACE::CrtAllocator>
 
-// 	inline static bool is_dict(obj_t x){return nb::isinstance<nb::dict>(x);}
-// 	inline static bool is_list(obj_t x){return nb::isinstance<nb::list>(x);}
-// 	inline static bool is_tuple(obj_t x){return nb::isinstance<nb::tuple>(x);}
+// template <typename Encoding=rapidjson::UTF8<>, typename Allocator=RAPIDJSON_DEFAULT_STACK_ALLOCATOR>
+// template <typename DocType=rapidjson::Document>
 
-// 	inline static std::string_view to_string_view(obj_t x){return nb::cast<std::string_view>(x);}
-// 	inline static dict_t 			to_dict(obj_t x){return nb::cast<nb::dict>(x);}
-// 	inline static list_t 			to_list(obj_t x){return nb::cast<nb::list>(x);}
-// 	inline static tuple_t 			to_tuple(obj_t x){return nb::cast<nb::tuple>(x);}
-// 	inline static Item 			to_item(obj_t x){return Item_from_py(x);}
-// 	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){return nb::str(x.data(), x.size());}
-// 	inline static FactType* 		to_fact_type(obj_t x){return FactType_from_py(x);}
+// struct RJSONValuePtr{
 
-// 	inline static bool has_attr(dict_t d, attr_getter_t x){
-// 		return d.contains(x);
-// 	}
+// }
 
-// 	inline static obj_t get_attr(dict_t d, attr_getter_t x){
-// 		return d[x];
-// 	}
-// };
+struct FactSetFromJSON_impl{
+public:
+	typedef rapidjson::Document::ValueType GV;
+	// typedef rapidjson::GenericObject<false, rapidjson::Value> GV;
 
-// using FactSetFromJSON = ToFactSetTranslator<FactSetFromJSON_impl>;
+	typedef rapidjson::Document 	container_t;
+	typedef GV::Object			dict_t;
+	typedef GV::Array 			list_t;
+	typedef GV::Array 			tuple_t;
+	typedef GV     				obj_t;
+	typedef const GV*     		obj_t_ptr;
+
+
+	typedef rapidjson::Pointer 	 attr_getter_t;
+	typedef GV::MemberIterator   dict_iter_t;
+	typedef GV::ValueIterator    list_iter_t;
+
+
+
+
+
+	// typedef rapidjson::Document 								container_t;
+	// typedef rapidjson::GenericObject<false, rapidjson::Value>   dict_t;
+	// typedef rapidjson::GenericArray<false, rapidjson::Value> 			list_t;
+	// typedef rapidjson::GenericArray<false, rapidjson::Value> 			tuple_t;
+	// typedef rapidjson::Value     					obj_t;
+	// typedef rapidjson::Pointer 		attr_getter_t;
+	// typedef rapidjson::Value::ConstMemberIterator dict_iter_t;
+	// typedef rapidjson::Value::ConstValueIterator list_iter_t;
+
+	// typedef rapidjson::GenericMemberIterator<true,Encoding,Allocator>::Iterator   dict_iter_t;
+	// typedef const GenericValue*    list_iter_t;
+
+	inline static auto& deref_obj_ptr(const auto& x){
+		return *x;
+	}	
+
+	inline static auto get_obj_ptr(const auto& x){
+		// Note: Object is already a pointer wrapper 
+		return &x;
+	}	
+
+	inline static bool is_dict(const auto& x){return x.IsObject();}
+	inline static bool is_list(const auto& x){return x.IsArray();}
+	inline static bool is_tuple(const auto& x){return false;}
+
+	inline static std::string_view to_string_view(const auto& x){
+		return std::string_view(x.GetString(), x.GetStringLength());
+	}
+	inline static auto 			to_dict(const auto& x){
+		return x.GetObject();
+	}
+	inline static auto 			to_list(const auto& x){
+		return x.GetArray();
+	}
+	// inline static tuple_t 			to_tuple(obj_t x){return nb::cast<nb::tuple>(x);}
+	inline static Item 				to_item(const auto& x){
+		Item item;
+		if(x.IsNull()){
+			item = Item();
+		}else if(x.IsBool()){
+			item = Item(x.GetBool());
+		}else if(x.IsInt()){
+			item = Item(x.GetInt());
+		}else if(x.IsUint()){
+			item = Item(x.GetUint());
+		}else if(x.IsInt64()){
+			item = Item(x.GetInt64());
+		}else if(x.IsUint64()){
+			item = Item(x.GetUint64());
+		}else if(x.IsDouble()){
+			item = Item(x.GetDouble());
+		}else if(x.IsString()){
+			std::string_view item_str = std::string_view(x.GetString(), x.GetStringLength());
+			item = Item(item_str);
+		}
+		return item;
+	}
+
+	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){
+		std::string sx = "/" + std::string(x);
+		return rapidjson::Pointer(sx.c_str(), x.size());
+	}
+	inline static FactType* 		to_fact_type(const auto& x){
+		std::string_view type_name = std::string_view(x.GetString(), x.GetStringLength());
+		FactType* type = current_context->get_fact_type(type_name);
+		return type;
+	}
+
+	inline static bool has_attr(const auto& d, const auto& x){
+		return x.Get(d) != nullptr;
+		// return d.contains(x);
+	}
+
+	inline static const obj_t& get_attr(const auto& d, const auto& x){
+		return *(x.Get(d));
+	}
+
+	
+
+	inline static auto dict_itr_begin(const auto& d){
+		return d.MemberBegin();
+	}
+	inline static auto dict_itr_end(const auto& d){
+		return d.MemberEnd();
+	}
+
+	inline static auto dict_itr_key_ptr(const auto& itr){
+		return &(itr->name);
+	}
+
+	inline static auto dict_itr_val_ptr(const auto& itr){
+		return &(itr->value);
+	}
+
+
+		// auto& start = d.begin();
+		// auto& end = d.end();
+		// return std::make_tuple(start, end);
+	// }
+	inline static auto list_itr_begin(const auto& lst){
+		return lst.Begin();
+	}
+	inline static auto list_itr_end(const auto& lst){
+		return lst.End();
+	}
+
+	inline static auto list_itr_val_ptr(const auto& itr){
+		return &(*itr);
+	}
+
+	inline static size_t dict_size(const auto& d){
+		return d.MemberCount();
+	}
+
+	inline static size_t list_size(const auto& lst){
+		return lst.Size();
+	}
+
+};
+
+using FactSetFromJSON = ToFactSetTranslator<FactSetFromJSON_impl>;
 
 
 
@@ -77,7 +193,9 @@ ref<FactSet>  _FactSet_from_doc(rapidjson::Document& d){
 	size_t byte_offset = 0;
 	size_t index = 0;
 	for (auto fact_itr = d.MemberBegin(); fact_itr != d.MemberEnd(); ++fact_itr){
+	// for (auto [key, val] : d) {
 		std::string_view fact_id = std::string_view(fact_itr->name.GetString(), fact_itr->name.GetStringLength());
+		// std::string_view fact_id = std::string_view(key.GetString(), val.GetStringLength());
 		// cout << fact_id << endl;
 		if(!fact_itr->value.IsObject()){
 			throw std::runtime_error("Fact JSON with key " + std::string(fact_id) + " is not an object.");
@@ -225,8 +343,9 @@ ref<FactSet> FactSet::from_json_file(const char* filename){
 	// cout << "buffer: " << buffer << endl;
 	rapidjson::Document d;
 	d.ParseInsitu(buffer);
-	ref<FactSet> fact_set = _FactSet_from_doc(d);
-	// FactSet* fact_set = new FactSet();
+
+	ref<FactSet> fact_set = FactSetFromJSON::apply(d); 
+	// ref<FactSet> fact_set = _FactSet_from_doc(d);
 	delete[] buffer;
 	return fact_set;
 }
@@ -246,12 +365,13 @@ ref<FactSet> FactSet::from_json(char* json_str, size_t length, bool copy_buffer)
 
 	rapidjson::Document d;
 	d.ParseInsitu(buffer);
-	ref<FactSet> out = _FactSet_from_doc(d);
+	ref<FactSet> fact_set = FactSetFromJSON::apply(d); 
+	// ref<FactSet> out = _FactSet_from_doc(d);
 
 	if(copy_buffer){
 		delete[] buffer;
 	}
-	return out;
+	return fact_set;
 }
 
 

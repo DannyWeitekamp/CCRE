@@ -62,6 +62,16 @@ def test_from_py():
     assert len(dct_fs) == 4
     assert str(lst_fs) == str(ref_fs)
 
+
+    l_of_l = [[v for k,v in d.items() if k != "type"] for d in lst]
+    l_of_l_fs = FactSet.from_py(l_of_l)
+    print(l_of_l_fs)
+
+    l_of_t = [tuple(v for k,v in d.items() if k != "type") for d in lst]
+    l_of_t_fs = FactSet.from_py(l_of_t)
+    print(l_of_t_fs)
+
+
     
 
 

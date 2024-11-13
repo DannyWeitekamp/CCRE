@@ -216,36 +216,103 @@ struct ToFactSetTranslator {
     using list_t = T::list_t;
     using tuple_t = T::tuple_t;
     using obj_t = T::obj_t;
+    using obj_t_ptr = T::obj_t_ptr;
     using attr_getter_t = T::attr_getter_t;
+
+    using fact_info_t = std::tuple<obj_t_ptr, FactType*, size_t, size_t>;
 
     std::string_view type_attr;
     std::string_view ref_prefix;
     HashMap<std::string_view, size_t> fact_map;
-    std::vector<std::tuple<obj_t, FactType*, size_t, size_t>> fact_infos;
+    std::vector<fact_info_t> fact_infos;
     FactSetBuilder builder;
+    attr_getter_t ref_type_obj;
 
     ToFactSetTranslator() : 
         type_attr("type"), ref_prefix("@"),
-        fact_map({}), fact_infos({}), builder({}) {
-
+        fact_map({}), fact_infos({}), builder({}),
+        ref_type_obj(T::to_attr_getter_t(type_attr)) {
     };
+
     ToFactSetTranslator(
         const std::string_view& _type_attr="type", 
         const std::string_view& _ref_prefix="@") :
         type_attr(_type_attr), ref_prefix(_ref_prefix),
-        fact_map({}), fact_infos({}), builder({}){
+        fact_map({}), fact_infos({}), builder({}),
+        ref_type_obj(T::to_attr_getter_t(type_attr)){
     };
 
     static ref<FactSet> apply(
-     container_t obj,
+     const container_t& obj,
      const std::string_view& type_attr="type",
      const std::string_view& ref_prefix="@"){
         auto trans = ToFactSetTranslator<T>(type_attr, ref_prefix);
         return trans._to_factset(obj);
     }
 
-    void _collect_fact_infos(container_t container){
-        attr_getter_t ref_type_obj = T::to_attr_getter_t(type_attr);
+    void _make_fact_info (
+        const std::string_view& fact_id,
+        const obj_t_ptr val_ptr,
+        size_t& index,
+        size_t& byte_offset){
+
+        auto& val = T::deref_obj_ptr(val_ptr); 
+
+        // TODO: Handle integer keys
+        // if(nb::isinstance<nb::int>(key)):
+            // std::to_string()
+        
+        size_t length; 
+        FactType* type = nullptr;
+
+        // cout << "B" << endl;
+        if(T::is_dict(val)){
+            auto fact_dict = T::to_dict(val);
+            length = T::dict_size(fact_dict);
+            
+            // cout << "C" << endl;
+
+            if(T::has_attr(fact_dict, ref_type_obj)){
+                // cout << "D" << endl;
+                // nb::print(fact_dict[ref_type_obj]);
+                type = T::to_fact_type(T::get_attr(fact_dict,ref_type_obj));
+                // cout << "E" << endl;
+                if(type->members.size() > length){
+                    length = type->members.size();
+                }
+                // cout << "F" << endl;
+                length -= 1; // Don't count type in the count            
+            }
+            
+            if(type != nullptr){
+                length = std::max(length, size_t(type->members.size()));
+            }
+        }else if(T::is_list(val)){
+            auto fact_list = T::to_list(val);
+            length = T::list_size(fact_list);
+        }else if(T::is_tuple(val)){   
+            if constexpr(!std::is_same<typename T::list_t, typename T::tuple_t>::value){
+                tuple_t fact_tuple = T::to_tuple(val);
+                length = fact_tuple.size();
+            }
+        }else{
+            throw std::runtime_error("Fact item with key " + std::string(fact_id) + " is not a dict.");
+        }
+
+        // cout << "C" << endl;
+        // auto tup = std::make_tuple(val, type, length, byte_offset);
+        // fact_infos.push_back(std::move(tup));
+        fact_infos.push_back({val_ptr, type, length, byte_offset});
+        auto [it, inserted] = fact_map.insert({fact_id, index});
+        // cout << fact_id << endl;
+        if(!inserted){
+            throw std::runtime_error("Duplicate fact identifier: " + std::string(fact_id));
+        }
+        byte_offset += SIZEOF_FACT(length);//sizeof(Fact) + sizeof(Item) * length;   
+    }
+
+    void _collect_fact_infos(const container_t& container){
+        // attr_getter_t ref_type_obj = T::to_attr_getter_t(type_attr);
 
         // fact_map = {};
         // fact_infos = {};
@@ -253,77 +320,46 @@ struct ToFactSetTranslator {
         size_t byte_offset = 0;
 
         // Lambda Function
-        auto make_fact_info = [&](
-            const std::string_view& fact_id,
-            obj_t val
-        ){
-            // TODO: Handle integer keys
-            // if(nb::isinstance<nb::int>(key)):
-                // std::to_string()
+        // auto make_fact_info = [&ref_type_obj, &this](
+        //     const std::string_view& fact_id,
+        //     obj_t_ptr val_ptr
+        // ){
             
-            size_t length; 
-            FactType* type = nullptr;
-
-            // cout << "B" << endl;
-            if(T::is_dict(val)){
-                dict_t fact_dict = T::to_dict(val);
-                length = fact_dict.size();
-                
-                // cout << "C" << endl;
-
-                if(T::has_attr(fact_dict, ref_type_obj)){
-                    // cout << "D" << endl;
-                    // nb::print(fact_dict[ref_type_obj]);
-                    type = T::to_fact_type(T::get_attr(fact_dict,ref_type_obj));
-                    // cout << "E" << endl;
-                    if(type->members.size() > length){
-                        length = type->members.size();
-                    }
-                    // cout << "F" << endl;
-                    length -= 1; // Don't count type in the count            
-                }
-                
-                if(type != nullptr){
-                    length = std::max(length, size_t(type->members.size()));
-                }
-            }else if(T::is_list(val)){
-                list_t fact_list = T::to_list(val);
-                length = fact_list.size();
-            }else if(T::is_tuple(val)){   
-                if constexpr(T::to_tuple){
-                    tuple_t fact_tuple = T::to_tuple(val);
-                    length = fact_tuple.size();
-                }
-            }else{
-                throw std::runtime_error("Fact item with key " + std::string(fact_id) + " is not a dict.");
-            }
-
-            // cout << "C" << endl;
-            fact_infos.push_back({val, type, length, byte_offset});
-            auto [it, inserted] = fact_map.insert({fact_id, index});
-            // cout << fact_id << endl;
-            if(!inserted){
-                throw std::runtime_error("Duplicate fact identifier: " + std::string(fact_id));
-            }
-            byte_offset += SIZEOF_FACT(length);//sizeof(Fact) + sizeof(Item) * length;   
-        };
 
         if(T::is_dict(container)){
-            dict_t d = T::to_dict(container);
-            fact_infos.reserve(d.size());
-            fact_map.reserve(d.size());
-            for (auto [key, val] : d) {
+            auto d = T::to_dict(container);
+            size_t L = T::dict_size(d);
+            fact_infos.reserve(L);
+            fact_map.reserve(L);
+
+            // auto& [d_start, d_end] = T::dict_itr(d);
+            // for (auto [key, val] : d) {
+            // for (auto itr = d_start; itr != d_end; ++itr){
+            for (auto itr = T::dict_itr_begin(d); itr != T::dict_itr_end(d); ++itr){
+                // auto key_ptr = T::dict_itr_key_ptr(itr);
+                // auto val_ptr = T::dict_itr_val_ptr(itr);
+                // const auto& [key, val] = *itr;
+                // std::string_view fact_id = T::to_string_view(T::deref_obj_ptr(key_ptr));
+                // _make_fact_info(fact_id, val_ptr, index, byte_offset);
+
+                const auto& [key, val] = *itr;
+                auto val_ptr = T::get_obj_ptr(val);
                 std::string_view fact_id = T::to_string_view(key);
-                make_fact_info(fact_id, val);
+                _make_fact_info(fact_id, val_ptr, index, byte_offset);
                 index++;
             }
         }else if(T::is_list(container)) {
-            list_t lst = T::to_list(container);
-            fact_infos.reserve(lst.size());
-            fact_map.reserve(lst.size());
-            for (auto val : lst) {
+            auto lst = T::to_list(container);
+            size_t L = T::list_size(lst);
+            fact_infos.reserve(L);
+            fact_map.reserve(L);
+
+            // auto& [d_start, d_end] = T::list_itr(lst);
+            for (auto itr = T::list_itr_begin(lst); itr != T::list_itr_end(lst); ++itr){
+                auto val_ptr = T::list_itr_val_ptr(itr);
+            // for (auto val : lst) {
                 std::string fact_id = std::to_string(index);
-                make_fact_info(fact_id, val);
+                _make_fact_info(fact_id, val_ptr, index, byte_offset);
                 index++;
             }
         }
@@ -370,11 +406,12 @@ struct ToFactSetTranslator {
         return item;
     }
 
-    ref<FactSet> _to_factset(container_t container){
+    ref<FactSet> _to_factset(const container_t& container){
         this->_collect_fact_infos(container);
         
         for(auto& fact_info : fact_infos){
-            auto& fact_obj = std::get<0>(fact_info);
+            auto& fact_obj_ptr = std::get<0>(fact_info);
+            auto& fact_obj = T::deref_obj_ptr(fact_obj_ptr);
             FactType* type = std::get<1>(fact_info);
             size_t length = std::get<2>(fact_info);
             // size_t offset = std::get<3>(fact_info);
@@ -383,8 +420,14 @@ struct ToFactSetTranslator {
             fact->type = type;
 
             if(T::is_dict(fact_obj)){
-                dict_t fact_dict = T::to_dict(fact_obj);
-                for (auto [key, val] : fact_dict){
+                auto fact_dict = T::to_dict(fact_obj);
+
+
+                // for (auto [key, val] : fact_dict){
+                for (auto itr = T::dict_itr_begin(fact_dict); itr != T::dict_itr_end(fact_dict); ++itr){
+                    // auto& key = T::deref_obj_ptr(T::dict_itr_key_ptr(itr));
+                    // auto& val = T::deref_obj_ptr(T::dict_itr_val_ptr(itr));
+                    const auto& [key, val] = *itr;
 
                     std::string_view key_str = T::to_string_view(key);
                     // Ignore the 'type' member (handled above)
@@ -403,6 +446,8 @@ struct ToFactSetTranslator {
                     }
 
                     // Throw error if member index cannot be resolved
+                    // cout << "key_str=" << key_str << ", val str=" << T::to_string_view(val) << ", type_attr=" << type_attr << " INDEX:" << index << endl; 
+                    // cout << "INDEX:" << index; 
                     if(index == -1){
                         std::string type_str = type != nullptr ? std::string(type->name) : "NULL";
                         std::string error_msg = "Key '" + std::string(key_str) + "' is not an integer or named member of fact type '" + type_str + "'.";
@@ -411,7 +456,9 @@ struct ToFactSetTranslator {
 
                     Item item = T::to_item(val);
                     item = this->_resolve_possible_fact_ref(item,
-                        index == -1 ? nullptr : type->members[index].type
+                        index == -1 || type == nullptr ? 
+                            nullptr : 
+                            type->members[index].type
                     );
                     
                     fact->set(index, item);
