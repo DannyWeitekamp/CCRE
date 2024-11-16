@@ -14,6 +14,7 @@
 #include "fact.h"
 #include "alloc_buffer.h"
 #include "ref.h"
+// #include "var.h"
 
 using std::cout;
 using std::endl;
@@ -40,6 +41,7 @@ public:
     // ~FactSet();
 
     inline size_t size() const {return _size;}
+    inline size_t capacity() const {return facts.size();}
 	uint32_t declare(Fact* fact);
 	void retract(uint32_t f_id);
 	void retract(Fact* fact);
@@ -185,6 +187,35 @@ public:
         // fact->type = NULL;
         
     }
+
+    // inline ref<Fact> new_var(
+    //         const Item& _alias,
+    //         CRE_Type* _type=nullptr,
+    //         DerefInfo* _deref_infos=nullptr,
+    //         size_t _length=0
+    //     ){
+
+    //     bool did_malloc = false;
+    //     AllocBuffer* alloc_buffer = builder.alloc_buffer;
+    //     Var* var_addr = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(0), did_malloc);
+        
+    //     CRE_Type* var_type = fact->type == nullptr ? cre_Fact : fact->type
+    //     ref<Var> var = new (var_addr) Var(_alias, _type);
+
+
+    //     uint32_t size =_resolve_fact_len(length, type);
+    //     bool did_malloc = false;
+    //     Fact* fact_addr = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size), did_malloc);
+    //     ref<Fact> fact = new (fact_addr) Fact(size, type, immutable);
+
+    //     // cout << "refcount: " << fact->get_refcount() << endl;
+    //     // cout << "did_malloc:" << did_malloc << endl;
+    //     if(!did_malloc){
+    //         fact->alloc_buffer = alloc_buffer;
+    //         fact->alloc_buffer->inc_ref();
+    //     }
+    //     return fact;
+    // }
 
     inline ref<Fact> add_empty(size_t length,
                                FactType* type,

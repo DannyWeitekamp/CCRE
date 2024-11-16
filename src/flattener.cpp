@@ -4,6 +4,7 @@
 #include "../include/flattener.h"
 #include "../include/fact.h"
 #include "../include/factset.h"
+#include "../include/var.h"
 #include <execution>
 #include <thread>
 
@@ -52,33 +53,37 @@ void Flattener_dtor(const CRE_Obj* x) {
 Flattener::Flattener(
 		FactSet* _input, 
 		const std::vector<FlagGroup>& _flag_groups,
-		uint8_t _subj_as_fact,
+		bool _use_vars,
+		bool _add_exist_stubs,
 		uint8_t _triple_order) :
 	IncrementalProcessor(_input),
 	flag_groups(_flag_groups),
-	subj_as_fact(_subj_as_fact), 
+	use_vars(_use_vars), 
+	add_exist_stubs(_add_exist_stubs), 
 	triple_order(_triple_order), 
-	subj_ind(_triple_order == TRIPLE_ORDER_SPO ? 0 : 1),
-	pred_ind(_triple_order == TRIPLE_ORDER_SPO ? 1 : 0)
+	subj_ind(_triple_order == TRIPLE_ORDER_SVO ? 0 : 1),
+	verb_ind(_triple_order == TRIPLE_ORDER_SVO ? 1 : 0)
 	{
 	// cout << "CONSTRUCT:" << _input->get_refcount() << endl;
 	dtor = &Flattener_dtor;
 }
 
 Flattener::Flattener(FactSet* _input,
-			  const HashMap<std::string, Item>& target_flags,
-		  uint8_t _subj_as_fact,
-	 	  uint8_t _triple_order
+			const HashMap<std::string, Item>& target_flags,
+			bool _use_vars,
+			bool _add_exist_stubs,
+		 	uint8_t _triple_order
 	 	  
-) : Flattener(_input, _format_flags(target_flags), _subj_as_fact, _triple_order)
+) : Flattener(_input, _format_flags(target_flags), _add_exist_stubs, _triple_order)
 {}
 
 Flattener::Flattener(FactSet* _input,
 		  const std::vector<HashMap<std::string, Item>>& target_flags,
-	  uint8_t _subj_as_fact,
- 	  uint8_t _triple_order
+		bool _use_vars,
+	  	bool _add_exist_stubs,
+ 	  	uint8_t _triple_order
  	  
-) : Flattener(_input, _format_flags(target_flags), _subj_as_fact, _triple_order)
+) : Flattener(_input, _format_flags(target_flags), _add_exist_stubs, _triple_order)
 {}
 
 
@@ -119,14 +124,93 @@ size_t Flattener::_calc_buffer_size(){
 		if(mbr_inds != nullptr){
 			L = mbr_inds->size();
 		}
-		_size += this->subj_as_fact*(SIZEOF_FACT(1));
+		_size += this->add_exist_stubs*(SIZEOF_FACT(1));
 		_size += L*(SIZEOF_FACT(3));
 	}
 	return _size;
 }
 
 
-size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
+size_t Flattener::_fact_to_var_pairs(
+	Fact* __restrict in_fact,
+	const std::vector<ref<Var>>& fact_vars
+	){
+
+	FactType* __restrict type = in_fact->type;
+	auto mbr_inds = this->get_member_inds(type);
+	ref<Var> subj_var = fact_vars[in_fact->f_id];
+	
+	// cout << "U_IND: " << u_ind << endl;
+
+
+	
+
+	// Make a new Fact 
+	if(add_exist_stubs){
+		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
+		subj_fact->set_unsafe(0, subj_var);	
+		builder.fact_set->_declare_back(std::move(subj_fact));
+	}
+	
+
+	auto make_preds = [&](size_t mbr_ind){
+		ref<Fact> out_fact = builder.add_empty(2, nullptr, true);
+
+
+		ref<Var> verb_var;
+		if(type != nullptr && mbr_ind < type->members.size()){
+			verb_var = subj_var->_extend_attr_unsafe(mbr_ind, builder.alloc_buffer);
+		}else{
+			// verb_var = subj_var->extend_item(mbr_ind, builder.alloc_buffer);
+
+		}
+
+		out_fact->set_unsafe(0, subj_var);
+
+		// if(type != nullptr && ind < type->members.size()){
+		// 	out_fact->set_unsafe(verb_ind /* 1 or 0 */,
+		// 	 			type->member_names_as_items[ind]);
+		// 	// cout << "FLAT PRED: " << type->member_names_as_items[ind] << uint64_t(type->member_names_as_items[ind].val) << endl;
+		// }else{
+		// 	out_fact->set(verb_ind /* 1 or 0 */, int(ind));
+		// }
+
+		Item obj_item = *in_fact->get(mbr_ind);
+		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
+			Fact* obj_fact = obj_item.as_fact();
+			ref<Var> obj_var = fact_vars[obj_fact->f_id];
+
+			out_fact->set_unsafe(1, obj_var);	
+		}else{
+			out_fact->set_unsafe(1, obj_item);		
+		}
+
+		
+		// out_fact->immutable = true;
+		builder.fact_set->_declare_back(std::move(out_fact));
+		// out_fact->alloc_buffer = builder.alloc_buffer;
+		// builder.alloc_buffer->inc_ref();
+		// _declare_to_empty(builder.fact_set, out_fact, 3, NULL);
+
+		// cout << uint64_t(out_fact) <<  " OUT FACT: " << out_fact << " L=" << out_fact->length << endl;
+	};
+	
+
+	if(mbr_inds != nullptr){
+		for(auto mbr_ind : *mbr_inds){
+			make_preds(mbr_ind);
+		}	
+	}else{
+		for(size_t mbr_ind=0; mbr_ind < in_fact->length; mbr_ind++){
+			make_preds(mbr_ind);
+		}
+	}	
+	return 0;	
+
+}
+
+
+size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 	FactType* __restrict type = in_fact->type;
 	auto mbr_inds = this->get_member_inds(type);
 		
@@ -140,26 +224,26 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 						*in_fact->get(u_ind)
 					);
 
-	
-	if(this->subj_as_fact){
+	// Make a new Fact 
+	if(add_exist_stubs){
 		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
 		subj_fact->set_unsafe(0, subj_item);	
 		builder.fact_set->_declare_back(std::move(subj_fact));
-		subj_item = Item(subj_fact);
+		// subj_item = Item(subj_fact);
 	}
 	
+
 	auto make_preds = [&](size_t ind){
 		ref<Fact> out_fact = builder.add_empty(3, nullptr, true);
-		out_fact->length = 3;
 
 		out_fact->set_unsafe(subj_ind /* 0 or 1 */, subj_item);
 
 		if(type != nullptr && ind < type->members.size()){
-			out_fact->set_unsafe(pred_ind /* 1 or 0 */,
+			out_fact->set_unsafe(verb_ind /* 1 or 0 */,
 			 			type->member_names_as_items[ind]);
 			// cout << "FLAT PRED: " << type->member_names_as_items[ind] << uint64_t(type->member_names_as_items[ind].val) << endl;
 		}else{
-			out_fact->set(pred_ind /* 1 or 0 */, int(ind));
+			out_fact->set(verb_ind /* 1 or 0 */, int(ind));
 		}
 
 		Item obj_item = *in_fact->get(ind);
@@ -197,15 +281,48 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 }
 
 
+std::vector<ref<Var>> Flattener::_make_fact_vars(FactSet* input){
+	std::vector<ref<Var>> fact_vars(input->capacity(), nullptr);
+
+	for (auto it = input->begin(); it != input->end(); ++it) {
+		Fact* fact = *it;
+		auto u_ind = get_unique_id_index(fact->type);
+
+		Item subj_item = (u_ind == -1 ? 
+					Item(fact->f_id) :
+					*fact->get(u_ind)
+				);
+
+		CRE_Type* var_type = fact->type == nullptr ? cre_Fact : fact->type;
+		ref<Var> var = new_var(subj_item, var_type, nullptr, 0, builder.alloc_buffer);
+		
+        fact_vars[fact->f_id] = var;
+	}
+	return fact_vars;
+}
+
 size_t Flattener::_update_init(){
 	size_t buffer_size = _calc_buffer_size();
 	builder = FactSetBuilder(input->size(), buffer_size);
 
-	// cout << "OUTPUT:" <<  builder.fact_set->get_refcount() << endl;
-	for (auto it = input->begin(); it != input->end(); ++it) {
-		Fact* fact = *it;
-		_flatten_fact(fact);
+	
+
+	
+	if(use_vars){
+		std::vector<ref<Var>> fact_vars = _make_fact_vars(input);
+		for (auto it = input->begin(); it != input->end(); ++it) {
+			Fact* fact = *it;
+			_fact_to_var_pairs(fact, fact_vars);
+		}	
+	}else{
+		for (auto it = input->begin(); it != input->end(); ++it) {
+			Fact* fact = *it;
+			_fact_to_wme_triples(fact);
+		}
 	}
+
+	// cout << "OUTPUT:" <<  builder.fact_set->get_refcount() << endl;
+	
 	return 0;
 }
 

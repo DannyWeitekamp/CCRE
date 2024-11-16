@@ -76,6 +76,9 @@ Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
 	immutable(_immutable)
 {}
 
+
+
+
 ref<Fact> empty_fact(FactType* type){
 	uint32_t _length = (uint32_t) type->members.size();
 	Fact* fact = _alloc_fact(_length);

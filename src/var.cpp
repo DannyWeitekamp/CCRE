@@ -19,29 +19,42 @@ void Var_dtor(const CRE_Obj* x){
 }
 
 
-Var::Var(CRE_Type* _type,
- 			InternStr _alias,
- 			DerefInfo* _deref_infos,
- 			size_t _length) : 
+Var::Var(const Item& _alias,
+ 		CRE_Type* _type,
+ 		DerefInfo* _deref_infos,
+ 		size_t _length) : 
+
 		CRE_Obj(&Var_dtor),
 		base_type(_type), head_type(_type),
 		alias(_alias),
 		deref_infos(nullptr),
 		length(_length) {
 
+
+	// if(_type == nullptr){
+	// 	throw std::invalid_argument("Cannot initialize Var from NULL type.");
+	// }
+
 	deref_infos = ((DerefInfo*) ((char*) this) + sizeof(Var));
 
-	if(_length > 0){
+
+
+	if(_deref_infos != nullptr && _length > 0){
 		head_type = _deref_infos[_length-1].deref_type;
 		memcpy(deref_infos, _deref_infos, _length*sizeof(DerefInfo));
 	}
+
+	if(_alias.t_id != T_ID_STR || _alias.t_id != T_ID_INT){
+		throw std::invalid_argument("Var alias must be string or integer. Got: " + _alias + ".");
+	}
 }
 
-Var::Var(CRE_Type* _type,
- 			const std::string_view& _alias,
- 			DerefInfo* _deref_infos,
- 			size_t _length) : 
-			Var(_type, intern(_alias), _deref_infos, _length) {
+Var::Var(const std::string_view& _alias,
+		CRE_Type* _type,
+		DerefInfo* _deref_infos,
+		size_t _length) : 
+
+		Var(Item(intern(_alias)), _type, _deref_infos, _length) {
 }
 
 // void _init_var(Var* var,
@@ -67,21 +80,46 @@ Var::Var(CRE_Type* _type,
 // 	// cout << "HEAD: " << uint64_t(var->head_type) << endl; 	
 // }
 
-ref<Var> new_var(CRE_Type* _type,
- 			std::string_view _alias,
+ref<Var> new_var(
+			Item& _alias,
+			CRE_Type* _type,
  			DerefInfo* _deref_infos,
- 			size_t _length){
-	if(_type == nullptr){
-		throw std::invalid_argument("Cannot initialize Var from NULL type.");
-	}
+ 			size_t _length,
+ 			AllocBuffer* alloc_buffer){
+	
 
+	bool did_malloc = true;
+	Var* var;
+	if(alloc_buffer != nullptr){
+		var = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
+	}else{
+		var = (Var*) malloc(SIZEOF_VAR(_length)); 
+	}
+    
+    var = new (var) Var(_alias, _type, _deref_infos, _length);
+
+    if(!did_malloc){
+    	var->alloc_buffer = alloc_buffer;
+    	alloc_buffer.inc_ref();
+    }
+        
 	// Allocate a new var 
-	Var* var = (Var*) malloc(sizeof(Var) + _length*sizeof(DerefInfo)); 
-	var = new (var) Var(_type, _alias, _deref_infos, _length);
+	
 	// _init_var(var, _type, _alias, _deref_infos, _length);
 	// var->dtor = Var_dtor;
 	return var;
 }
+ref<Var> new_var(
+			std::string_view _alias,
+			CRE_Type* _type,
+ 			DerefInfo* _deref_infos,
+ 			size_t _length,
+ 			AllocBuffer* alloc_buffer){
+
+	return new_var(Item(intern(_alias)), _type, _deref_infos, _length, alloc_buffer);
+}
+
+
 
 // Var* _alloc_extension(Var* var, size_t extend_by){
 // 	Var* new_var = (Var*) malloc(sizeof(Var) + (var->length + extend_by)*sizeof(DerefInfo)); 
@@ -94,28 +132,35 @@ ref<Var> new_var(CRE_Type* _type,
 	
 // }
 
-ref<Var> Var::extend_attr(std::string_view attr){
-	// cout << "EXTEND: " << endl;
-	if(head_type->builtin){
-		throw std::runtime_error(
-			"Attempting to extend Var " + to_string() + \
-			 " with builtin head type " + head_type->name + ".");
-	}
+ref<Var> Var::_extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer){
 	// Allocate a new var 
 	// Var* new_var = _alloc_extension(var, 1);
-	Var* nv = (Var*) malloc(sizeof(Var) + (length+1)*sizeof(DerefInfo));
+	Var* nv;
+	if(alloc_buffer != nullptr){
+		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
+	}else{
+		nv = (Var*) malloc(SIZEOF_VAR(_length)); 
+	}
+
 	nv = new (nv) Var(base_type, alias, deref_infos, length);
+
+	if(!did_malloc){
+		nv->alloc_buffer = alloc_buffer;
+		alloc_buffer.inc_ref();
+	}
 
 	// Var* nv = new_var(base_type, alias, deref_infos, length+1);
 	// memcpy(nv, var, sizeof(Var) + var->length*sizeof(DerefInfo));
 	DerefInfo* new_deref_inf = &nv->deref_infos[length];
 
-	FactType* hf_type = (FactType*) head_type;
+	
 
 	cout << "head_type: " << uint64_t(hf_type) << " " << int(hf_type->kind) << endl;
 	// Set the trailing deref_info
-	CRE_Type* deref_type = hf_type->get_attr_type(attr);
-	int a_id = hf_type->get_attr_index(attr);
+
+	
+	CRE_Type* deref_type = hf_type->get_item_type(a_id);
+	
 	new_deref_inf->deref_type = deref_type;
 	new_deref_inf->a_id = a_id;
 	new_deref_inf->deref_kind = DEREF_KIND_ATTR;
@@ -125,6 +170,26 @@ ref<Var> Var::extend_attr(std::string_view attr){
 	nv->length = length+1;
 	// _init_var(var, _type, _alias, _deref_infos, _length+1);
 	return nv;
+}
+
+ref<Var> Var::extend_attr(const std::string_view& attr){
+	// cout << "EXTEND: " << endl;
+
+	if(head_type == nullptr){
+		throw std::runtime_error(
+			"Cannot extend an untyped Var."
+		);
+	}
+
+	if(head_type->builtin){
+		throw std::runtime_error(
+			"Attempting to extend Var " + to_string() + \
+			 " with builtin head type " + head_type->name + ".");
+	}
+
+	FactType* hf_type = (FactType*) head_type;
+	int a_id = hf_type->get_attr_index(attr);
+	return _extend_attr_unsafe(a_id);
 }
 
 
@@ -154,7 +219,12 @@ std::string Var::to_string(){
 		}
 		type = fact_type->get_item_type(a_id);	
 	}
-	return fmt::format("{}{}", alias, fmt::join(deref_strs, ""));
+	if(alias.t_id == T_ID_STR){
+		return fmt::format("{}{}", alias.as_string(), fmt::join(deref_strs, ""));	
+	}else if(alias.t_id == T_ID_INT){
+		return fmt::format("F{}{}", alias.as_int(), fmt::join(deref_strs, ""));	
+	}
+	
 }
 
 std::ostream& operator<<(std::ostream& out, Var* var){

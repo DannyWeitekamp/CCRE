@@ -6,9 +6,11 @@
 #include <iostream>
 #include <string_view>
 #include "../include/t_ids.h"
+#include "../include/ref.h"
 
 // Forward Declarations
 struct Fact;
+struct Var;
 // struct UnicodeItem;
 
 
@@ -25,47 +27,57 @@ struct ObjItem {
     void* data;
     uint64_t hash;
     uint16_t t_id;
-    uint16_t pad[3];
-};
-
-struct EmptyBlock{
-  int64_t prev_f_id;
-  int64_t next_f_id;
-  uint16_t t_id;
-  uint16_t is_lead;
-  uint32_t length;
+    uint8_t is_ref;
+    uint8_t borrows;
+    uint16_t pad[2];
 };
 
 struct Item {
     uint64_t val;
     uint64_t hash;
     uint16_t t_id;
-    uint16_t pad[3];
+    uint8_t is_ref;
+    uint8_t borrows;
+    uint16_t pad[2];
 
     bool operator==(const Item& other) const;
 
-    Item() : val(0), hash(0), t_id(0), pad(0) {}
+    Item() : val(0), hash(0), t_id(0),
+             is_ref(0), borrows(0), pad(0) 
+    {};
+
     Item(std::nullptr_t arg) : val(std::bit_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_NULL){}
+                    hash(0), t_id(T_ID_NULL),
+                    is_ref(0), borrows(0), pad(0)
+    {};
 
     Item(bool arg) : val(static_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_BOOL){}
+                    hash(0), t_id(T_ID_BOOL),
+                    is_ref(0), borrows(0), pad(0)
+    {};
 
     Item(void* arg) : val(std::bit_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_NULL){}
+                    hash(0), t_id(T_ID_NULL),
+                    is_ref(0), borrows(0), pad(0)
+    {};
 
     template <std::integral T>
-    Item(const T& x) : val(x), hash(0), t_id(T_ID_INT) {}
+    Item(const T& x) : val(x), hash(0), t_id(T_ID_INT),
+                        is_ref(0), borrows(0), pad(0)
+    {}
 
     template <std::floating_point T>
     Item(const T& x) : val(std::bit_cast<uint64_t>(double(x))),
-                       hash(0), t_id(T_ID_FLOAT) {}
+                       hash(0), t_id(T_ID_FLOAT),
+                       is_ref(0), borrows(0), pad(0)
+    {}
 
     Item(const std::string_view& arg);
     Item(const char* data, size_t _length=-1);
 
-    Item(Fact* arg) : val(std::bit_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_FACT){}
+    Item(Fact* x, bool _is_ref=false);
+
+    Item(ref<Var> x);
 
 
     inline bool as_bool() const {

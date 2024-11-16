@@ -4,6 +4,7 @@
 #include "../include/hash.h"
 #include "../include/intern.h"
 #include "../include/fact.h"
+#include "../include/var.h"
 #include <bit>
 #include <sstream>
 #include <functional>
@@ -141,6 +142,21 @@ Item::Item(const char* data, size_t _length) {
     // cout << sv << endl;
     // return str_to_item(sv);
 }
+
+Item::Item(Fact* x, bool _is_ref) : 
+            val(std::bit_cast<uint64_t>(x)),
+      hash(0), t_id(T_ID_FACT),
+      is_ref(_is_ref), borrows(0), pad(0)
+{};
+
+Item::Item(ref<Var> x) : val(std::bit_cast<uint64_t>(x)),
+                    hash(0), t_id(T_ID_FACT), 
+                    is_ref(0), borrows(1), pad(0) 
+{
+// TODO: should figure out how to do this with move semantics
+//   to avoid pointless increfs
+    x->inc_ref(); 
+};
 
 // Item::Item(bool arg) :
 //     val(static_cast<uint64_t>(arg)),
