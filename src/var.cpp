@@ -45,17 +45,19 @@ Var::Var(const Item& _alias,
 	}
 
 	if(_alias.t_id != T_ID_STR || _alias.t_id != T_ID_INT){
-		throw std::invalid_argument("Var alias must be string or integer. Got: " + _alias + ".");
+		std::stringstream ss;
+		ss << "Var alias must be string or integer. Got: " << _alias << ".";
+		throw std::invalid_argument(ss.str());
 	}
 }
 
-Var::Var(const std::string_view& _alias,
-		CRE_Type* _type,
-		DerefInfo* _deref_infos,
-		size_t _length) : 
+// Var::Var(const std::string_view& _alias,
+// 		CRE_Type* _type,
+// 		DerefInfo* _deref_infos,
+// 		size_t _length) : 
 
-		Var(Item(intern(_alias)), _type, _deref_infos, _length) {
-}
+// 		Var(Item(intern(_alias)), _type, _deref_infos, _length) {
+// }
 
 // void _init_var(Var* var,
 // 			CRE_Type* _type,
@@ -81,7 +83,7 @@ Var::Var(const std::string_view& _alias,
 // }
 
 ref<Var> new_var(
-			Item& _alias,
+			const Item& _alias,
 			CRE_Type* _type,
  			DerefInfo* _deref_infos,
  			size_t _length,
@@ -100,7 +102,7 @@ ref<Var> new_var(
 
     if(!did_malloc){
     	var->alloc_buffer = alloc_buffer;
-    	alloc_buffer.inc_ref();
+    	alloc_buffer->inc_ref();
     }
         
 	// Allocate a new var 
@@ -109,15 +111,15 @@ ref<Var> new_var(
 	// var->dtor = Var_dtor;
 	return var;
 }
-ref<Var> new_var(
-			std::string_view _alias,
-			CRE_Type* _type,
- 			DerefInfo* _deref_infos,
- 			size_t _length,
- 			AllocBuffer* alloc_buffer){
+// ref<Var> new_var(
+// 			const std::string_view& _alias,
+// 			CRE_Type* _type,
+//  			DerefInfo* _deref_infos,
+//  			size_t _length,
+//  			AllocBuffer* alloc_buffer){
 
-	return new_var(Item(intern(_alias)), _type, _deref_infos, _length, alloc_buffer);
-}
+// 	return new_var(Item(intern(_alias)), _type, _deref_infos, _length, alloc_buffer);
+// }
 
 
 
@@ -136,23 +138,25 @@ ref<Var> Var::_extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer){
 	// Allocate a new var 
 	// Var* new_var = _alloc_extension(var, 1);
 	Var* nv;
+	bool did_malloc = true;
 	if(alloc_buffer != nullptr){
-		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
+		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(length), did_malloc);	
 	}else{
-		nv = (Var*) malloc(SIZEOF_VAR(_length)); 
+		nv = (Var*) malloc(SIZEOF_VAR(length)); 
 	}
 
-	nv = new (nv) Var(base_type, alias, deref_infos, length);
+	nv = new (nv) Var(alias, base_type, nullptr, length+1);
 
 	if(!did_malloc){
 		nv->alloc_buffer = alloc_buffer;
-		alloc_buffer.inc_ref();
+		alloc_buffer->inc_ref();
 	}
 
 	// Var* nv = new_var(base_type, alias, deref_infos, length+1);
-	// memcpy(nv, var, sizeof(Var) + var->length*sizeof(DerefInfo));
+	memcpy(nv->deref_infos, deref_infos, SIZEOF_VAR(length));
 	DerefInfo* new_deref_inf = &nv->deref_infos[length];
 
+	FactType* hf_type = (FactType*) head_type;
 	
 
 	cout << "head_type: " << uint64_t(hf_type) << " " << int(hf_type->kind) << endl;
@@ -172,7 +176,7 @@ ref<Var> Var::_extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer){
 	return nv;
 }
 
-ref<Var> Var::extend_attr(const std::string_view& attr){
+ref<Var> Var::extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer){
 	// cout << "EXTEND: " << endl;
 
 	if(head_type == nullptr){
@@ -189,7 +193,7 @@ ref<Var> Var::extend_attr(const std::string_view& attr){
 
 	FactType* hf_type = (FactType*) head_type;
 	int a_id = hf_type->get_attr_index(attr);
-	return _extend_attr_unsafe(a_id);
+	return _extend_attr_unsafe(a_id, alloc_buffer);
 }
 
 

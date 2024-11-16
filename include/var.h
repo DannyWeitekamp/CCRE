@@ -42,13 +42,13 @@ struct Var : public CRE_Obj{
 		DerefInfo* _deref_infos=nullptr,
 		size_t _length=0);
 
-	Var(const std::string_view& _alias,
-		CRE_Type* _type=nullptr,
-		DerefInfo* _deref_infos=nullptr,
-		size_t _length=0);
+	// Var(const std::string_view& _alias,
+	// 	CRE_Type* _type=nullptr,
+	// 	DerefInfo* _deref_infos=nullptr,
+	// 	size_t _length=0);
 
-	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer);
-	ref<Var> _extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer);
+	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer=nullptr);
+	ref<Var> _extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer=nullptr);
 	// uint8_t is_not;
 
 	Item* apply_deref(CRE_Obj* obj);
@@ -60,17 +60,17 @@ struct Var : public CRE_Obj{
 
 };
 
-ref<Var> new_var(Item& _alias,
+ref<Var> new_var(const Item& _alias,
  			CRE_Type* _type=nullptr,
  			DerefInfo* deref_infos=NULL,
  			size_t length=0,
  			AllocBuffer* alloc_buffer=nullptr);
 
-ref<Var> new_var(std::string_view _alias,
- 			CRE_Type* _type=nullptr,
- 			DerefInfo* deref_infos=NULL,
- 			size_t length=0,
- 			AllocBuffer* alloc_buffer=nullptr);
+// ref<Var> new_var(const std::string_view& _alias,
+//  			CRE_Type* _type=nullptr,
+//  			DerefInfo* deref_infos=NULL,
+//  			size_t length=0,
+//  			AllocBuffer* alloc_buffer=nullptr);
 
 
 

@@ -38,7 +38,7 @@ void test_var(){
 	cout << "Ricky: " << ricky << endl;
 	cout << "TheDude: " << thedude << endl;
 
-	ref<Var> v = new_var(DudeType, "A");
+	ref<Var> v = new_var("A", DudeType);
 	cout << "Var: " << v << ", hash=" << CREHash{}(v) << endl;
 
 	ref<Var> nv = v->extend_attr("buddy");

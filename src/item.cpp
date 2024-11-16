@@ -149,7 +149,7 @@ Item::Item(Fact* x, bool _is_ref) :
       is_ref(_is_ref), borrows(0), pad(0)
 {};
 
-Item::Item(ref<Var> x) : val(std::bit_cast<uint64_t>(x)),
+Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
                     hash(0), t_id(T_ID_FACT), 
                     is_ref(0), borrows(1), pad(0) 
 {

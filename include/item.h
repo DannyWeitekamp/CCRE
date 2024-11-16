@@ -77,7 +77,7 @@ struct Item {
 
     Item(Fact* x, bool _is_ref=false);
 
-    Item(ref<Var> x);
+    Item(Var* x);
 
 
     inline bool as_bool() const {

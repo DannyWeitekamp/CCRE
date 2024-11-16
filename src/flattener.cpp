@@ -148,7 +148,7 @@ size_t Flattener::_fact_to_var_pairs(
 	// Make a new Fact 
 	if(add_exist_stubs){
 		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
-		subj_fact->set_unsafe(0, subj_var);	
+		subj_fact->set_unsafe(0, subj_var.get());	
 		builder.fact_set->_declare_back(std::move(subj_fact));
 	}
 	
@@ -165,7 +165,7 @@ size_t Flattener::_fact_to_var_pairs(
 
 		}
 
-		out_fact->set_unsafe(0, subj_var);
+		out_fact->set_unsafe(0, subj_var.get());
 
 		// if(type != nullptr && ind < type->members.size()){
 		// 	out_fact->set_unsafe(verb_ind /* 1 or 0 */,
@@ -180,7 +180,7 @@ size_t Flattener::_fact_to_var_pairs(
 			Fact* obj_fact = obj_item.as_fact();
 			ref<Var> obj_var = fact_vars[obj_fact->f_id];
 
-			out_fact->set_unsafe(1, obj_var);	
+			out_fact->set_unsafe(1, obj_var.get());	
 		}else{
 			out_fact->set_unsafe(1, obj_item);		
 		}

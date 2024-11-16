@@ -23,7 +23,7 @@ void init_flattener(nb::module_ & m){
             // return ref<Flattener>(new Flattener(input, flag_groups_vec, subj_as_fact, triple_order));
             return ref<Flattener>(new Flattener(input, flag_groups_vec, subj_as_fact, triple_order));
             }),
-        "input"_a.none()=nb::none(), "flag_groups"_a.none()=nb::none(), "subj_as_fact"_a=false, "triple_order"_a=TRIPLE_ORDER_SPO,              
+        "input"_a.none()=nb::none(), "flag_groups"_a.none()=nb::none(), "subj_as_fact"_a=false, "triple_order"_a=TRIPLE_ORDER_SVO,              
         nb::rv_policy::reference)
     // .def(nb::new_(&py_new_flattener),
     //     "input"_a.none()=nb::none(), "flag_groups"_a.none()=nb::none(), "subj_as_fact"_a=false, "triple_order"_a=TRIPLE_ORDER_SPO, 
