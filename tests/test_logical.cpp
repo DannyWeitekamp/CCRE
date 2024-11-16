@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <bit>
+#include <bitset>
 #include <cstdint>
 #include <cstring>
 
@@ -25,11 +26,11 @@ void test_var(){
 	 	}
 	);
 
-	Fact* olpops = make_fact(DudeType, "Ol'Pops");
-	Fact* pops = make_fact(DudeType, "Pops", nullptr, olpops, nullptr);
-	Fact* ma = make_fact(DudeType, "Ma", pops);
-	Fact* ricky = make_fact(DudeType, "Ricky");
-	Fact* thedude = make_fact(DudeType, "TheDude", ricky, pops, ma);
+	ref<Fact> olpops = make_fact(DudeType, "Ol'Pops");
+	ref<Fact> pops = make_fact(DudeType, "Pops", nullptr, olpops, nullptr);
+	ref<Fact> ma = make_fact(DudeType, "Ma", pops);
+	ref<Fact> ricky = make_fact(DudeType, "Ricky");
+	ref<Fact> thedude = make_fact(DudeType, "TheDude", ricky, pops, ma);
 
 	cout << "Ol'Pops: " << olpops << endl;
 	cout << "Pops: " << pops << endl;
@@ -37,17 +38,26 @@ void test_var(){
 	cout << "Ricky: " << ricky << endl;
 	cout << "TheDude: " << thedude << endl;
 
-	Var* v = new_var(DudeType, "A");
-	cout << "Var: " << v << endl;
+	ref<Var> v = new_var(DudeType, "A");
+	cout << "Var: " << v << ", hash=" << CREHash{}(v) << endl;
 
-	Var* nv = v->extend_attr("buddy");
-	cout << "Extended: " << nv << endl;
+	ref<Var> nv = v->extend_attr("buddy");
+	cout << "Extended: " << nv << ", hash=" << CREHash{}(nv) << endl;
 
-	Var* nv2 = v->extend_attr("dad")->extend_attr("dad");
-	cout << "Extended: " << nv2 << endl;
+	ref<Var> nv2 = v->extend_attr("dad")->extend_attr("dad");
+	cout << "Extended: " << nv2  << ", hash=" << CREHash{}(nv2) << endl;
 
 	cout << "Grandad: " << *nv2->apply_deref(thedude) << endl;
-	
+
+	ref<Var> a = v->extend_attr("dad");//->extend_attr("buddy");
+	ref<Var> b = v->extend_attr("buddy");//->extend_attr("dad");
+	a = a->extend_attr("buddy");
+	b = b->extend_attr("dad");
+
+	cout << v << ", " << nv2 << endl;
+	cout << a << ", " << b << endl;
+	cout << std::bitset<64>(CREHash{}(a)) << "\n" << std::bitset<64>(CREHash{}(b)) << endl;
+	IS_TRUE(std::bitset<64>(CREHash{}(a)) != std::bitset<64>(CREHash{}(b)));
 }
 
 int main(){

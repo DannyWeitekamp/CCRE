@@ -1,5 +1,8 @@
 #include "../include/types.h"
 #include "../include/cre_obj.h"
+#include "../include/hash.h"
+#include "../include/intern.h"
+#include "../include/ref.h"
 
 const uint16_t DEREF_KIND_ATTR = 1;
 const uint16_t DEREF_KIND_LIST = 2 ;
@@ -16,7 +19,7 @@ struct Var : public CRE_Obj{
 	// -- Members --
 // The pointer of the Var instance before any attribute selection
 //   e.g. if '''v = Var(Type); v_b = v.B;''' then v_b.base = &v
-	Var* base;
+	ref<Var> base;
 
 // The type of the Var's base instance
 	CRE_Type* base_type;
@@ -25,7 +28,7 @@ struct Var : public CRE_Obj{
 	CRE_Type* head_type;
 
 // The name of the var (uniqueness is not enforced by name)
-	std::string_view alias;
+	InternStr alias;
 
 // Instructions for applying each dereference 
 //   e.g. v.B.A[0] is three dereferences
@@ -33,19 +36,34 @@ struct Var : public CRE_Obj{
 	size_t length; // Note: could be smaller than size_t
 
 // -- Methods --
-	Var* extend_attr(std::string_view attr);
+	Var(CRE_Type* _type,
+ 			InternStr _alias,
+ 			DerefInfo* _deref_infos=nullptr,
+ 			size_t _length=0);
+
+	Var(CRE_Type* _type,
+ 			const std::string_view& _alias,
+ 			DerefInfo* _deref_infos=nullptr,
+ 			size_t _length=0);
+
+	ref<Var> extend_attr(std::string_view attr);
 	// uint8_t is_not;
 
 	Item* apply_deref(CRE_Obj* obj);
-	// -- Methods --
+
+	inline size_t size(){
+		return length;
+	}
+	std::string to_string();
+
 };
 
-Var* new_var(CRE_Type* _type,
+ref<Var> new_var(CRE_Type* _type,
  			std::string_view _alias,
  			DerefInfo* deref_infos=NULL,
  			size_t length=0);
 
-std::string var_to_string(Var* var);
+// std::string var_to_string(Var* var);
 std::ostream& operator<<(std::ostream& out, Var* var);
 
 extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf);

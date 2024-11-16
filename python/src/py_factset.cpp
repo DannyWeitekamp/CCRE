@@ -189,6 +189,7 @@ ref<FactSet> _FactSet_from_py(
                 }
 
                 // Throw error if member index cannot be resolved
+                cout << "INDEX: " << index << endl;
                 if(index == -1){
                     std::string type_str = type != nullptr ? std::string(type->name) : "NULL";
                     std::string error_msg = "Key '" + std::string(key_str) + "' is not an integer or named member of fact type '" + type_str + "'.";
@@ -213,6 +214,7 @@ ref<FactSet> _FactSet_from_py(
 };  
 
 struct FactSetFromPy_impl{
+
 	// using container_t =  nb::handle;
 	// using dict_t = 	     nb::dict;
 	// using list_t = 	     nb::list;
@@ -220,25 +222,30 @@ struct FactSetFromPy_impl{
 	// using obj_t = 	     nb::handle;
 	// using attr_getter_t =nb::str;
 
+	inline static const std::string container_prefix = "PyObject";
+	inline static const bool treat_lists_immutable = false;
+
 	typedef const nb::handle 				container_t;
 	typedef const nb::dict 					dict_t;
 	typedef const nb::list 					list_t;
 	typedef const nb::tuple 				tuple_t;
 	typedef const nb::handle 				obj_t;
-	// NOTE: ptr same as obj
-	typedef const nb::handle     			obj_t_ptr; 
+
+	// NOTE: 'obj_ptr_t' same as 'obj_t' since nb::handle
+	// 	 is a RAII wrapper
+	typedef const nb::handle     			obj_ptr_t; 
 	typedef const nb::str 					attr_getter_t;
 	typedef const nb::detail::dict_iterator dict_itr_t;
 	typedef const nb::detail::fast_iterator list_itr_t;
 
 
 	inline static auto& deref_obj_ptr(const auto& x){
-		// Note: Object is already a pointer wrapper 
+		// Note: nb::handle is already a pointer wrapper 
 		return x;
 	}	
 
 	inline static auto& get_obj_ptr(const auto& x){
-		// Note: Object is already a pointer wrapper 
+		// Note: nb::handle is already a pointer wrapper 
 		return x;
 	}	
 
@@ -288,6 +295,13 @@ struct FactSetFromPy_impl{
 		return lst.end();
 	}
 
+	inline static auto tuple_itr_begin(const tuple_t& tup){
+		return tup.begin();
+	}
+	inline static auto tuple_itr_end(const tuple_t& tup){
+		return tup.end();
+	}
+
 	inline static auto list_itr_val_ptr(const auto& itr){
 		return (*itr);
 	}
@@ -299,6 +313,15 @@ struct FactSetFromPy_impl{
 	inline static size_t list_size(const list_t& lst){
 		return lst.size();
 	}
+
+	inline static std::string obj_to_str(const auto& x){
+		try{
+			return nb::cast<std::string>(nb::str(x));
+		}catch(...) {
+			return "Unknown Python Object";
+		}
+		
+	}		
 	// 	auto& start = lst.begin();
 	// 	auto& end = lst.end();
 	// 	return std::make_tuple(start, end);
@@ -342,12 +365,31 @@ void init_factset(nb::module_ & m){
     	// 	auto trans = FactSetFromPy(type_attr, ref_prefix);
     	// 	return trans.translate(obj);
     	// },
-     	"obj"_a, "type_attr"_a="type", "ref_prefix"_a="@",  nb::rv_policy::reference)
-    .def_static("from_json", [](nb::str json)->ref<FactSet>{
-        std::string json_str = nb::cast<std::string>(json);
-        return FactSet::from_json(json_str.data(), json_str.size());
-        }, nb::rv_policy::reference)
+     	"obj"_a, "type_attr"_a="type", "ref_prefix"_a="@",
+     	nb::rv_policy::reference
+    )
+
+   	.def_static("from_json", &FactSet::from_json,
+    	"json_str"_a, "type_attr"_a="type", "ref_prefix"_a="@", "copy_buffer"_a=true,
+    	nb::rv_policy::reference
+    )
+    // .def_static("from_json", [](
+    // 	nb::str json_str,
+    // 	nb::str json_str
+    // 	)->ref<FactSet>{
+    //     std::string _json_str = nb::cast<std::string>(json_str);
+    //     return FactSet::from_json(_json_str.data(), _json_str.size());
+
+
+    //     }, "type_attr"_a="type", "ref_prefix"_a="@"
+
+    //     nb::rv_policy::reference)
     .def_static("from_json_file", &FactSet::from_json_file, nb::rv_policy::reference)
-    .def_static("to_json", &FactSet::to_json)
+
+    .def("to_json", &FactSet::to_json,
+    	"unique_id_as_key"_a=false, "doc_as_array"_a=false,
+    	"type_attr"_a="type", "ref_prefix"_a="@"
+     )
+    // .def("to_json", [](FactSet& fs){return FactSet::to_json(&fs);})
     ;
 }

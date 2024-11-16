@@ -75,7 +75,7 @@ ref<FactSet> test_buffered_build(size_t N){
 }
 
 void test_build_from_json(){
-	char* json_str;
+	std::string json_str;
 	ref<FactSet> fs;
 	define_fact("Cat", 
 	    {{"id", cre_str},
@@ -86,19 +86,17 @@ void test_build_from_json(){
 	);
 	cout << "HELLO2" << endl;
 
-	fs = FactSet::from_json_file((char *) "../data/small_test_state.json");
+	fs = FactSet::from_json_file("../data/small_test_state.json");
 	cout << "AFTER FS" << endl;
 	cout << fs << endl;
 
-	json_str = FactSet::to_json(fs);
-
-	
-
+	json_str = fs->to_json();
 	cout << "Written JSON str" << endl;
 	cout << json_str << endl;
+	// delete[] json_str;
 	
 	time_it_n("from_json_file", fs=FactSet::from_json_file("../data/big_untyped_state.json"), 50);
-	time_it_n("to_json", FactSet::to_json(fs), 50);
+	time_it_n("to_json", json_str = fs->to_json(), 50);
 
 	fs = new FactSet();
 	ref<Fact> a = fs->add_fact(nullptr, {Item(0), Item("A"), Item(false)});
@@ -107,7 +105,7 @@ void test_build_from_json(){
 	fs->add_fact(nullptr, {Item(a), Item(b), Item(c)});
 
 	cout << fs << endl;
-	json_str = FactSet::to_json(fs);
+	json_str = fs->to_json();
 	cout << json_str << endl;
 
 	fs=FactSet::from_json(json_str);
@@ -116,25 +114,25 @@ void test_build_from_json(){
       	cout << "f_id: " << fact->f_id << endl;
     }
 	cout << fs << endl;
-	delete[] json_str;
+	// delete[] json_str;
 }
 
 void bench_build(size_t N=1000, size_t reps=500){
 	ref<FactSet> fs;
 	ref<Flattener> flattener;
-	char* json_str;
+	std::string json_str;
 	time_it_n("individual", fs=test_individual_build(N), reps);
 	time_it_n("\ttraverse:", loop_fact_set(fs), reps);
 	time_it_n("unbuffered", fs=test_unbuffered_build(N), reps);
 	time_it_n("\ttraverse:", loop_fact_set(fs), reps);
 	time_it_n("buffered", fs=test_buffered_build(N), reps);
 	time_it_n("\ttraverse:", loop_fact_set(fs), reps);
-	json_str = FactSet::to_json(fs);
+	json_str = fs->to_json();
 	time_it_n("from_json", fs=FactSet::from_json(json_str), 20);
 	time_it_n("\ttraverse:", loop_fact_set(fs), reps);
 
 	time_it_n("_update_init", (flattener=new Flattener(fs))->_update_init();, reps);
-	delete[] json_str;
+	// delete[] json_str;
 }
 
 uint64_t do_stuff(const std::string_view& x) {
@@ -146,7 +144,7 @@ void test_json(){
 	ref<FactSet> fs;
 	fs = test_buffered_build(10);	
 	cout << fs << endl;
-	auto json_str = FactSet::to_json(fs);	
+	auto json_str = fs->to_json();	
 	cout << "-START2-" << endl;
 	cout << json_str << endl;
 	fs = FactSet::from_json(json_str);
@@ -155,8 +153,7 @@ void test_json(){
 	fs = FactSet::from_json(json_str);
 	cout << endl << fs << endl;
 	cout << "END" << endl;
-
-	delete[] json_str;
+	// delete[] json_str;
 }
 
 

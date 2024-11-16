@@ -67,6 +67,8 @@ Item Item_from_py(nb::handle py_obj){
     } else if (nb::isinstance<Fact>(py_obj)) {
     	return Item(nb::cast<Fact*>(py_obj));
 
+    }else if (py_obj.is_none()){
+        return Item();
     } else {
         throw std::runtime_error("Item cannot be created from: " + nb::cast<std::string>(nb::str(py_obj)));
         return Item();
@@ -233,6 +235,9 @@ void init_core(nb::module_& m) {
     .def("__call__", [](FactType& self, nb::args args, nb::kwargs kwargs){
         return _py_new_fact(&self, args.size(), args.begin(), args.end(), kwargs);
     }, nb::rv_policy::reference)
+    .def("__len__", [](FactType& self){
+        return self.members.size();
+    })
     ;
 
     // -- DefferedType ---
@@ -266,4 +271,47 @@ void init_core(nb::module_& m) {
 
 
     m.def("define_fact", &py_define_fact, nb::rv_policy::reference);
+}
+
+// -----------------------------------------------------------------
+// :  _py_new_fact:  Helper function for making fact from args, kwargs
+
+ref<Fact> _py_new_fact(FactType* type, 
+                int n_pos_args,
+                nb::detail::fast_iterator args_start,
+                nb::detail::fast_iterator args_end,
+                nb::kwargs kwargs,
+                bool immutable){
+    if(type == nullptr && kwargs.size() > 0){
+        throw std::invalid_argument("Keyword argument used in untyped Fact initialization.");
+    }
+
+    int max_args = n_pos_args + kwargs.size();
+    int items_len = n_pos_args;
+    Item* items = (Item*) alloca(sizeof(Item) * max_args);
+    std::fill(items, items+max_args, Item());
+
+    auto it = args_start;
+    for (int i=0; it != args_end; ++it, i++) {
+        items[i] = Item_from_py(*it);
+        // nb::print(nb::str("Positional: {}").format(*it));
+    }
+
+    for (auto [key, val] : kwargs) {
+        std::string_view key_view = nb::cast<std::string_view>(key);
+        int mbr_ind = type->get_attr_index(key_view);
+        if(mbr_ind == -1){
+            throw std::invalid_argument("FactType: \"" + type->name + "\" has no member: \"" + std::string(key_view) + "\"");
+        }
+        if(mbr_ind < n_pos_args){
+            throw std::invalid_argument("Keyword argument \"" + std::string(key_view) + "\" overwrites positional argument " + std::to_string(mbr_ind));
+        }
+        items[mbr_ind] = Item_from_py(val);
+        items_len = std::max(items_len, mbr_ind+1);
+    }
+
+    ref<Fact> fact = new_fact(type, items, items_len);
+    fact->immutable = immutable;
+    // ref<Fact> fact_ref = ref<Fact>(fact);
+    return fact;
 }

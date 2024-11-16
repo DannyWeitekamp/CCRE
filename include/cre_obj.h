@@ -22,6 +22,15 @@ class CRE_Obj {
 private: 
 
     // --- Members ---
+
+/*
+    Thoughts: we could get this down to 16 bytes 
+    int32_ refcount
+    uint16_t t_id
+    uint16_t alloc_buff_ind
+    void* proxy_obj
+*/
+
 // Refcount 
 #ifndef CRE_NONATOMIC_REFCOUNT
     mutable std::atomic_int64_t  ref_count;// = {0};

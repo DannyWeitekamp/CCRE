@@ -13,6 +13,7 @@
 // Forward Declarations
 struct Item;
 class Fact;
+class Var;
 class FactView;
 class UintPair;
 uint64_t hash_item(const Item& x);
@@ -74,6 +75,10 @@ struct CREHash {
     // Not Const
     uint64_t operator()(Fact* x);
 
+    // Not Const
+    uint64_t operator()(Var* x);
+
+    // UintPair used in Vectorizer
     uint64_t operator()(const UintPair& x) const;
     
 

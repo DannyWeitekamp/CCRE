@@ -25,7 +25,7 @@ struct Fact : public CRE_Obj {
 
 public: 
   //  -- Members --
-  FactType*     type=nullptr;
+  FactType* type=nullptr;
   FactSet* 	parent=nullptr; 
   uint32_t  f_id=-1;
   uint32_t  length=0;
@@ -54,7 +54,7 @@ public:
   template<class T>
   inline void set(uint32_t a_id, const T& val){
     if(a_id >= length){
-      throw std::out_of_range("Setting fact member beyond its length.");
+      throw std::out_of_range("Setting fact member [" + std::to_string(a_id) + "] beyond its length (" + std::to_string(length) + ").");
     }
 
     // Convert to Item, always intern strings, always hash on assignment;
@@ -131,6 +131,8 @@ public:
       throw std::invalid_argument("No attribute [\"" + std::string(attr) +
           "\"] in Fact of type \"" + type->name + "\".");
     }
+
+
 
     Item* data_ptr = std::bit_cast<Item*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)

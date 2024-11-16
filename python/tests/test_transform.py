@@ -1,10 +1,12 @@
 from test_utils import *
 import pytest
 
-def test_Flattener():
-    from cre import Flattener
 
-    CatType = define_fact("_Cat", 
+
+def _fixed_cat_fs():
+    from cre import define_fact
+
+    Cat = define_fact("_Cat", 
         {"id" : (int, {"unique_id" : True,}),
          "name" : (str, {"visible" : True,}),
          "color" : (str, {"visible" : True,}),
@@ -16,29 +18,126 @@ def test_Flattener():
     );
 
     fs = FactSet()
-    fs.declare(CatType(0, "fluffer", "grey", 4, False, 3.0, 4.0))
-    fs.declare(CatType(1, "soren", "white", 4, True, 12.0, 9.0))
-    fs.declare(CatType(2, "sango", "brown", 4, True, 13.0, 8.0))
-    fs.declare(CatType(3, "crabcake", "orange", 4, False, 3.0, 7.0))
+    fs.declare(Cat(0, "fluffer", "grey", 4, False, 3.0, 4.0))
+    fs.declare(Cat(1, "soren", "white", 4, True, 12.0, 9.0))
+    fs.declare(Cat(2, "sango", "brown", 4, True, 13.0, 8.0))
+    fs.declare(Cat(3, "crabcake", "orange", 4, False, 3.0, 7.0))
+    return Cat, fs
+    
 
+def _fixed_person_fs():
+    from cre import define_fact, Fact, iFact, NewFact
+
+    Person = define_fact("Person", 
+        {"name" : (str, {"unique_id" : True}),
+         "mom" : "Person",
+         "dad" : "Person",
+         "best_bud" : "Person",
+        }
+    );
+
+    l_of_d = [
+        {"type" : "Person", "name" : "Ricky",
+          "mom" : "@Mumsy", "dad" : "@Daddy'o", "best_bud" : "4"}, #i.e. Earl
+        {"type" : "Person", "name" : "Daddy'o",
+         "mom" : None, "dad" : "Gramps", "best_bud" : "@2"}, #i.e. Mumsy
+        {"type" : "Person", "name" : "Mumsy",
+         "mom" : None, "dad" : None, "best_bud" : 1}, #i.e. Daddy'o
+        {"type" : "Person", "name" : "Gramps",
+          "mom" : None, "dad" : None, "best_bud" : "@Daddy'o"},
+        {"type" : "Person", "name" : "Earl",
+          "mom" : None, "dad" : None, "best_bud" : None},
+    ]
+    fs = FactSet.from_py(l_of_d)
+
+    return Person, fs
+
+
+def _do_flattener_tests(fs, n_vis):
+    from cre import Flattener
     flattener = Flattener()
-    flat_fs = flattener.apply(fs)
-    assert len(flat_fs) == 6*len(fs)
+    flat_fs0 = flattener.apply(fs)
+    assert len(flat_fs0) == n_vis*len(fs)
 
     flattener = Flattener(subj_as_fact=True)
-    flat_fs = flattener.apply(fs)
-    assert len(flat_fs) == 7*len(fs)
+    flat_fs1 = flattener.apply(fs)
+    assert len(flat_fs1) == (n_vis+1)*len(fs)
 
     # Refcount sanity check (flat_fs has one, fact has one)
-    for fact in flat_fs:
+    for fact in flat_fs1:
         assert fact.get_refcount() == 2;
 
+    return flat_fs0, flat_fs1
 
-def test_Vectorizer():
-    pass
+def test_Flattener_basic():
+    Cat, fs = _fixed_cat_fs()
+    return _do_flattener_tests(fs, 6)
 
-def test_Vectorizer_invert():
-    pass
+def test_Flattener_refs():
+    from cre import Flattener
+    Person, fs = _fixed_person_fs()
+
+    print()
+    flattener = Flattener()
+    flat_fs0 = flattener.apply(fs)
+    print(flat_fs0)
+    assert len(flat_fs0) == 4*len(fs)
+
+    # TODO: need to check this
+    flattener = Flattener(subj_as_fact=True)
+    flat_fs1 = flattener.apply(fs)
+    assert len(flat_fs1) == 5*len(fs)
+    print(flat_fs1)
+
+    return flat_fs0, flat_fs1
+
+
+
+def test_Vectorizer_basic():
+    from cre import Vectorizer
+
+    flat_fs0, flat_fs1 = test_Flattener_basic()
+
+    vectorizer = Vectorizer()
+    nom, cont = vectorizer.apply(flat_fs0)
+
+    print(nom, cont)
+    for i, val in enumerate(nom):
+        print(vectorizer.invert(i,val))
+    for i, val in enumerate(cont):
+        print(vectorizer.invert(i,val))
+
+    vectorizer = Vectorizer()
+    nom, cont = vectorizer.apply(flat_fs1)
+
+    print(nom, cont)
+    for i, val in enumerate(nom):
+        print(vectorizer.invert(i,val))
+    for i, val in enumerate(cont):
+        print(vectorizer.invert(i,val))
+
+
+def test_Vectorizer_refs():
+    from cre import Vectorizer
+
+    flat_fs0, flat_fs1 = test_Flattener_refs()    
+
+    vectorizer = Vectorizer()
+    nom, cont = vectorizer.apply(flat_fs0)
+
+    for i, val in enumerate(nom):
+        print(vectorizer.invert(i,val))
+    for i, val in enumerate(cont):
+        print(vectorizer.invert(i,val))
+
+    print(nom, cont)
+
+    vectorizer = Vectorizer()
+    nom, cont = vectorizer.apply(flat_fs1)
+
+    print(nom, cont)
+# def test_Vectorizer_invert():
+#     pass
 
 def test_RelativeEncoder():
     pass
@@ -79,10 +178,12 @@ def test_b_pipeline_incr_change(benchmark):
 
 
 if __name__ == "__main__":
-    test_Flattener()
-    test_Vectorizer()
-    test_Vectorizer_invert()
-    test_RelativeEncoder()
-    test_Flattener_incr()
-    test_Vectorizer_incr()
-    test_RelativeEncoder_incr()
+    test_Flattener_basic()
+    test_Flattener_refs()
+    test_Vectorizer_basic()
+    test_Vectorizer_refs()
+    # test_Vectorizer_invert()
+    # test_RelativeEncoder()
+    # test_Flattener_incr()
+    # test_Vectorizer_incr()
+    # test_RelativeEncoder_incr()

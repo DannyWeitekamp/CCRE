@@ -92,10 +92,8 @@ def test_define_fact_deffered():
 
 
 
-
-def test_fact_create():
-    from cre import define_fact, NewFact
-
+def _standard_cat():
+    from cre import define_fact
     # Test Typed Facts
     Cat = define_fact("Cat", 
         {"name" : str,
@@ -108,6 +106,12 @@ def test_fact_create():
     );
 
     snowball = Cat("snowball", "white", 3, False, 1.0, 1.0)
+    return Cat, snowball
+
+def test_fact_create():
+    from cre import define_fact, NewFact, Fact, iFact
+
+    Cat, _  = _standard_cat()
 
     with pytest.raises(Exception):
         Cat("snowball", 77, 3, False, 1.0, 1.0)
@@ -120,7 +124,7 @@ def test_fact_create():
     
 
 def test_fact_getitem():
-    snowball = test_fact_create()    
+    Cat, snowball = _standard_cat()
     
     # Test __getitem__
     assert snowball[0] == "snowball"
@@ -139,7 +143,7 @@ def test_fact_getitem():
         snowball[-7]
 
 def test_fact_getattr():
-    snowball = test_fact_create()    
+    Cat, snowball = _standard_cat()    
     
     # Test __getattr__
     assert snowball["name"] == "snowball"
@@ -163,7 +167,7 @@ def test_fact_getattr():
         snowball.funhat
 
 def test_fact_iter():
-    snowball = test_fact_create()    
+    Cat, snowball = _standard_cat()
 
     # Test __iter__
     for i, item in enumerate(snowball):

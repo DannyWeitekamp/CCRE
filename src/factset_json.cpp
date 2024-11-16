@@ -31,6 +31,9 @@
 
 struct FactSetFromJSON_impl{
 public:
+	inline static const std::string container_prefix = "JSON";
+	inline static const bool treat_lists_immutable = true;
+
 	typedef rapidjson::Document::ValueType GV;
 	// typedef rapidjson::GenericObject<false, rapidjson::Value> GV;
 
@@ -39,7 +42,7 @@ public:
 	typedef GV::Array 			list_t;
 	typedef GV::Array 			tuple_t;
 	typedef GV     				obj_t;
-	typedef const GV*     		obj_t_ptr;
+	typedef const GV*     		obj_ptr_t;
 
 
 	typedef rapidjson::Pointer 	 attr_getter_t;
@@ -61,6 +64,7 @@ public:
 
 	// typedef rapidjson::GenericMemberIterator<true,Encoding,Allocator>::Iterator   dict_iter_t;
 	// typedef const GenericValue*    list_iter_t;
+	
 
 	inline static auto& deref_obj_ptr(const auto& x){
 		return *x;
@@ -110,7 +114,7 @@ public:
 
 	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){
 		std::string sx = "/" + std::string(x);
-		return rapidjson::Pointer(sx.c_str(), x.size());
+		return rapidjson::Pointer(sx.c_str(), sx.size());
 	}
 	inline static FactType* 		to_fact_type(const auto& x){
 		std::string_view type_name = std::string_view(x.GetString(), x.GetStringLength());
@@ -167,6 +171,15 @@ public:
 	inline static size_t list_size(const auto& lst){
 		return lst.Size();
 	}
+
+	inline static std::string obj_to_str(const auto& x){
+		try{
+			return item_to_string(to_item(x));
+		} catch(...) {
+			return "Unknown JSON";
+		}
+		
+	}		
 
 };
 
@@ -329,7 +342,14 @@ char* _read_file(const char* filename){
 	fseek(fp, 0, SEEK_END);
 	size_t filesize = (size_t)ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	char* buffer = (char*)malloc(filesize + 1);
+
+	// std::string file_content;
+	// file_content.reserve(filesize);
+	// char* buffer = &file_content[0];
+	// size_t readLength = fread(buffer, 1, filesize, fp);
+	// buffer[readLength] = '\0';
+
+	char* buffer = new char[filesize + 1];
 	size_t readLength = fread(buffer, 1, filesize, fp);
 	buffer[readLength] = '\0';
 	fclose(fp);
@@ -337,35 +357,49 @@ char* _read_file(const char* filename){
 	return buffer;
 }
 
-ref<FactSet> FactSet::from_json_file(const char* filename){
-	char* buffer = _read_file(filename);
+ref<FactSet> FactSet::from_json_file(
+	const std::string_view& filename,
+	const std::string_view& type_attr,
+	const std::string_view& ref_prefix){
+
+	char* buffer = _read_file(filename.data());
 
 	// cout << "buffer: " << buffer << endl;
-	rapidjson::Document d;
-	d.ParseInsitu(buffer);
+	rapidjson::Document doc;
+	doc.ParseInsitu(buffer);
 
-	ref<FactSet> fact_set = FactSetFromJSON::apply(d); 
+	ref<FactSet> fact_set = FactSetFromJSON::apply(
+		doc, type_attr, ref_prefix
+	); 
 	// ref<FactSet> fact_set = _FactSet_from_doc(d);
 	delete[] buffer;
 	return fact_set;
 }
 
-ref<FactSet> FactSet::from_json(char* json_str, size_t length, bool copy_buffer){
-	if(length == size_t(-1)){
-		length = strlen(json_str);
-	}
+ref<FactSet> FactSet::from_json(
+	//char* json_str, size_t length,
+	const std::string_view& json_str,
+	const std::string_view& type_attr,
+	const std::string_view& ref_prefix,
+	bool copy_buffer){
+	// if(length == size_t(-1)){
+	// 	length = strlen(json_str);
+	// }
 	char* buffer;
 	if(copy_buffer){
+		size_t length = json_str.size();
 		buffer = new char[length + 1];
-		std::memcpy(buffer, json_str, length);
+		std::memcpy(buffer, json_str.data(), length);
 		buffer[length] = '\0';
 	}else{
-		buffer = json_str;
+		buffer = (char*) json_str.data();
 	}
 
-	rapidjson::Document d;
-	d.ParseInsitu(buffer);
-	ref<FactSet> fact_set = FactSetFromJSON::apply(d); 
+	rapidjson::Document doc;
+	doc.ParseInsitu(buffer);
+	ref<FactSet> fact_set = FactSetFromJSON::apply(
+		doc, type_attr, ref_prefix
+	); 
 	// ref<FactSet> out = _FactSet_from_doc(d);
 
 	if(copy_buffer){
@@ -375,54 +409,69 @@ ref<FactSet> FactSet::from_json(char* json_str, size_t length, bool copy_buffer)
 }
 
 
+
+
 //-----------------------------------------------------------------
 // : WRTIE JSON from FactSet
 
 
+struct FactSetJSONWriter {
+	bool unique_id_as_key;
+	bool doc_as_array;
+    std::string_view type_attr;
+    std::string_view ref_prefix;
+    rapidjson::Document& doc;
+    rapidjson::Document::AllocatorType& alloc;
 
-rapidjson::Value item_to_value(Item item, rapidjson::Document::AllocatorType& alloc){
-	rapidjson::Value item_val;
-	switch(item.t_id) {
-        case T_ID_BOOL:
-            item_val = rapidjson::Value(item.as_bool());
-            break;
-        case T_ID_INT:
-			item_val = rapidjson::Value(item.as_int());
-            break;
-        case T_ID_FLOAT:
-			item_val = rapidjson::Value(item.as_float());
-            break;
-        case T_ID_STR:
-			{
-				std::string_view item_str = item.as_string();
-				item_val = rapidjson::Value(item_str.data(), item_str.size(), alloc);
-			}
-            break;
-        case T_ID_FACT:
-			{
-				Fact* fact = (Fact*) item.val;
-				std::string ref_str = "@" + std::to_string(fact->f_id);
-            	item_val = rapidjson::Value(ref_str.c_str(), ref_str.size(), alloc);
-			}
-			break;
-			
-		default:
-			throw std::runtime_error("Invalid item type.");
-    }
-	return item_val;
-}
+    FactSetJSONWriter(
+    	rapidjson::Document& _doc,
+    	bool _unique_id_as_key=false,
+    	bool _doc_as_array=false,
+	    const std::string_view& _type_attr="type",
+	    const std::string_view& _ref_prefix="@") :
 
-rapidjson::Document  _FactSet_to_doc(FactSet* fs){
-	rapidjson::Document d;
-	rapidjson::Document::AllocatorType& alloc = d.GetAllocator();
-	d.SetObject();
+    	doc(_doc),
+    	unique_id_as_key(_unique_id_as_key),
+    	doc_as_array(_doc_as_array),
+    	type_attr(_type_attr),
+    	ref_prefix(_ref_prefix),
+    	alloc(_doc.GetAllocator())
+    {};
 
-	// vector<std::string> all_allocated_strings = {};
-	for (auto it = fs->begin(); it != fs->end(); ++it) {
-		Fact* fact = *it;
-		// cout << "f_id" << fact->f_id;
-		std::string fact_id = std::to_string(fact->f_id);
-		rapidjson::Value fact_id_obj(fact_id.c_str(), fact_id.size(), alloc);
+    rapidjson::Value item_to_value(Item item){
+		rapidjson::Value item_val;
+		switch(item.t_id) {
+	        case T_ID_BOOL:
+	            item_val = rapidjson::Value(item.as_bool());
+	            break;
+	        case T_ID_INT:
+				item_val = rapidjson::Value(item.as_int());
+	            break;
+	        case T_ID_FLOAT:
+				item_val = rapidjson::Value(item.as_float());
+	            break;
+	        case T_ID_STR:
+				{
+					std::string_view item_str = item.as_string();
+					item_val = rapidjson::Value(item_str.data(), item_str.size(), alloc);
+				}
+	            break;
+	        case T_ID_FACT:
+				{
+					Fact* fact = (Fact*) item.val;
+					std::string ref_str = "@" + std::to_string(fact->f_id);
+	            	item_val = rapidjson::Value(ref_str.c_str(), ref_str.size(), alloc);
+				}
+				break;
+				
+			default:
+				throw std::runtime_error("Invalid item type.");
+	    }
+		return item_val;
+	};
+
+	rapidjson::Value _Fact_to_JSON_obj(Fact* fact){
+
 		rapidjson::Value fact_obj(rapidjson::kObjectType);
 		// fact_obj.SetObject();
 
@@ -435,9 +484,9 @@ rapidjson::Document  _FactSet_to_doc(FactSet* fs){
 		if(type != nullptr){
 			// Add the "type" : whatever line
 			std::string_view type_name = type->name;
-			rapidjson::Value _type_obj("type", alloc);
-			rapidjson::Value type_name_obj(type_name.data(), type_name.size(), alloc);
-			fact_obj.AddMember(_type_obj, type_name_obj, alloc);
+			rapidjson::Value type_attr_val(type_attr.data(), type_attr.size(), alloc);
+			rapidjson::Value type_name_val(type_name.data(), type_name.size(), alloc);
+			fact_obj.AddMember(type_attr_val, type_name_val, alloc);
 
 
 			for(; i < type->members.size(); ++i){
@@ -445,7 +494,7 @@ rapidjson::Document  _FactSet_to_doc(FactSet* fs){
 				rapidjson::Value attr_name_obj(attr_name.data(), attr_name.size(), alloc);
 
 				Item item = *fact->get(i);
-				rapidjson::Value item_obj = item_to_value(item, alloc);
+				rapidjson::Value item_obj = item_to_value(item);
 
 				// cout << " Adding Fact Attr: " << attr_name << " : " << repr_item(item) << endl;
 				fact_obj.AddMember(attr_name_obj, item_obj, alloc);
@@ -458,44 +507,126 @@ rapidjson::Document  _FactSet_to_doc(FactSet* fs){
 			rapidjson::Value attr_name_obj(attr_name.c_str(), attr_name.size(), alloc);
 
 			Item item = *fact->get(i);
-			rapidjson::Value item_obj = item_to_value(item, alloc);
+			rapidjson::Value item_obj = item_to_value(item);
 
 			// cout << " Adding Fact Attr: " << attr_name << " : " << repr_item(item) << endl;
 			fact_obj.AddMember(attr_name_obj, item_obj, alloc);
 			// cout << "AFTE Fact Attr: " << attr_name << endl;
 		}
+		return fact_obj;
+	};
+
+	rapidjson::Value _Fact_to_JSON_array(Fact* fact){
+		rapidjson::Value fact_array(rapidjson::kArrayType);
 			
+		for(size_t i=0; i < fact->length; ++i){
+			Item item = *fact->get(i);
+			rapidjson::Value item_obj = item_to_value(item);
 
+			fact_array.PushBack(item_obj, alloc);
+		}
+		return fact_array;
+	};
 
-			// Item* item = fact->get(i);
-			// std::string item_str = item_to_string(item);
-			// rapidjson::Value item_obj(item_str.c_str(), item_str.size(), d.GetAllocator());
-			// fact_obj.AddMember(rapidjson::GenericStringRef<char>(std::to_string(i).c_str()), item_obj, d.GetAllocator());
+	void  _doc_add_fact_member(Fact* fact){
+		// Make the key
+		std::string fact_id;
+		if(unique_id_as_key) {
+			fact_id=fact->get_unique_id();
+		}
+		if(fact_id.size() == 0){
+			fact_id = std::to_string(fact->f_id);
+		}
+		rapidjson::Value fact_key_val(fact_id.data(), fact_id.size(), alloc);
+		
+		// Make the value (object or array)
+		rapidjson::Value fact_val;
+		if(fact->type != nullptr || !fact->immutable){
+			fact_val = _Fact_to_JSON_obj(fact);
+		}else{
+			// Untyped immutable facts written as arrays
+			fact_val = _Fact_to_JSON_array(fact);
+		}
+
+		// Add the member
+		doc.AddMember(fact_key_val, fact_val, alloc);
+	};
+
+	void  _doc_push_back(Fact* fact){
+		// Make the key
+		std::string fact_id;
+		
+		// Make the value (object or array)
+		rapidjson::Value fact_val;
+		if(fact->type != nullptr || !fact->immutable){
+			fact_val = _Fact_to_JSON_obj(fact);
+		}else{
+			// Untyped immutable facts written as arrays
+			fact_val = _Fact_to_JSON_array(fact);
+		}
+
+		// Add the member
+		doc.PushBack(fact_val, alloc);	
+	};
+
+	std::string apply(FactSet* fs){
 		
 
-		// cout << "Adding member: " << fact_id << endl;
-		d.AddMember(fact_id_obj, fact_obj, alloc);
-		// cout << "AFTER Adding member: " << fact_id << endl;
-	}
-	return d;
+		// alloc = _doc.GetAllocator();
+		// rapidjson::Document::AllocatorType& alloc = d.GetAllocator();
+
+		if(!doc_as_array){
+			doc.SetObject();
+			for (auto it = fs->begin(); it != fs->end(); ++it) {
+				_doc_add_fact_member(*it);
+			}	
+		}else{
+			doc.SetArray();
+			for (auto it = fs->begin(); it != fs->end(); ++it) {
+				_doc_push_back(*it);
+			}
+		}	
+		
+		rapidjson::StringBuffer buffer;
+	    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	    doc.Accept(writer);
+
+	    std::string json_str = std::string(buffer.GetString(), buffer.GetSize());
+		return json_str;
+	};
 };
 
-char* FactSet::to_json(FactSet* fs){
+std::string FactSet::to_json(
+		bool unique_id_as_key,
+		bool doc_as_array,
+        const std::string_view& type_attr,
+        const std::string_view& ref_prefix
+    ){
 
+	rapidjson::Document doc;
+	auto writer = FactSetJSONWriter(
+		doc,
+		unique_id_as_key, doc_as_array,
+		type_attr, ref_prefix
+	);
+	std::string json_str = writer.apply(this);
 	// cout << "Before Write Doc" << endl;
-	rapidjson::Document d = _FactSet_to_doc(fs);
+	// rapidjson::Document d = _FactSet_to_doc(this);
 	// cout << "After Write Doc" << endl;
 
-	rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    d.Accept(writer);
+	// rapidjson::StringBuffer buffer;
+    // rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    // d.Accept(writer);
 	
-	// cout << "BLARG: " << length << endl;
-    // Create a copy of the string that can be freed by the caller
-    size_t length = buffer.GetSize();
-    char* json_str = new char[length + 1];
-    std::memcpy(json_str, buffer.GetString(), length);
-    json_str[length] = '\0';
+    // // Create a copy of the string that can be freed by the caller
+    // std::string json_str = std::string(buffer.GetString(), buffer.GetSize());
+
+    // size_t length = buffer.GetSize();
+    // char* json_cstr = new char[length + 1];
+    // std::memcpy(json_cstr, buffer.GetString(), length);
+    // json_cstr[length] = '\0';
+
+    
 	
     return json_str;
 }

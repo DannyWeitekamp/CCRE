@@ -133,34 +133,26 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 	// Make Subject from unique_id or f_id
 	auto u_ind = get_unique_id_index(type);
 	// cout << "U_IND: " << u_ind << endl;
-	Item id_item = (u_ind == -1 ? 
+
+
+	Item subj_item = (u_ind == -1 ? 
 						Item(in_fact->f_id) :
 						*in_fact->get(u_ind)
 					);
-	// cout << "FACT: " << in_fact << endl;
-	// cout << "SUBJ: " << id_item << endl;
 
-	// cout << "SUJECT AS FACT: " << this->subj_as_fact<< endl;
+	
 	if(this->subj_as_fact){
 		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
-		// subj_fact->length = 1;
-		subj_fact->set_unsafe(0, id_item);	
-		// subj_fact->immutable = true;
-		// subj_fact->alloc_buffer = builder.alloc_buffer;
-		// builder.alloc_buffer->inc_ref();
-		// _init_fact()
-		// builder->add_fact(s)
+		subj_fact->set_unsafe(0, subj_item);	
 		builder.fact_set->_declare_back(std::move(subj_fact));
-		// _declare_to_empty(builder.fact_set, subj_fact, 1, NULL);	
-		// id_item = Item(subj_fact);
-		// cout << "SUBJ FACT: " << subj_fact << endl;
+		subj_item = Item(subj_fact);
 	}
 	
 	auto make_preds = [&](size_t ind){
 		ref<Fact> out_fact = builder.add_empty(3, nullptr, true);
 		out_fact->length = 3;
 
-		out_fact->set_unsafe(subj_ind /* 0 or 1 */, id_item);
+		out_fact->set_unsafe(subj_ind /* 0 or 1 */, subj_item);
 
 		if(type != nullptr && ind < type->members.size()){
 			out_fact->set_unsafe(pred_ind /* 1 or 0 */,
@@ -169,7 +161,19 @@ size_t Flattener::_flatten_fact(Fact* __restrict in_fact){
 		}else{
 			out_fact->set(pred_ind /* 1 or 0 */, int(ind));
 		}
-		out_fact->set_unsafe(2, *in_fact->get(ind));	
+
+		Item obj_item = *in_fact->get(ind);
+		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
+			Fact* obj_fact = obj_item.as_fact();
+			auto u_ind = get_unique_id_index(obj_fact->type);
+
+			obj_item = (u_ind == -1 ? 
+						Item(obj_fact->f_id) :
+						*obj_fact->get(u_ind)
+					);
+		}
+
+		out_fact->set_unsafe(2, obj_item);	
 		// out_fact->immutable = true;
 		builder.fact_set->_declare_back(std::move(out_fact));
 		// out_fact->alloc_buffer = builder.alloc_buffer;

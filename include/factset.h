@@ -53,9 +53,32 @@ public:
         std::string_view delim="\n  "
     );
 
-    static ref<FactSet> from_json(char* json_str, size_t length=-1, bool copy_buffer=true);
-    static ref<FactSet> from_json_file(const char* json);
-    static char* to_json(FactSet* fs);
+    // static ref<FactSet> from_json(char* json_str, size_t length=-1,
+    //         const std::string_view& type_attr,
+    //         const std::string_view& ref_prefix,
+    //         bool copy_buffer=true);
+
+    static ref<FactSet> from_json(
+        const std::string_view& json_str,
+        const std::string_view& type_attr="type",
+        const std::string_view& ref_prefix="@",
+        bool copy_buffer=true 
+    );//{
+        // return FactSet::from_json(json_str.data(), json_str.size(), true);
+    // }
+
+    static ref<FactSet> from_json_file(
+        const std::string_view& filename,
+        const std::string_view& type_attr="type",
+        const std::string_view& ref_prefix="@"
+    );
+
+    std::string to_json(
+        bool unique_id_as_key=false,
+        bool doc_as_array=false,
+        const std::string_view& type_attr="type",
+        const std::string_view& ref_prefix="@"
+    );
 
 
     // std::string to_string();
@@ -216,22 +239,23 @@ struct ToFactSetTranslator {
     using list_t = T::list_t;
     using tuple_t = T::tuple_t;
     using obj_t = T::obj_t;
-    using obj_t_ptr = T::obj_t_ptr;
+    using obj_ptr_t = T::obj_ptr_t;
     using attr_getter_t = T::attr_getter_t;
+    // using container_prefix = T::container_prefix;
 
-    using fact_info_t = std::tuple<obj_t_ptr, FactType*, size_t, size_t>;
+    using fact_info_t = std::tuple<obj_ptr_t, FactType*, size_t, size_t>;
 
     std::string_view type_attr;
     std::string_view ref_prefix;
     HashMap<std::string_view, size_t> fact_map;
     std::vector<fact_info_t> fact_infos;
     FactSetBuilder builder;
-    attr_getter_t ref_type_obj;
+    attr_getter_t type_attr_ref;
 
     ToFactSetTranslator() : 
         type_attr("type"), ref_prefix("@"),
         fact_map({}), fact_infos({}), builder({}),
-        ref_type_obj(T::to_attr_getter_t(type_attr)) {
+        type_attr_ref(T::to_attr_getter_t("type")) {
     };
 
     ToFactSetTranslator(
@@ -239,7 +263,7 @@ struct ToFactSetTranslator {
         const std::string_view& _ref_prefix="@") :
         type_attr(_type_attr), ref_prefix(_ref_prefix),
         fact_map({}), fact_infos({}), builder({}),
-        ref_type_obj(T::to_attr_getter_t(type_attr)){
+        type_attr_ref(T::to_attr_getter_t(_type_attr)){
     };
 
     static ref<FactSet> apply(
@@ -250,81 +274,103 @@ struct ToFactSetTranslator {
         return trans._to_factset(obj);
     }
 
+
+    /*!
+        Resolve the byte_offset, index, and fact_info for a single
+        item in the input container when it is converted to a fact
+    */
     void _make_fact_info (
-        const std::string_view& fact_id,
-        const obj_t_ptr val_ptr,
+        const std::string_view& key_id,
+        const obj_ptr_t val_ptr,
         size_t& index,
         size_t& byte_offset){
 
         auto& val = T::deref_obj_ptr(val_ptr); 
 
-        // TODO: Handle integer keys
-        // if(nb::isinstance<nb::int>(key)):
-            // std::to_string()
+        Item uid_item;
+        int uid_index = -1;
+        // if(type != nullptr)
+           // uid_index = get_unique_id_index(type);
         
+        // Resolve the length, and type, and uid of this container item
         size_t length; 
         FactType* type = nullptr;
-
-        // cout << "B" << endl;
         if(T::is_dict(val)){
             auto fact_dict = T::to_dict(val);
             length = T::dict_size(fact_dict);
             
-            // cout << "C" << endl;
-
-            if(T::has_attr(fact_dict, ref_type_obj)){
-                // cout << "D" << endl;
-                // nb::print(fact_dict[ref_type_obj]);
-                type = T::to_fact_type(T::get_attr(fact_dict,ref_type_obj));
-                // cout << "E" << endl;
+            // "type" keyword ignored when computing length
+            if(T::has_attr(fact_dict, type_attr_ref)){
+                type = T::to_fact_type(T::get_attr(fact_dict, type_attr_ref));
                 if(type->members.size() > length){
                     length = type->members.size();
                 }
-                // cout << "F" << endl;
                 length -= 1; // Don't count type in the count            
             }
             
             if(type != nullptr){
                 length = std::max(length, size_t(type->members.size()));
+                uid_index = get_unique_id_index(type);
+                if(uid_index != -1 && uid_index < length){
+                    std::string_view unq_attr = type->members[uid_index].name;
+                    auto unq_attr_getter = T::to_attr_getter_t(unq_attr);
+                    if(T::has_attr(fact_dict, unq_attr_getter)){
+                        uid_item = T::to_item(T::get_attr(fact_dict, unq_attr_getter));   
+                    }
+                }
             }
         }else if(T::is_list(val)){
             auto fact_list = T::to_list(val);
             length = T::list_size(fact_list);
+
+            // if(uid_index != -1 && uid_index < length){
+            //     uid_item = T::to_item(fact_list[uid_index]);
+            // }
         }else if(T::is_tuple(val)){   
             if constexpr(!std::is_same<typename T::list_t, typename T::tuple_t>::value){
                 tuple_t fact_tuple = T::to_tuple(val);
                 length = fact_tuple.size();
+
+                // if(uid_index != -1 && uid_index < length){
+                //     uid_item = T::to_item(fact_tuple[uid_index]);
+                // }
             }
         }else{
-            throw std::runtime_error("Fact item with key " + std::string(fact_id) + " is not a dict.");
+            throw std::runtime_error("Fact item with key " + std::string(key_id) + " is not a dict.");
         }
 
-        // cout << "C" << endl;
-        // auto tup = std::make_tuple(val, type, length, byte_offset);
-        // fact_infos.push_back(std::move(tup));
+        // Make a fact_info tuple, and insert into fact_map
         fact_infos.push_back({val_ptr, type, length, byte_offset});
-        auto [it, inserted] = fact_map.insert({fact_id, index});
-        // cout << fact_id << endl;
-        if(!inserted){
-            throw std::runtime_error("Duplicate fact identifier: " + std::string(fact_id));
+
+        // Insert whatever key_id is
+        if(key_id.size() > 0){
+            auto [it, inserted] = fact_map.insert({key_id, index});
+            if(!inserted){
+                throw std::runtime_error("Duplicate fact identifier: " + std::string(key_id));
+            }    
         }
-        byte_offset += SIZEOF_FACT(length);//sizeof(Fact) + sizeof(Item) * length;   
+
+        if(uid_item.t_id != 0){
+            std::string_view uid = uid_item.as_string();
+            if(key_id != uid){
+                auto [it, inserted] = fact_map.insert({uid, index});
+                if(!inserted){
+                    throw std::runtime_error("Duplicate fact identifier: " + std::string(key_id));
+                }          
+            }            
+        }
+        byte_offset += SIZEOF_FACT(length);
     }
 
+    /*!
+        A first pass through the input container to retrieve the 
+         indicies and offsets of each fact and the total size of
+         the resulting FactSet's buffer. Makes a fact_infos vector
+         which is used in a second pass to make the actual FactSet
+    */
     void _collect_fact_infos(const container_t& container){
-        // attr_getter_t ref_type_obj = T::to_attr_getter_t(type_attr);
-
-        // fact_map = {};
-        // fact_infos = {};
         size_t index = 0;
         size_t byte_offset = 0;
-
-        // Lambda Function
-        // auto make_fact_info = [&ref_type_obj, &this](
-        //     const std::string_view& fact_id,
-        //     obj_t_ptr val_ptr
-        // ){
-            
 
         if(T::is_dict(container)){
             auto d = T::to_dict(container);
@@ -332,9 +378,6 @@ struct ToFactSetTranslator {
             fact_infos.reserve(L);
             fact_map.reserve(L);
 
-            // auto& [d_start, d_end] = T::dict_itr(d);
-            // for (auto [key, val] : d) {
-            // for (auto itr = d_start; itr != d_end; ++itr){
             for (auto itr = T::dict_itr_begin(d); itr != T::dict_itr_end(d); ++itr){
                 // auto key_ptr = T::dict_itr_key_ptr(itr);
                 // auto val_ptr = T::dict_itr_val_ptr(itr);
@@ -344,8 +387,8 @@ struct ToFactSetTranslator {
 
                 const auto& [key, val] = *itr;
                 auto val_ptr = T::get_obj_ptr(val);
-                std::string_view fact_id = T::to_string_view(key);
-                _make_fact_info(fact_id, val_ptr, index, byte_offset);
+                std::string_view key_id = T::to_string_view(key);
+                _make_fact_info(key_id, val_ptr, index, byte_offset);
                 index++;
             }
         }else if(T::is_list(container)) {
@@ -358,8 +401,9 @@ struct ToFactSetTranslator {
             for (auto itr = T::list_itr_begin(lst); itr != T::list_itr_end(lst); ++itr){
                 auto val_ptr = T::list_itr_val_ptr(itr);
             // for (auto val : lst) {
-                std::string fact_id = std::to_string(index);
-                _make_fact_info(fact_id, val_ptr, index, byte_offset);
+                // std::string fact_id = std::to_string(index);
+                std::string_view key_id;
+                _make_fact_info(key_id, val_ptr, index, byte_offset);
                 index++;
             }
         }
@@ -367,44 +411,120 @@ struct ToFactSetTranslator {
         // return std::make_tuple(fact_infos, fact_map, byte_offset);
     }
 
+    /*!
+        Convert string items that reference other facts to fact Items 
+    */
+
     Item _resolve_possible_fact_ref(Item item, CRE_Type* mbr_type){
-    if(item.t_id == T_ID_STR){
-        std::string_view item_str = item.as_string();
 
-        // Reference to another fact
-        size_t ref_len = ref_prefix.size();
-        std::string_view ref_str = {};
+        int64_t index = -1;
+        if(item.t_id == T_ID_STR){
+            std::string_view item_str = item.as_string();
 
-        // If the prefix is present like "@bob"
-        if(item_str.length() > 0 && 
-           !item_str.compare(0, ref_len, ref_prefix)
-           ){
-            ref_str = std::string_view(
-                item_str.data()+ref_len,
-                item_str.length()-ref_len
-            );
+            // Reference to another fact
+            size_t ref_len = ref_prefix.size();
+            std::string_view ref_str = {};
 
-        // If or if the member's type is FactType
-        }else if(mbr_type && 
-                 mbr_type->t_id == T_ID_FACT){
-            ref_str = item_str;
+            // If the prefix is present like "@bob"
+            if(item_str.length() > 0 && 
+               !item_str.compare(0, ref_len, ref_prefix)
+               ){
+                // Strip the prefix "@bob" -> "bob"
+                ref_str = std::string_view(
+                    item_str.data()+ref_len,
+                    item_str.length()-ref_len
+                );
+
+            // If or if the member's type is FactType
+            }else if(mbr_type && 
+                     mbr_type->t_id == T_ID_FACT){
+                ref_str = item_str;
+            }
+
+            if(ref_str.size() > 0){
+                cout << std::string(ref_str) << endl;
+
+                auto itr = fact_map.find(ref_str);
+                
+                 // If the value does not uniquely identify a fact 
+                if(itr == fact_map.end()){
+                    // See if the string is an integer 
+                    char* p;
+                    index = strtol(ref_str.data(),&p,10);
+                    if(*p != 0 || index < 0 || index > fact_infos.size()){
+                        throw std::invalid_argument(
+                            "Cannot resolve string identifier \"" + std::string(item_str) + "\" for Fact reference." 
+                        );    
+                    }
+                }else{
+                    index = itr->second;
+                }
+                
+                
+            }
+            
+        }else if(item.t_id == T_ID_INT){
+            if(mbr_type && mbr_type->t_id == T_ID_FACT){
+                index = item.as_int();
+                if(index < 0 || index >= fact_infos.size()){
+                    throw std::invalid_argument(
+                        "Cannot resolve integer indentifier \"" + std::to_string(index) + "\" for Fact reference." 
+                    );    
+                }
+            }
         }
 
-        if(ref_str.size() > 0){
-            auto itr = fact_map.find(ref_str);
-            if(itr == fact_map.end()){
-                throw std::invalid_argument(
-                    "Cannot resolve identifier \"" + std::string(item_str) + "\" for Fact reference." 
-                );
-            }
-            size_t index = itr->second;
+        // If reference was resolved then set item to the fact it resolves to 
+        if(index != -1){
             size_t offset = std::get<3>(fact_infos[index]);
             Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
             item = Item(fact_ptr);
-            }
         }
         return item;
     }
+
+
+    std::tuple<int64_t, CRE_Type*, bool> _resolve_mbr_index_type(
+        const auto& key, FactType* type){
+
+        
+
+        std::string_view key_str = T::to_string_view(key);
+        // Ignore the 'type' member (handled above)
+        if(key_str == type_attr){
+            return std::make_tuple(-1, nullptr, true);
+        }
+
+        // If the key is a number then used it as the index
+        char* p;
+        int64_t index = strtol(key_str.data(),&p,10);
+        if(*p != 0) index = -1;
+
+        // Otherwise get the key's index from the fact type
+        if(type != nullptr && index == -1){
+            index = type->get_attr_index(key_str);
+        }
+
+        // Throw error if member index cannot be resolved
+        // cout << "key_str=" << key_str << ", val str=" << T::to_string_view(val) << ", type_attr=" << type_attr << " INDEX:" << index << endl; 
+        if(index == -1){
+            std::string type_str = type != nullptr ? std::string(type->name) : "NULL";
+            std::string error_msg = "Key '" + std::string(key_str) +
+                "' is not an integer or named member of fact type '" +
+                type_str + "'.";
+            throw std::runtime_error(error_msg);
+        }
+
+        CRE_Type* mbr_type = index == -1 || type == nullptr ? 
+                            nullptr : 
+                            type->members[index].type;
+
+        return std::make_tuple(index, mbr_type, false);
+    }
+
+    /*!
+        Make the FactSet. Implements second pass that consumes fact_infos
+    */
 
     ref<FactSet> _to_factset(const container_t& container){
         this->_collect_fact_infos(container);
@@ -421,52 +541,52 @@ struct ToFactSetTranslator {
 
             if(T::is_dict(fact_obj)){
                 auto fact_dict = T::to_dict(fact_obj);
-
-
-                // for (auto [key, val] : fact_dict){
                 for (auto itr = T::dict_itr_begin(fact_dict); itr != T::dict_itr_end(fact_dict); ++itr){
-                    // auto& key = T::deref_obj_ptr(T::dict_itr_key_ptr(itr));
-                    // auto& val = T::deref_obj_ptr(T::dict_itr_val_ptr(itr));
                     const auto& [key, val] = *itr;
-
-                    std::string_view key_str = T::to_string_view(key);
-                    // Ignore the 'type' member (handled above)
-                    if(key_str == type_attr){
-                        continue;
-                    }
-
-                    // If the key is a number then used it as the index
-                    char* p;
-                    int64_t index = strtol(key_str.data(),&p,10);
-                    if(*p != 0) index = -1;
-
-                    // Otherwise get the key's index from the fact type
-                    if(type != nullptr){
-                        index = type->get_attr_index(key_str);
-                    }
-
-                    // Throw error if member index cannot be resolved
-                    // cout << "key_str=" << key_str << ", val str=" << T::to_string_view(val) << ", type_attr=" << type_attr << " INDEX:" << index << endl; 
-                    // cout << "INDEX:" << index; 
-                    if(index == -1){
-                        std::string type_str = type != nullptr ? std::string(type->name) : "NULL";
-                        std::string error_msg = "Key '" + std::string(key_str) + "' is not an integer or named member of fact type '" + type_str + "'.";
-                        throw std::runtime_error(error_msg);
-                    }
-
+                    auto [index, mbr_type, skip] = _resolve_mbr_index_type(key, type);          
+                    if(skip) continue;
                     Item item = T::to_item(val);
-                    item = this->_resolve_possible_fact_ref(item,
-                        index == -1 || type == nullptr ? 
-                            nullptr : 
-                            type->members[index].type
-                    );
-                    
+                    item = this->_resolve_possible_fact_ref(item, mbr_type);
                     fact->set(index, item);
                 }
-                // _init_fact(fact, length, type);
-                // fact->alloc_buffer = builder.alloc_buffer;
-                builder.fact_set->_declare_back(fact);
+            } else if(T::is_list(fact_obj)){
+                auto fact_list = T::to_list(fact_obj);
+                int64_t index = 0;
+                for (auto itr = T::list_itr_begin(fact_list); itr != T::list_itr_end(fact_list); ++itr){
+                    // auto val_ptr = T::list_itr_val_ptr(itr);
+                    const auto& val = *itr;
+                    Item item = T::to_item(val);
+                    item = this->_resolve_possible_fact_ref(item, nullptr);
+                    fact->set(index, item);
+                    index++;
+                }
+                if(T::treat_lists_immutable){
+                    fact->immutable = true;    
+                }
+
+            } else if(T::is_tuple(fact_obj)){
+
+            if constexpr(!std::is_same<typename T::list_t, typename T::tuple_t>::value){   
+                auto fact_tuple = T::to_tuple(fact_obj);
+                int64_t index = 0;
+                for (auto itr = T::tuple_itr_begin(fact_tuple); itr != T::tuple_itr_end(fact_tuple); ++itr){
+                    // auto val_ptr = T::list_itr_val_ptr(itr);
+                    const auto& val = *itr;
+                    Item item = T::to_item(val);
+                    item = this->_resolve_possible_fact_ref(item, nullptr);
+                    fact->set(index, item);
+                    index++;
+                }
+                fact->immutable = true;
             }
+
+            }else{
+                throw std::invalid_argument(T::container_prefix + 
+                    " \"" + T::obj_to_str(fact_obj) + 
+                    "\" cannot be converted to Fact.");
+            }
+
+            builder.fact_set->_declare_back(fact);
             // builder.alloc_buffer->add_ref(fact_infos.size());
         }
         
