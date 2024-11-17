@@ -8,6 +8,9 @@
 #include "../include/t_ids.h"
 #include "../include/ref.h"
 
+
+using std::cout;
+using std::endl;
 // Forward Declarations
 struct Fact;
 struct Var;
@@ -80,6 +83,12 @@ struct Item {
     Item(Var* x);
 
 
+    inline bool is_primitive(){
+        return (t_id >= T_ID_BOOL && 
+                t_id <= T_ID_STR);
+    }
+
+
     inline bool as_bool() const {
         return bool(val);
     }
@@ -99,6 +108,10 @@ struct Item {
 
     inline Fact* as_fact() const {
         return std::bit_cast<Fact*>(val);
+    }
+
+    inline Var* as_var() const {
+        return std::bit_cast<Var*>(val);
     }
     
 };

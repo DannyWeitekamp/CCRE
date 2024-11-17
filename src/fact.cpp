@@ -10,6 +10,7 @@
 #include "../include/fact.h"
 #include "../include/factset.h"
 #include "../include/item.h"
+#include "../include/var.h"
 
 
 
@@ -56,6 +57,17 @@ extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 
 void Fact_dtor(const CRE_Obj* x){
 		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
+		Fact* fact = (Fact*) x;
+		for(size_t i=0; i < fact->length; i++){
+			Item* item = fact->get(i);
+			// cout << "~ITEM:" << *item << ", t_id=" << item->t_id << ", borrows=" << uint64_t(item->borrows) << endl;
+			if(item->t_id > T_ID_STR && item->borrows){
+				CRE_Obj* item_obj = (CRE_Obj*) item->val;
+				// cout << "~ITEM REFS: " << item_obj->get_refcount() << endl;
+				item_obj->dec_ref();
+			}
+		}
+
 		if(x->alloc_buffer == nullptr){
 	    	free((void*) x);
 		}else{
@@ -75,8 +87,6 @@ Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
 	hash(0),
 	immutable(_immutable)
 {}
-
-
 
 
 ref<Fact> empty_fact(FactType* type){
@@ -186,6 +196,9 @@ void _copy_fact_slice(Fact* src, Fact* dest, size_t start, size_t end){
 		}else{
 			// Everything else can just be copied;
 			dest->set_unsafe(j, *item);
+		}
+		if(!item->is_primitive() && item->borrows){
+			((CRE_Obj*) item->val)->inc_ref();
 		}
 	}
 	if(i < end){
@@ -427,6 +440,7 @@ uint64_t CREHash::operator()(const FactView& x) const{
 
 bool item_eq(const Item& ia, const Item& ib){
 	// cout << "ITEM A: " << ia << " ITEM B: " << ib << endl;
+	// cout << "HASH A: " << CREHash{}(ia) << " HASH B: " << CREHash{}(ib) << endl;
 	if(ia.t_id != ib.t_id) return false;
 	switch (ia.t_id) {
 		case T_ID_FLOAT:
@@ -440,7 +454,7 @@ bool item_eq(const Item& ia, const Item& ib){
 			if(*ia.as_fact() != *ib.as_fact()) return false;
 			break;
 		case T_ID_VAR:
-			// TODO
+			if(*ia.as_var() != *ib.as_var()) return false;
 			break;
 		case T_ID_FUNC:
 			// TODO

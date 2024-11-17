@@ -53,50 +53,52 @@ def _fixed_person_fs():
     return Person, fs
 
 
-def _do_flattener_tests(fs, n_vis):
+def _flatten_state_variants(fs):
     from cre import Flattener
     flattener = Flattener()
     flat_fs0 = flattener.apply(fs)
-    assert len(flat_fs0) == n_vis*len(fs)
 
-    flattener = Flattener(subj_as_fact=True)
+    flattener = Flattener(add_exist_stubs=True)
     flat_fs1 = flattener.apply(fs)
+
+    flattener = Flattener(use_vars=True)
+    flat_fs2 = flattener.apply(fs)
+
+    flattener = Flattener(use_vars=True, add_exist_stubs=True)
+    flat_fs3 = flattener.apply(fs)
+    return flat_fs0, flat_fs1, flat_fs2, flat_fs3
+
+def _do_flattener_tests(fs, n_vis):
+    flat_fs0, flat_fs1, flat_fs2, flat_fs3 = _flatten_state_variants(fs)
+    assert len(flat_fs0) == n_vis*len(fs)
     assert len(flat_fs1) == (n_vis+1)*len(fs)
 
     # Refcount sanity check (flat_fs has one, fact has one)
     for fact in flat_fs1:
         assert fact.get_refcount() == 2;
 
-    return flat_fs0, flat_fs1
+    
+    assert len(flat_fs2) == (n_vis)*len(fs)
+    assert len(flat_fs3) == (n_vis+1)*len(fs)
+
+    # Refcount sanity check (flat_fs has one, fact has one)
+    for fact in flat_fs3:
+        assert fact.get_refcount() == 2;
+    
 
 def test_Flattener_basic():
     Cat, fs = _fixed_cat_fs()
-    return _do_flattener_tests(fs, 6)
+    _do_flattener_tests(fs, 6)
 
 def test_Flattener_refs():
-    from cre import Flattener
     Person, fs = _fixed_person_fs()
-
-    print()
-    flattener = Flattener()
-    flat_fs0 = flattener.apply(fs)
-    print(flat_fs0)
-    assert len(flat_fs0) == 4*len(fs)
-
-    # TODO: need to check this
-    flattener = Flattener(subj_as_fact=True)
-    flat_fs1 = flattener.apply(fs)
-    assert len(flat_fs1) == 5*len(fs)
-    print(flat_fs1)
-
-    return flat_fs0, flat_fs1
-
+    _do_flattener_tests(fs, 4)
 
 
 def test_Vectorizer_basic():
     from cre import Vectorizer
-
-    flat_fs0, flat_fs1 = test_Flattener_basic()
+    Cat, fs = _fixed_cat_fs()
+    flat_fs0, flat_fs1, flat_fs2, flat_fs3 = _flatten_state_variants(fs)
 
     vectorizer = Vectorizer()
     nom, cont = vectorizer.apply(flat_fs0)
@@ -119,8 +121,9 @@ def test_Vectorizer_basic():
 
 def test_Vectorizer_refs():
     from cre import Vectorizer
-
-    flat_fs0, flat_fs1 = test_Flattener_refs()    
+    Person, fs = _fixed_person_fs()
+    flat_fs0, flat_fs1, flat_fs2, flat_fs3 = _flatten_state_variants(fs)
+    # flat_fs0, flat_fs1 = test_Flattener_refs()    
 
     vectorizer = Vectorizer()
     nom, cont = vectorizer.apply(flat_fs0)
@@ -134,6 +137,27 @@ def test_Vectorizer_refs():
 
     vectorizer = Vectorizer()
     nom, cont = vectorizer.apply(flat_fs1)
+
+    for i, val in enumerate(nom):
+        print(vectorizer.invert(i,val))
+    for i, val in enumerate(cont):
+        print(vectorizer.invert(i,val))
+
+    vectorizer = Vectorizer()
+    nom, cont = vectorizer.apply(flat_fs2)
+
+    for i, val in enumerate(nom):
+        print(vectorizer.invert(i,val))
+    for i, val in enumerate(cont):
+        print(vectorizer.invert(i,val))
+
+    vectorizer = Vectorizer()
+    nom, cont = vectorizer.apply(flat_fs3)
+
+    for i, val in enumerate(nom):
+        print(vectorizer.invert(i,val))
+    for i, val in enumerate(cont):
+        print(vectorizer.invert(i,val))
 
     print(nom, cont)
 # def test_Vectorizer_invert():
@@ -178,8 +202,8 @@ def test_b_pipeline_incr_change(benchmark):
 
 
 if __name__ == "__main__":
-    test_Flattener_basic()
-    test_Flattener_refs()
+    # test_Flattener_basic()
+    # test_Flattener_refs()
     test_Vectorizer_basic()
     test_Vectorizer_refs()
     # test_Vectorizer_invert()

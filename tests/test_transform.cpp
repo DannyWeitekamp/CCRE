@@ -130,7 +130,10 @@ void bench_flattener(size_t N = 1000, size_t reps = 500){
 	// ref<FactSet> fs = setup_factset(10000, 3);
 	ref<FactSet> fs = random_cats(N);
 	ref<Flattener> f = new Flattener(fs);
-	time_it_n("flattener apply()", (f->apply(fs));, reps);
+	time_it_n("flattener apply (wme)", (f->apply(fs));, reps);
+
+	f = new Flattener(fs, true);
+	time_it_n("flattener apply (var)", (f->apply(fs));, reps);
 }
 
 void test_vectorizer(){
@@ -140,14 +143,20 @@ void test_vectorizer(){
 
 	auto flat_fs = flattener->apply(fs);
 	cout << "FLAT STATE :" << endl << flat_fs->to_string() << endl;
-	auto [nom_vec, flt_vec] = vectorizer->apply(flat_fs);
+	auto [nom_vec_p, flt_vec_p] = vectorizer->apply(flat_fs);
+	auto& nom_vec = *nom_vec_p; 
+	auto& flt_vec = *flt_vec_p; 
+
 	cout << nom_vec << endl;
 	cout << flt_vec << endl;
 
 	fs = random_cats(4);
 	flat_fs = flattener->apply(fs);
 	cout << "FLAT STATE :" << endl << flat_fs->to_string() << endl;
-	std::tie(nom_vec, flt_vec) = vectorizer->apply(flat_fs);
+	std::tie(nom_vec_p, flt_vec_p) = vectorizer->apply(flat_fs);
+	nom_vec = *nom_vec_p; 
+	flt_vec = *flt_vec_p; 
+
 	cout << nom_vec << endl;
 	cout << flt_vec << endl;
 
@@ -165,27 +174,33 @@ void test_vectorizer(){
 void bench_vectorizer(size_t N = 1000, size_t reps=500){
 	
 	ref<FactSet> fs = random_cats(N);
-	// ref<FactSet> fs = setup_factset(N, 3);
+	
+	// --- WME-Style use_vars=False----
 	ref<Flattener> flattener = new Flattener(fs);
 	flattener->_update_init();
 	ref<FactSet> flat_fs = flattener->builder.fact_set;
 
-	// for (auto it = flat_fs->begin(); it != flat_fs->end(); ++it) {
-	// 	ref<Fact> fact = *it;
-	// 	cout << "Fact" << fact << endl;
-	// 	cout << "HASH: " << CREHash{}(fact) << endl;
-	// }
-	// auto f = new Flattener(fs);
-	// Vectorizer* vectorizer = new Vectorizer();
-	// vectorizer->apply(flat_fs);
-	// size_t buff_size = //10000*SIZEOF_FACT(3);
 	ref<Vectorizer> vectorizer = new Vectorizer(3*N);
-	time_it_n("vectorize new",(vectorizer=new Vectorizer(3*N))->apply(flat_fs); , reps);
+	time_it_n("vectorize new (wme)",(vectorizer=new Vectorizer(3*N))->apply(flat_fs); , reps);
 
 	
 	vectorizer->apply(flat_fs);
 
-	time_it_n("vectorize reuse",vectorizer->apply(flat_fs);, reps);
+	time_it_n("vectorize reuse (wme)",vectorizer->apply(flat_fs);, reps);
+
+	// --- W/ use_vars=True ----
+	flattener = new Flattener(fs, true);
+	flattener->_update_init();
+	flat_fs = flattener->builder.fact_set;
+
+	vectorizer = new Vectorizer(3*N);
+
+	time_it_n("vectorize new (vars)",(vectorizer=new Vectorizer(3*N))->apply(flat_fs); , reps);
+
+	
+	vectorizer->apply(flat_fs);
+
+	time_it_n("vectorize reuse (vars)",vectorizer->apply(flat_fs);, reps);
 }
 
 
@@ -212,9 +227,9 @@ int main(){
 
 	// test_flattener();
 	// bench_flattener(10, 1);
-	bench_flattener(1000, 500);
+	// bench_flattener(1000, 500);
 	// test_vectorizer();
 	// bench_vectorizer(10, 1);
-	bench_vectorizer(1000, 500);
+	// bench_vectorizer(1000, 500);
 	return 0;
 }

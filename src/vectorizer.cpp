@@ -48,12 +48,12 @@ size_t Vectorizer::_get_nom_slot(Fact* fact){
 		//  avoids borrowing a reference to 'fact' and possibly leaking its
 		//  AllocBuffer (in the case where it wasn't alloced with malloc);
 
-		cout << "BEFORE" << fact << endl;
+		// cout << "BEFORE" << fact << endl;
 
 		FactView* fv_ptr = (FactView*) &(it->first);
 		ref<Fact> fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
 
-		cout << "AFTER" << fact_slice << endl;
+		// cout << "AFTER" << fact_slice << endl;
 
 		fv_ptr->fact = fact_slice;
 
@@ -159,7 +159,7 @@ void Vectorizer::_map_fact(Fact* fact){
 }
 
 
-std::tuple<std::vector<uint64_t>, std::vector<double>> 
+std::tuple<std::vector<uint64_t>*, std::vector<double>*> 
 	Vectorizer::apply(FactSet* fs)
 {		
 	_init_new(fs);
@@ -172,7 +172,7 @@ std::tuple<std::vector<uint64_t>, std::vector<double>>
 	size_t nom_size = one_hot_nominals ? one_hot_map.size() : nom_slot_map.size();
 	nom_vec.resize(nom_size);
 	flt_vec.resize(flt_slot_map.size());
-	return std::make_tuple(nom_vec, flt_vec);
+	return std::make_tuple(&nom_vec, &flt_vec);
 }
 
 
@@ -198,7 +198,7 @@ ref<Fact> Vectorizer::invert(size_t slot, size_t value){
 		return fact_head;
 	}else{
 		Item item = inv_enumerize_map.at(value);
-		cout << "HEAD" << fact_head << endl;
+		// cout << "HEAD" << fact_head << endl;
 		ref<Fact> full_fact = fact_head->slice(0, int(fact_head->length+1));
 		full_fact->set_unsafe(fact_head->length, item);
 		return full_fact;

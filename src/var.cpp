@@ -9,6 +9,12 @@
 // extern "C" 
 
 void Var_dtor(const CRE_Obj* x){
+	Var* var = (Var*) x;
+
+	if(var->base != 0 && var->base != var){
+		var->base->dec_ref();
+	}
+
 	if(x->alloc_buffer == nullptr){
     	free((void*) x);
 	}else{
@@ -25,30 +31,35 @@ Var::Var(const Item& _alias,
  		size_t _length) : 
 
 		CRE_Obj(&Var_dtor),
+		base(nullptr), 
 		base_type(_type), head_type(_type),
 		alias(_alias),
 		deref_infos(nullptr),
-		length(_length) {
+		length(_length),
+		hash(0){
 
 
 	// if(_type == nullptr){
 	// 	throw std::invalid_argument("Cannot initialize Var from NULL type.");
 	// }
 
-	deref_infos = ((DerefInfo*) ((char*) this) + sizeof(Var));
+	deref_infos = ((DerefInfo*) (( (char*) this) + sizeof(Var)) );
 
-
+	// cout << "deref_infos_offset=" << uint64_t(deref_infos) - uint64_t(this) << endl;
 
 	if(_deref_infos != nullptr && _length > 0){
 		head_type = _deref_infos[_length-1].deref_type;
 		memcpy(deref_infos, _deref_infos, _length*sizeof(DerefInfo));
 	}
 
-	if(_alias.t_id != T_ID_STR || _alias.t_id != T_ID_INT){
+	if(_alias.t_id != T_ID_STR && _alias.t_id != T_ID_INT){
 		std::stringstream ss;
 		ss << "Var alias must be string or integer. Got: " << _alias << ".";
 		throw std::invalid_argument(ss.str());
 	}
+	base = this;
+	
+	// cout << "Var_ctor:" << _alias << endl;
 }
 
 // Var::Var(const std::string_view& _alias,
@@ -104,7 +115,8 @@ ref<Var> new_var(
     	var->alloc_buffer = alloc_buffer;
     	alloc_buffer->inc_ref();
     }
-        
+    
+    var->hash = CREHash{}(var);
 	// Allocate a new var 
 	
 	// _init_var(var, _type, _alias, _deref_infos, _length);
@@ -134,15 +146,17 @@ ref<Var> new_var(
 	
 // }
 
-ref<Var> Var::_extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer){
+ref<Var> Var::_extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* alloc_buffer){
 	// Allocate a new var 
 	// Var* new_var = _alloc_extension(var, 1);
-	Var* nv;
+	Var* __restrict nv;
 	bool did_malloc = true;
+
+	// cout << "SIZEOF VAR" << sizeof(Var) << ", " << SIZEOF_VAR(length+1) << endl;
 	if(alloc_buffer != nullptr){
-		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(length), did_malloc);	
+		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(length+1), did_malloc);	
 	}else{
-		nv = (Var*) malloc(SIZEOF_VAR(length)); 
+		nv = (Var*) malloc(SIZEOF_VAR(length+1)); 
 	}
 
 	nv = new (nv) Var(alias, base_type, nullptr, length+1);
@@ -153,25 +167,34 @@ ref<Var> Var::_extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer){
 	}
 
 	// Var* nv = new_var(base_type, alias, deref_infos, length+1);
-	memcpy(nv->deref_infos, deref_infos, SIZEOF_VAR(length));
-	DerefInfo* new_deref_inf = &nv->deref_infos[length];
+	// cout << "size=" << sizeof(Var) << " d_infs=" << uint64_t(nv->deref_infos)-uint64_t(nv) 
+	// 	 << " end=" << SIZEOF_VAR(length+1) << " [len]= " << uint64_t(&nv->deref_infos[length])-uint64_t(nv) << endl;
+	// for(uint i=0; i < length; i++){
+	// 	nv->deref_infos[i] = deref_infos[i]; 		
+	// }
+
+	memcpy(nv->deref_infos, deref_infos, length*sizeof(DerefInfo));
+	DerefInfo* __restrict new_deref_inf = &nv->deref_infos[length];
 
 	FactType* hf_type = (FactType*) head_type;
 	
 
-	cout << "head_type: " << uint64_t(hf_type) << " " << int(hf_type->kind) << endl;
+	// cout << "head_type: " << uint64_t(hf_type) << " " << int(hf_type->kind) << endl;
 	// Set the trailing deref_info
 
 	
-	CRE_Type* deref_type = hf_type->get_item_type(a_id);
+	CRE_Type* deref_type = hf_type->get_item_type(mbr_ind);
 	
 	new_deref_inf->deref_type = deref_type;
-	new_deref_inf->a_id = a_id;
-	new_deref_inf->deref_kind = DEREF_KIND_ATTR;
+	new_deref_inf->mbr_ind = mbr_ind;
+	new_deref_inf->deref_kind = deref_kind;
 
 	// Modify the new var 
+
+	nv->base = this->base; this->base->inc_ref();
 	nv->head_type = deref_type;
 	nv->length = length+1;
+	nv->hash = CREHash{}(nv);
 	// _init_var(var, _type, _alias, _deref_infos, _length+1);
 	return nv;
 }
@@ -192,8 +215,12 @@ ref<Var> Var::extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffe
 	}
 
 	FactType* hf_type = (FactType*) head_type;
-	int a_id = hf_type->get_attr_index(attr);
-	return _extend_attr_unsafe(a_id, alloc_buffer);
+	int mbr_ind = hf_type->get_attr_index(attr);
+	return _extend_unsafe(mbr_ind, DEREF_KIND_ATTR, alloc_buffer);
+}
+
+ref<Var> Var::extend_item(int16_t mbr_ind, AllocBuffer* alloc_buffer){
+	return _extend_unsafe(mbr_ind, DEREF_KIND_ITEM, alloc_buffer);	
 }
 
 
@@ -207,21 +234,21 @@ std::string Var::to_string(){
 	for(int i=0; i < length; i++){
 		FactType* fact_type = (FactType*) type;
 		DerefInfo inf = deref_infos[i];
-		int a_id = int(inf.a_id);
+		int mbr_ind = int(inf.mbr_ind);
 		
 		if(inf.deref_kind == DEREF_KIND_ATTR){
-			// cout << "a_id=" << int(a_id) <<
-			// 	"attr=" << fact_type->get_item_attr(a_id) <<
+			// cout << "mbr_ind=" << int(mbr_ind) <<
+			// 	"attr=" << fact_type->get_item_attr(mbr_ind) <<
 			//  	endl;
 			deref_strs.emplace_back(
-				fmt::format(".{}", fact_type->get_item_attr(a_id))
+				fmt::format(".{}", fact_type->get_item_attr(mbr_ind))
 			);
-		}else if(inf.deref_kind == DEREF_KIND_LIST){
+		}else if(inf.deref_kind == DEREF_KIND_ITEM){
 			deref_strs.emplace_back(
-				fmt::format("[{}]", a_id)
+				fmt::format("[{}]", mbr_ind)
 			);
 		}
-		type = fact_type->get_item_type(a_id);	
+		type = fact_type->get_item_type(mbr_ind);	
 	}
 	if(alias.t_id == T_ID_STR){
 		return fmt::format("{}{}", alias.as_string(), fmt::join(deref_strs, ""));	
@@ -241,9 +268,9 @@ extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf){
 	case DEREF_KIND_ATTR:
 		{
 		Fact* fact = (Fact*) obj;
-		return fact->get(inf.a_id);
+		return fact->get(inf.mbr_ind);
 		}
-	case DEREF_KIND_LIST:
+	case DEREF_KIND_ITEM:
 		std::cerr << "Unimplemented... " << std::endl;
 		break;
 	default:
@@ -269,15 +296,39 @@ Item* Var::apply_deref(CRE_Obj* obj){
 	return deref_multiple(obj, this->deref_infos, this->length);
 }
 
+bool Var::operator==(const Var& other) const {
+	if(uint64_t(base) != uint64_t(other.base)) return false;
+	if(length != other.length) return false;
 
+	for(size_t i=0; i < length; i++){
+		DerefInfo& dia = this->deref_infos[i];
+		DerefInfo& dib = other.deref_infos[i];
+
+		if(dia.deref_type != dib.deref_type || 
+		   dia.mbr_ind != dib.mbr_ind ||
+		   dia.deref_kind != dib.deref_kind){
+			return false;
+		}
+	}
+	return true;
+};
+
+
+/* FNV-1a */
 uint64_t CREHash::operator()(Var* var){
+	// if(var->hash != 0){
+    //     return var->hash;
+    // }   
+
+
 	uint64_t constexpr fnv_prime = 1099511628211ULL;
   	uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
 
 
-  // cout << "Fact: " << x << endl;
+  	// cout << "hash start var: " << var << endl;
  	uint64_t hash = fnv_offset_basis; //^ (end-start * fnv_prime);
-  	hash ^= var->alias.hash;
+  	hash = hash ^ CREHash{}(var->alias);
+  	hash = hash * fnv_prime;
 
   	// cout << "\nMOO:" << hash << ", " << fnv_offset_basis << endl;
 
@@ -289,11 +340,12 @@ uint64_t CREHash::operator()(Var* var){
       	// cout << "item: " << item << endl;
       	// uint64_t item_hash = CREHash{}(item);
 
-      	uint32_t u = (uint32_t(di.a_id) << 16) | uint32_t(di.deref_kind);
-      	// cout << "U:" << u << endl;
+      	uint32_t u = (uint32_t(di.mbr_ind) << 16) | uint32_t(di.deref_kind);
+      	// cout << i << " U:" << u << " " << di.mbr_ind << " " << di.deref_kind <<  endl;
       	hash = hash ^ u;
       	hash = hash * fnv_prime;
       	
   }
+  var->hash = hash;
   return hash; 
 }

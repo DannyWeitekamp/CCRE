@@ -71,6 +71,10 @@ public :
 
 
     inline bool _check_destroy() const noexcept{
+
+        if (ref_count < 0) [[unlikely]] {
+            std::cout << "Warning: refcounting underflow!" << std::endl;
+        }
         if (ref_count <= 0) {
             // delete this;
             this->dtor(this);

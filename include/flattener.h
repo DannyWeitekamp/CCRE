@@ -49,13 +49,18 @@ struct Flattener : public IncrementalProcessor {
 	
 
 // -- Methods --
-	Flattener(FactSet* _input=nullptr,
- 		  const std::vector<FlagGroup>& _flag_groups=default_flags,
+	Flattener(FactSet* _input,
+ 		  const std::vector<FlagGroup>& _flag_groups,
 	 	  bool _use_vars = false,
 	 	  bool _add_exist_stubs = false,
 	 	  uint8_t _triple_order = TRIPLE_ORDER_SVO
 	);
 
+	Flattener(FactSet* _input=nullptr,
+	 	  bool _use_vars = false,
+	 	  bool _add_exist_stubs = false,
+	 	  uint8_t _triple_order = TRIPLE_ORDER_SVO
+	);
 	// template<typename T>
 	Flattener(FactSet* _input,
 			  const HashMap<std::string, Item>& target_flags,

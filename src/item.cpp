@@ -150,7 +150,7 @@ Item::Item(Fact* x, bool _is_ref) :
 {};
 
 Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
-                    hash(0), t_id(T_ID_FACT), 
+                    hash(0), t_id(T_ID_VAR), 
                     is_ref(0), borrows(1), pad(0) 
 {
 // TODO: should figure out how to do this with move semantics
@@ -265,12 +265,21 @@ std::string item_to_string(const Item& item) {
                     }
                 }
 
-                if(fact->immutable){
+                // TODO: Needs testing
+                if( uint64_t(&item) >= uint64_t(fact) + sizeof(Fact) && 
+                    uint64_t(&item) < uint64_t(fact) + SIZEOF_FACT(fact->length)){
+                    ss << "self";
+                }
+
+                if(!item.is_ref && fact->immutable){
                     ss << fact->to_string(2);
                 }else{
                     ss << "<fact f_id=" << fact->f_id << ">";    
                 }
             }
+            break;
+        case T_ID_VAR:
+            ss << item.as_var();
             break;
         default:
             ss << "<item t_id=" << t_id << " val=" << item.val << ">";
@@ -308,8 +317,29 @@ uint64_t hash_item(const Item& x){
             hash = CREHash{}(x.as_float()); break;
         case T_ID_STR:
             hash = CREHash{}(x.as_string()); break;
+        case T_ID_FACT:
+            {
+                Fact* fact = x.as_fact();
+                if(fact != nullptr && !x.is_ref){
+                    hash = CREHash{}(fact); 
+                }else{
+                    hash = 0;
+                }
+            }
+            break;
+        case T_ID_VAR:
+            {
+                Var* var = x.as_var();
+                if(var != nullptr){
+                    hash = CREHash{}(var); 
+                }else{
+                    hash = 0;
+                }
+            }
+            break;
         default:
-            hash = uint64_t (-1);
+            // cout << "Warning Default Hash, t_id=" << x.t_id << ", val=" << x.val << endl;
+            hash = uint64_t (0);
     }
 
     // x.hash = hash;

@@ -5,12 +5,12 @@
 #include "../include/ref.h"
 
 const uint16_t DEREF_KIND_ATTR = 1;
-const uint16_t DEREF_KIND_LIST = 2 ;
+const uint16_t DEREF_KIND_ITEM = 2 ;
 
 
 struct DerefInfo {
 	CRE_Type* deref_type; 
-	int16_t a_id;
+	int16_t mbr_ind;
 	uint16_t deref_kind;
 	uint32_t pad;
 };
@@ -20,7 +20,9 @@ struct Var : public CRE_Obj{
 	// -- Members --
 // The pointer of the Var instance before any attribute selection
 //   e.g. if '''v = Var(Type); v_b = v.B;''' then v_b.base = &v
-	ref<Var> base;
+	// Note: we don't use ref<Var> so that Var is POD 
+	//   so that free() makes sense. Thus we need to explicitly 
+	Var* base; 
 
 // The type of the Var's base instance
 	CRE_Type* base_type;
@@ -36,6 +38,8 @@ struct Var : public CRE_Obj{
 	DerefInfo* deref_infos;
 	size_t length; // Note: could be smaller than size_t
 
+	uint64_t hash;
+
 // -- Methods --
 	Var(const Item& _alias,
 		CRE_Type* _type=nullptr,
@@ -47,8 +51,9 @@ struct Var : public CRE_Obj{
 	// 	DerefInfo* _deref_infos=nullptr,
 	// 	size_t _length=0);
 
+	ref<Var> _extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer=nullptr);
-	ref<Var> _extend_attr_unsafe(int a_id, AllocBuffer* alloc_buffer=nullptr);
+	ref<Var> extend_item(int16_t mbr_ind, 			   AllocBuffer* alloc_buffer);
 	// uint8_t is_not;
 
 	Item* apply_deref(CRE_Obj* obj);
@@ -57,6 +62,7 @@ struct Var : public CRE_Obj{
 		return length;
 	}
 	std::string to_string();
+	bool operator==(const Var& other) const;
 
 };
 

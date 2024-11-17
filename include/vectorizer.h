@@ -64,7 +64,7 @@ struct Vectorizer : public IncrementalProcessor{
 			   bool _encode_missing=false
 	);
 
-	std::tuple<std::vector<uint64_t>, std::vector<double>>
+	std::tuple<std::vector<uint64_t>*, std::vector<double>*>
 		apply(FactSet* fs);
 
 	size_t _get_nom_slot(Fact* fact);

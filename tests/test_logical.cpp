@@ -49,15 +49,31 @@ void test_var(){
 
 	cout << "Grandad: " << *nv2->apply_deref(thedude) << endl;
 
-	ref<Var> a = v->extend_attr("dad");//->extend_attr("buddy");
-	ref<Var> b = v->extend_attr("buddy");//->extend_attr("dad");
-	a = a->extend_attr("buddy");
-	b = b->extend_attr("dad");
+	ref<Var> a = v->extend_attr("dad")->extend_attr("buddy");
+	ref<Var> b = v->extend_attr("buddy")->extend_attr("dad");
+	// a = a->extend_attr("buddy");
+	// b = b->extend_attr("dad");
 
 	cout << v << ", " << nv2 << endl;
 	cout << a << ", " << b << endl;
 	cout << std::bitset<64>(CREHash{}(a)) << "\n" << std::bitset<64>(CREHash{}(b)) << endl;
 	IS_TRUE(std::bitset<64>(CREHash{}(a)) != std::bitset<64>(CREHash{}(b)));
+
+	ref<Var> v2 = new_var("A", DudeType);
+
+	ref<Var> a_cpy = v->extend_attr("dad")->extend_attr("buddy");
+	ref<Var> a2 = v2->extend_attr("dad")->extend_attr("buddy");
+
+	cout << "EQ:" << (*a == *a_cpy) << endl;
+	cout << "EQ:" << (*a != *a2) << endl;
+
+	ref<Var> itm_v0 = new_var(Item(0));
+	ref<Var> itm_v1 = new_var(Item(1));
+	cout << std::bitset<64>(CREHash{}(itm_v0)) << "\n" << std::bitset<64>(CREHash{}(itm_v1)) << endl;
+
+
+
+
 }
 
 int main(){

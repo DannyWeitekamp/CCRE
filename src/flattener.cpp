@@ -69,6 +69,15 @@ Flattener::Flattener(
 }
 
 Flattener::Flattener(FactSet* _input,
+	 	  bool _use_vars,
+	 	  bool _add_exist_stubs,
+	 	  uint8_t _triple_order
+) : Flattener(_input, default_flags, _use_vars, _add_exist_stubs, _triple_order)
+{}
+
+
+
+Flattener::Flattener(FactSet* _input,
 			const HashMap<std::string, Item>& target_flags,
 			bool _use_vars,
 			bool _add_exist_stubs,
@@ -117,6 +126,11 @@ std::vector<uint16_t>* Flattener::get_member_inds(FactType* type){
 
 size_t Flattener::_calc_buffer_size(){
 	size_t _size = 0;
+
+	// Explicit const maybe helps branch prediction?
+	const bool _use_vars = use_vars; 
+	const bool _add_exist_stubs = add_exist_stubs; 
+
 	for (auto it = input->begin(); it != input->end(); ++it) {
 		Fact* fact = *it;
 		size_t L = fact->length;
@@ -124,8 +138,20 @@ size_t Flattener::_calc_buffer_size(){
 		if(mbr_inds != nullptr){
 			L = mbr_inds->size();
 		}
-		_size += this->add_exist_stubs*(SIZEOF_FACT(1));
-		_size += L*(SIZEOF_FACT(3));
+
+		if(_use_vars){
+			if(_add_exist_stubs){
+				_size += SIZEOF_FACT(1);
+			}
+			_size += SIZEOF_VAR(0); // One base var per fact
+			_size += L*(SIZEOF_VAR(1)); // One deref var per member
+			_size += L*(SIZEOF_FACT(2)); // One pair per member			
+		}else{
+			if(_add_exist_stubs){
+				_size += SIZEOF_FACT(1);
+			}
+			_size += L*(SIZEOF_FACT(3));
+		}
 	}
 	return _size;
 }
@@ -140,32 +166,29 @@ size_t Flattener::_fact_to_var_pairs(
 	auto mbr_inds = this->get_member_inds(type);
 	ref<Var> subj_var = fact_vars[in_fact->f_id];
 	
-	// cout << "U_IND: " << u_ind << endl;
-
-
-	
-
-	// Make a new Fact 
+	// Make stub like (varname,)
 	if(add_exist_stubs){
 		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
 		subj_fact->set_unsafe(0, subj_var.get());	
 		builder.fact_set->_declare_back(std::move(subj_fact));
 	}
-	
 
+	
+	// Make pairs like (varname.attr, value)
 	auto make_preds = [&](size_t mbr_ind){
+		// size=2, untyped, and immutable, 
 		ref<Fact> out_fact = builder.add_empty(2, nullptr, true);
 
 
 		ref<Var> verb_var;
 		if(type != nullptr && mbr_ind < type->members.size()){
-			verb_var = subj_var->_extend_attr_unsafe(mbr_ind, builder.alloc_buffer);
+			verb_var = subj_var->_extend_unsafe(mbr_ind, DEREF_KIND_ATTR, builder.alloc_buffer);
 		}else{
-			// verb_var = subj_var->extend_item(mbr_ind, builder.alloc_buffer);
+			verb_var = subj_var->extend_item(mbr_ind, builder.alloc_buffer);
 
 		}
 
-		out_fact->set_unsafe(0, subj_var.get());
+		out_fact->set_unsafe(0, verb_var.get());
 
 		// if(type != nullptr && ind < type->members.size()){
 		// 	out_fact->set_unsafe(verb_ind /* 1 or 0 */,
@@ -175,6 +198,7 @@ size_t Flattener::_fact_to_var_pairs(
 		// 	out_fact->set(verb_ind /* 1 or 0 */, int(ind));
 		// }
 
+		// If 'value' is another fact then (varname.attr, other_varname)
 		Item obj_item = *in_fact->get(mbr_ind);
 		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
 			Fact* obj_fact = obj_item.as_fact();
@@ -184,6 +208,8 @@ size_t Flattener::_fact_to_var_pairs(
 		}else{
 			out_fact->set_unsafe(1, obj_item);		
 		}
+
+
 
 		
 		// out_fact->immutable = true;
@@ -310,10 +336,16 @@ size_t Flattener::_update_init(){
 	
 	if(use_vars){
 		std::vector<ref<Var>> fact_vars = _make_fact_vars(input);
+		// for (auto it = fact_vars.begin(); it != fact_vars.end(); ++it) {
+		// 	cout << "BEF REFCOUNT:" << (*it)->get_refcount() << endl;
+		// }
 		for (auto it = input->begin(); it != input->end(); ++it) {
 			Fact* fact = *it;
 			_fact_to_var_pairs(fact, fact_vars);
 		}	
+		// for (auto it = fact_vars.begin(); it != fact_vars.end(); ++it) {
+		// 	cout << "AFT REFCOUNT:" << (*it)->get_refcount() << endl;
+		// }
 	}else{
 		for (auto it = input->begin(); it != input->end(); ++it) {
 			Fact* fact = *it;
