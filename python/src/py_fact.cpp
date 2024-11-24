@@ -85,6 +85,7 @@ void init_fact(nb::module_ & m){
     // .def("get_refcount", &Fact::get_refcount)
 
     .def("__str__", &Fact::to_string, "verbosity"_a=2)
+    .def("__repr__", &Fact::to_string, "verbosity"_a=2)
     .def("__len__", &Fact::size)
     
     .def("__getitem__", &py_fact_getitem)

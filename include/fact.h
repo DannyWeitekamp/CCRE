@@ -15,7 +15,7 @@
 
 
 
-const uint8_t DEFAULT_VERBOSITY = 2;
+
 // Externally Defined Forward Declares
 struct FactSet;
 struct AllocBuffer;
@@ -200,10 +200,7 @@ Fact::Iterator end(const Fact* fact);
 
 std::ostream& operator<<(std::ostream& out, Fact* fact);
 
-inline Fact* _alloc_fact(uint32_t _length){
-  Fact* ptr = (Fact*) malloc(sizeof(Fact) + _length * sizeof(Item));
-  return ptr;
-}
+
 
 // inline void _init_fact(Fact* fact, uint32_t _length, FactType* type){
 //     fact->type = type;
@@ -359,6 +356,11 @@ constexpr bool FACT_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Fact)) | ALIGN_PADDIN
 #else
   #define SIZEOF_FACT(n) _SIZEOF_FACT(n)
 #endif
+
+inline Fact* _alloc_fact(uint32_t _length){
+  Fact* ptr = (Fact*) malloc(SIZEOF_FACT(_length));
+  return ptr;
+}
 
 
 //--------------------------------------------------------------

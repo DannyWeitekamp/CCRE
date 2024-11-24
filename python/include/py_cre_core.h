@@ -42,6 +42,6 @@ ref<Fact> _py_new_fact(
     bool immutable=false
 );
 
-static void cre_obj_dealloc(PyObject *self);
+void cre_obj_dealloc(PyObject *self);
 
 extern PyType_Slot cre_obj_slots[];

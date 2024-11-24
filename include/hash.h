@@ -29,7 +29,7 @@ uint64_t _PyHASH_XXROTATE(uint64_t x);
 
 
 
-uint64_t _Py_HashDouble(double v);
+uint64_t _Py_HashDouble_cre_impl(double v);
 uint64_t hash_bytes(const uint8_t *val, uint64_t _len);
 uint64_t fnv1a(const uint8_t *val, uint64_t _len);
 uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed );
@@ -53,7 +53,7 @@ struct CREHash {
 
     template <std::floating_point T>
     uint64_t operator()(const T& x) const {
-        return _Py_HashDouble(x);
+        return _Py_HashDouble_cre_impl(x);
     }
 
     uint64_t operator()(const std::string_view& x) const {

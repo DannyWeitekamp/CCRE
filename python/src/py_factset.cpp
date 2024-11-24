@@ -169,6 +169,24 @@ ref<FactSet> _FactSet_from_py(
         fact->type = type;
 
         if(nb::isinstance<nb::dict>(fact_obj)){
+        	cout << "TYPE:" << uint64_t(type) << endl;
+        	if(type == nullptr){
+        		std::string obj_str = "<Could not convert Object to String>";
+        		try{
+        			obj_str = nb::cast<std::string>(nb::str(fact_obj));
+        		} catch (...) {
+        			// pass
+        		}
+        		
+        		std::string error_msg = 
+        			"CRE could not resolve FactType of object:\n" +
+        			obj_str +"\n"
+        			"Untyped facts cannot be created from attribute-value-pair containers like Python dicts or JSON objects." +
+        			"Provide a valid 'type' : 'type_name' or set the type_attr='CustomTypeAttribute' to interpret an available attribute as the object's type." +
+        			"Alternatively an untyped fact can be instantiated from a list or tuple";
+        		throw std::invalid_argument(error_msg);
+        	}
+
             nb::dict fact_dict = nb::cast<nb::dict>(fact_obj);
             for (auto [key, val] : fact_dict){
 
@@ -189,11 +207,11 @@ ref<FactSet> _FactSet_from_py(
                 }
 
                 // Throw error if member index cannot be resolved
-                cout << "INDEX: " << index << endl;
+                // cout << "INDEX: " << index << endl;
                 if(index == -1){
                     std::string type_str = type != nullptr ? std::string(type->name) : "NULL";
                     std::string error_msg = "Key '" + std::string(key_str) + "' is not an integer or named member of fact type '" + type_str + "'.";
-                    throw std::runtime_error(error_msg);
+                    throw std::invalid_argument(error_msg);
                 }
 
                 Item item = Item_from_py(val);

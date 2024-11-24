@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../include/types.h"
 #include "../include/cre_obj.h"
 #include "../include/hash.h"

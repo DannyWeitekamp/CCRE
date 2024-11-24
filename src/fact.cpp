@@ -57,6 +57,7 @@ extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
 
 void Fact_dtor(const CRE_Obj* x){
 		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
+		// cout << "dtor " << uint64_t(x) << endl;
 		Fact* fact = (Fact*) x;
 		for(size_t i=0; i < fact->length; i++){
 			Item* item = fact->get(i);

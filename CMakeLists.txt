@@ -26,10 +26,10 @@ add_compile_options(-Wno-unused-variable
 add_compile_options(-std=c++2a -lstdc++)
 add_compile_options(-g)
 
-# set(CMAKE_BUILD_TYPE Debug)
-# add_compile_options(-O0)
+set(CMAKE_BUILD_TYPE Debug)
+add_compile_options(-O0)
 
-add_compile_options(-O3)
+# add_compile_options(-O3)
 
 add_subdirectory(external/fmt)
 add_subdirectory(external/nanobind)
@@ -92,6 +92,13 @@ add_test(
   COMMAND $<TARGET_FILE:test_factset>
   )
 
+add_executable(test_func tests/test_func.cpp)
+target_link_libraries(test_func PRIVATE app_lib)
+add_test(
+  NAME test_func
+  COMMAND $<TARGET_FILE:test_func>
+  )
+
 add_executable(test_logical tests/test_logical.cpp)
 target_link_libraries(test_logical PRIVATE app_lib)
 add_test(
@@ -115,7 +122,9 @@ target_link_libraries(dummer_ext PRIVATE app_lib)
 
 file(GLOB PY_SOURCES "python/src/*.cpp")
 
-nanobind_add_module(cre python/ext/cre_py_ext.cpp ${PY_SOURCES})
+nanobind_add_module(cre STABLE_ABI python/ext/cre_py_ext.cpp ${PY_SOURCES})
 target_link_libraries(cre PRIVATE app_lib)
-# target_compile_options(cre PRIVATE -g -O0)
-target_compile_options(cre PRIVATE -g -O3)
+target_compile_options(cre PRIVATE -g -O0)
+# target_compile_options(cre PRIVATE -g -O3)
+
+install(TARGETS cre LIBRARY DESTINATION cre)

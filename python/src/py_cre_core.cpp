@@ -14,7 +14,7 @@
 typedef void (*dealloc_ty)(PyObject *self);
 dealloc_ty nb_inst_dealloc = nullptr;
 
-static void cre_obj_dealloc(PyObject *self){
+void cre_obj_dealloc(PyObject *self){
     auto self_handle = nb::handle(self);
     CRE_Obj* cpp_self = (CRE_Obj*) nb::inst_ptr<CRE_Obj>(self_handle);
 
@@ -183,7 +183,14 @@ FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
         // if(nb::isinstance<nb::str>(type_handle)){
             // auto type_name = Type_from_py(type_handle);//::cast<std::string>(type_handle);
         // mbr_type = Type_from_py(type_handle);//current_context->get_type(type_name);
-        std::string mbr_type_name = Type_name_from_py(type_handle);
+        std::string mbr_type_name ;
+        try {
+            mbr_type_name = Type_name_from_py(type_handle);
+        }catch (const std::exception& e){
+            std::cerr << "define_fact() failed to resolve type for attribute:\"" << nb::cast<std::string>(py_attr_name) << "\"" << endl;
+            throw;
+        }
+        
         // if(mbr_type == nullptr){
         //     throw std::runtime_error("Fact type not found.");
         // }

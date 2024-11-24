@@ -349,6 +349,21 @@ struct ToFactSetTranslator {
                         uid_item = T::to_item(T::get_attr(fact_dict, unq_attr_getter));   
                     }
                 }
+            }else{
+                std::string obj_str = "<Could not convert Object to String>";
+                try{
+                    obj_str = T::obj_to_str(val);//nb::cast<std::string>(nb::str(fact_obj));
+                } catch (...) {
+                    // pass
+                }
+                
+                std::string error_msg = 
+                    "CRE could not resolve FactType of object:\n" +
+                    obj_str +"\n"
+                    "  Untyped facts cannot be created from attribute-value containers like Python dicts or JSON objects. " +
+                    "Add attribute {'type' : 'type_name',...} to the object, or set the type_attr='my_custom_attr' keyword arg " +
+                    "to interpret an available attribute as the object's type. Alternatively an untyped fact can be instantiated from a list or tuple.";
+                throw std::invalid_argument(error_msg);
             }
         }else if(T::is_list(val)){
             auto fact_list = T::to_list(val);

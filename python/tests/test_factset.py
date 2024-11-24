@@ -1,3 +1,4 @@
+import faulthandler; faulthandler.enable()
 from test_utils import *
 import pytest
 import json
@@ -178,7 +179,6 @@ def test_from_json_basic():
                    type_attr="EntityType"
             )) == str(ref_fs_d))
 
-
 def _init_py_ref_variants():
     from cre import define_fact, Fact, iFact, NewFact
 
@@ -231,6 +231,9 @@ def test_from_py_ref():
     # TODO: This one is weird
     print(FactSet.from_py(d_of_t), "\n")
 
+def test_creation_errors():
+    with pytest.raises(ValueError):
+        FactSet.from_py([{"a" : 2, "b" : "HI"}])
 
 
 
@@ -253,6 +256,7 @@ def test_get_facts_by_id_1000(benchmark):
 
 
 if __name__ == "__main__":
+    import faulthandler; faulthandler.enable()
     # fs = random_cats(10)
     # print(fs)
 
@@ -264,8 +268,9 @@ if __name__ == "__main__":
     # test_mem_leaks_basic()
     # test_mem_leaks_refs()
     # test_long_hash()
-    test_from_py_basic()
-    test_to_json_basic()
-    test_from_json_basic()
-    test_from_py_ref()
+    # test_from_py_basic()
+    # test_to_json_basic()
+    # test_from_json_basic()
+    # test_from_py_ref()
+    test_creation_errors()
     

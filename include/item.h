@@ -14,6 +14,7 @@ using std::endl;
 // Forward Declarations
 struct Fact;
 struct Var;
+struct Func;
 // struct UnicodeItem;
 
 
@@ -83,7 +84,7 @@ struct Item {
     Item(Var* x);
 
 
-    inline bool is_primitive(){
+    inline bool is_primitive() const{
         return (t_id >= T_ID_BOOL && 
                 t_id <= T_ID_STR);
     }
@@ -113,6 +114,12 @@ struct Item {
     inline Var* as_var() const {
         return std::bit_cast<Var*>(val);
     }
+
+    inline Func* as_func() const {
+        return std::bit_cast<Func*>(val);
+    }
+
+    std::string to_string() const;
     
 };
 

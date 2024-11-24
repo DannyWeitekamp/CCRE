@@ -202,6 +202,7 @@ def test_b_pipeline_incr_change(benchmark):
 
 
 if __name__ == "__main__":
+    import faulthandler; faulthandler.enable()
     # test_Flattener_basic()
     # test_Flattener_refs()
     test_Vectorizer_basic()

@@ -119,4 +119,10 @@ public :
     // void operator delete(void * p);
 };
 
+const uint8_t LOW_VERBOSITY = 1;
+const uint8_t DEFAULT_VERBOSITY = 2;
+const uint8_t HIGH_VERBOSITY = 3;
+
+
+
 #endif /* _CRE_OBJ_H_ */

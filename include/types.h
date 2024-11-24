@@ -85,6 +85,7 @@ struct CRE_Type : CRE_Obj{
     uint16_t t_id;
     uint8_t builtin;
     uint8_t kind;
+    // size_t size; TODO!!!
     
 
     CRE_Type(std::string_view _name, 

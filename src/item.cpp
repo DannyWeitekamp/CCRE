@@ -290,8 +290,12 @@ std::string item_to_string(const Item& item) {
 
 
 
-std::string to_string(Item& item) {
+std::string to_string(Item& item){
     return std::string(item.as_string());
+}
+
+std::string Item::to_string() const {
+    return item_to_string(*this);
 }
 
 std::ostream& operator<<(std::ostream& out, Item item){

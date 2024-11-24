@@ -258,7 +258,7 @@ uint64_t MurmurHash64A ( const void * key, int len, uint64_t seed )
 
 // Essentially a copy of Python's HashDouble 
 //  (https://github.com/python/cpython/blob/6810928927e4d12d9a5dd90e672afb096882b730/Python/pyhash.c#L87)
-uint64_t _Py_HashDouble(double v){
+uint64_t _Py_HashDouble_cre_impl(double v){
     int e, sign;
     uint64_t x, y;
     double m;
