@@ -42,13 +42,18 @@ struct ArgInfo {
 	Item* ptr;
 	uint16_t kind;
 	// uint16_t t_id;
+	// uint16_t byte_width;
+
+	// The offset that the arg is written to in the call-stack
+	uint16_t offset;
 	bool has_deref;
 	
 
 
 	ArgInfo(CRE_Type* _type, Item* _ptr,
-	 		uint16_t _kind, bool _has_deref) :
-		type(_type), ptr(_ptr), kind(_kind), has_deref(_has_deref)
+	 		uint16_t _kind, uint16_t _offset, bool _has_deref) :
+		type(_type), ptr(_ptr), kind(_kind), 
+		offset(_offset), has_deref(_has_deref)
 	{};
 };
 
@@ -100,10 +105,10 @@ struct HeadInfo {
 
 	// 1 for unicode_type 2 for other. Needed because unicode_strings don't 
     // have meminfo ptrs as first member so need different inc/decref implmentation.
-    uint32_t ref_kind;
+  uint32_t ref_kind;
 
 	// The byte-width of the head value.
-	uint32_t head_size;
+	// uint32_t byte_width;
 
 	// HeadInfo()       				   = default;
 	// HeadInfo(const HeadInfo& hi)       = default;
@@ -112,6 +117,7 @@ struct HeadInfo {
 
 };
 
+// The span within the Func's head_infos vector for a particular base Var
 struct HeadRange {
 	uint16_t start;
 	uint16_t end;
@@ -143,10 +149,14 @@ struct Func : CRE_Obj{
     // CREFunc including a weak pointer, it's name and various ways of printing it.
 	OriginData* origin_data;
 
+	//
+	uint8_t* bytecode = nullptr;
+	uint8_t* bytecode_end = nullptr;
+
 	// The args to the root CREFunc 
 	std::vector<ArgInfo> root_arg_infos = {};
 
-	// Maps base arguments to particular head_infos
+	// The span of head_infos associated with each base Var.
 	std::vector<HeadRange> head_ranges = {};
 
 	// Keeps pointers to each head variable, their types, the CREFunc they live in 
@@ -218,6 +228,9 @@ struct Func : CRE_Obj{
 	    return &data_ptr[a_id];
 	}
 
+	std::string bytecode_to_string();
+
+	size_t calc_byte_code_size();
 	void reinitialize();
 };
 
@@ -268,3 +281,60 @@ inline Func* _alloc_func(uint32_t _length){
   Func* ptr = (Func*) malloc(SIZEOF_FUNC(_length));
   return ptr;
 }
+
+
+// -----------------------------------------
+// : stack_call<func>(...),  stack_call_func_ptr(&func, ...)
+
+template <typename Arg, std::size_t I>
+inline Arg read_arg(uint8_t* data_start, uint16_t* arg_offsets) {
+    return *( (Arg*) (data_start+arg_offsets[I]));
+}
+
+
+template <typename RT, typename... Args, std::size_t... I>
+inline void stack_call_func_ptr_w_indices(RT (*func)(Args...), uint8_t* ret, uint16_t* arg_offsets, std::index_sequence<I...>) {
+    *((RT*) ret) = func(read_arg<Args, I>(ret, arg_offsets)...);
+}
+
+
+template <typename RT, typename... Args>
+void stack_call_func_ptr(RT (*func)(Args...), uint8_t* ret, uint16_t* arg_offsets) {
+	stack_call_func_ptr_w_indices(
+		func, ret, arg_offsets, std::index_sequence_for<Args...>{}
+	);
+}
+
+
+template<auto Func>
+struct StackCallFunc final
+{
+	template <typename RT, typename... Args, std::size_t... I>
+	inline void variatic_call_w_indicies(RT (*func)(Args...),
+	 	uint8_t* ret, uint16_t* arg_offsets,
+	 	std::index_sequence<I...>) const {
+
+	    *((RT*) ret) = Func(read_arg<Args, I>(ret, arg_offsets)...);
+	}	
+
+	template <typename RT, typename... Args>
+	inline void variatic_call(RT (*func)(Args...),
+	 	uint8_t* ret, uint16_t* arg_offsets) const {
+
+	    variatic_call_w_indicies(Func, ret, arg_offsets, std::index_sequence_for<Args...>{});
+	}	
+    
+    void operator()(uint8_t* ret, uint16_t* arg_offsets) const
+    {
+        return variatic_call(Func, ret, arg_offsets);
+    }
+};
+
+template<auto Func>
+void stack_call(uint8_t* ret, uint16_t* arg_offsets){
+	StackCallFunc<Func>{}(ret, arg_offsets);
+}
+
+
+// ------------------------------------------------------
+

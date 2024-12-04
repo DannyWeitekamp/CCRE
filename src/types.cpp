@@ -21,12 +21,14 @@ void CRE_Type_dtor(const CRE_Obj* ptr){
 CRE_Type::CRE_Type(
            std::string_view _name, 
            uint16_t _t_id,
+           uint16_t _byte_width,
            std::vector<CRE_Type*> _sub_types, 
            uint8_t _builtin,
+           int32_t _type_index, 
            CRE_Context* context) : 
     CRE_Obj(&CRE_Type_dtor), name(std::string(_name)), t_id(_t_id),
-    sub_types(_sub_types), builtin(_builtin),
-    context(context), type_index(0) {
+    byte_width(_byte_width), sub_types(_sub_types), builtin(_builtin),
+    context(context), type_index(_type_index) {
 
     if(builtin){
         this->kind = TYPE_KIND_BUILTIN;
@@ -182,7 +184,7 @@ FactType::FactType(std::string_view _name,
            const std::vector<MemberSpec>& _members,
            const HashMap<std::string, Item>& _flags,
            CRE_Context* _context)
-    : CRE_Type(_name, T_ID_FACT, _sub_types,  0, _context), 
+    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, 0, _context), 
       members(_members), flags(_flags) {
     dtor = &FactType_dtor; 
     finalized = false;
@@ -218,16 +220,21 @@ FactType::FactType(std::string_view _name,
 
 // define_type implementation
 CRE_Type* define_type(std::string_view name,
-                  uint16_t t_id, 
                   const std::vector<CRE_Type*>& sub_types,
+                  uint16_t byte_width,
                   CRE_Context* context) {
     if(context == nullptr){
         context = current_context;
     };
-    CRE_Type* t = new CRE_Type(name, t_id, sub_types, 1, context);
+
+    // TODO: What is the T_ID of a user defined type
+    CRE_Type* t = new CRE_Type(name, 0, byte_width, sub_types, 0, 0, context);
     // cout << "DEFINE TYPE" << t->name << endl;
     uint16_t index = context->_add_type(t);
-    return context->types[t_id];
+    t->type_index = index;
+
+    // return context->types[index];
+    return t;
 }
 
 FactType* define_fact(std::string_view name, 
@@ -321,19 +328,32 @@ std::vector<CRE_Type*> make_builtins(){
     std::vector<CRE_Type*> cre_builtins;// = {};
 
     if(cre_builtins.size() == 0){
-        cre_undefined = new CRE_Type("undefined", T_ID_UNDEFINED, {}, 1);
-        cre_bool = new CRE_Type("bool", T_ID_BOOL, {}, 1);
-        cre_int = new CRE_Type("int", T_ID_INT, {}, 1);
-        cre_float = new CRE_Type("float", T_ID_FLOAT, {}, 1);
-        cre_str = new CRE_Type("str", T_ID_STR, {}, 1);
-        cre_obj = new CRE_Type("obj", T_ID_OBJ, {}, 1);
-        cre_Fact = new CRE_Type("Fact", T_ID_FACT, {}, 1);
-        cre_FactSet = new CRE_Type("FactSet", T_ID_FACTSET, {}, 1);
-        cre_Var = new CRE_Type("Var", T_ID_VAR, {}, 1);
-        cre_Func = new CRE_Type("Func", T_ID_FUNC, {}, 1);
-        cre_Literal = new CRE_Type("Literal", T_ID_LITERAL, {}, 1);
-        cre_Conditions = new CRE_Type("Conditions", T_ID_CONDITIONS, {}, 1);
-        cre_Rule = new CRE_Type("Rule", T_ID_RULE, {}, 1);
+        cre_undefined = new CRE_Type("undefined", T_ID_UNDEFINED,
+                                0, {}, 1, 0);
+        cre_bool = new CRE_Type("bool", T_ID_BOOL,
+                                sizeof(bool), {}, 1, 1);
+        cre_int = new CRE_Type("int", T_ID_INT,      
+                                sizeof(int64_t), {}, 1, 2);
+        cre_float = new CRE_Type("float", T_ID_FLOAT,
+                                sizeof(double), {}, 1, 3);
+        cre_str = new CRE_Type("str", T_ID_STR,      
+                                sizeof(std::string), {}, 1 ,4);
+        cre_obj = new CRE_Type("obj", T_ID_OBJ,      
+                                sizeof(double), {}, 1, 5);
+        cre_Fact = new CRE_Type("Fact", T_ID_FACT, 
+                                sizeof(void*), {}, 1, 6);
+        cre_FactSet = new CRE_Type("FactSet", T_ID_FACTSET,
+                                sizeof(void*), {}, 1, 7);
+        cre_Var = new CRE_Type("Var", T_ID_VAR,      
+                                sizeof(void*), {}, 1, 8);
+        cre_Func = new CRE_Type("Func", T_ID_FUNC,   
+                                sizeof(void*), {}, 1, 9);
+        cre_Literal = new CRE_Type("Literal", T_ID_LITERAL,
+                                sizeof(void*), {}, 1, 10);
+        cre_Conditions = new CRE_Type("Conditions", T_ID_CONDITIONS,
+                                sizeof(void*), {}, 1, 11);
+        cre_Rule = new CRE_Type("Rule", T_ID_RULE,
+                                sizeof(void*), {}, 1, 12);
 
         // cout << "INIT builtins";
         cre_builtins = {
@@ -360,7 +380,7 @@ std::vector<CRE_Type*> make_builtins(){
 // }
 
 DefferedType::DefferedType(std::string_view _name) :
-    CRE_Type(_name, 0, {}, 0) {
+    CRE_Type(_name, T_ID_UNDEFINED, 0, {}, 0, 0) {
 
     kind = TYPE_KIND_DEFFERED;
 }

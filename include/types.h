@@ -83,6 +83,7 @@ struct CRE_Type : CRE_Obj{
     CRE_Context* context;
     int32_t type_index;
     uint16_t t_id;
+    uint16_t byte_width;
     uint8_t builtin;
     uint8_t kind;
     // size_t size; TODO!!!
@@ -90,8 +91,10 @@ struct CRE_Type : CRE_Obj{
 
     CRE_Type(std::string_view _name, 
         uint16_t _t_id,
-        std::vector<CRE_Type*> _sub_types = {}, 
+        uint16_t byte_width,
+        std::vector<CRE_Type*> _sub_types = {},
         uint8_t _builtin = 0,
+        int32_t type_index = 0,
         CRE_Context* context = nullptr
     );    
 
@@ -167,6 +170,7 @@ HashMap<std::string, Item> parse_builtin_flags(
 
 CRE_Type* define_type(std::string_view name, 
                   const std::vector<CRE_Type*>& sub_type={},
+                  uint16_t byte_width = 0,
                   CRE_Context* context = nullptr);
 
 FactType* define_fact(std::string_view name, 
@@ -202,10 +206,11 @@ std::vector<CRE_Type*> make_builtins();
 
 
 struct DefferedType : public CRE_Type {
-    std::string name;
-    std::vector<CRE_Type*> sub_types;
-    uint16_t t_id;
-    uint8_t builtin;
+    // std::string name;
+    // std::vector<CRE_Type*> sub_types;
+    // uint16_t t_id;
+    // uint16_t byte_width;
+    // uint8_t builtin;
 
     DefferedType(std::string_view _name);    
 };

@@ -58,7 +58,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 	head_ranges.reserve(n_args);
 
 	// for(auto arg_typqe : arg_types){
-	uint64_t offset = 0;
+	uint16_t offset = 0;
 	for(uint32_t i =0; i< arg_types.size(); ++i){
 		CRE_Type* arg_type = arg_types[i];
 
@@ -70,7 +70,8 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 		// ArgInfo
 		// uint16_t t_id = arg_type->t_id;
 		root_arg_infos.emplace_back(
-			arg_type, func->get(i), ARGINFO_VAR, false);
+			arg_type, func->get(i), ARGINFO_VAR, offset, false);
+		offset += arg_type->byte_width;
 
 		// Head Info
 		HeadInfo hi;
@@ -86,7 +87,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 		// TODO: Make Offsets
 		hi.arg_data_ptr = nullptr;
 		hi.head_data_ptr = nullptr;
-		hi.head_size = 0;
+		// hi.byte_width = 0;
 		hi.ref_kind = 0; // Necessary ? 
 
 		head_infos.push_back(hi);
@@ -126,6 +127,8 @@ ref<Func> define_func(
 	origin_data->func = func.get();
 
 	_init_arg_specs(func, arg_types);
+	func->return_type = ret_type;
+
 
 	return func;
 }
@@ -322,6 +325,8 @@ void Func::set_arg(size_t i, const Item& val){
             	ref<Var> head_var;
         		if(head_info.has_deref){
 		            auto old_head_var = head_info.var_ptr;
+
+		            // TODO;
 		            // head_var = var_extend(var, old_head_var.deref_infos)
 		            has_deref = true;
 		        }else{
@@ -354,6 +359,183 @@ void Func::set_arg(size_t i, const Item& val){
 }
 
 
+
+// ---------------------------------------------------------------
+// Bytecode Generation
+
+// Execution Stack Has: [...?b arg_vals] [...?b intermediates] [...?b return]
+
+// Bytecode format:
+const uint16_t BC_READ_CONST = 1;
+const uint16_t BC_DEREF_VAR = 2;
+const uint16_t BC_CALL_FUNC = 3;
+const uint16_t BC_CLEANUP = 4;
+
+// ----------------
+// : READ_CONST
+// [2b kind] [2 next_offset] [2b src_index] [2b dest_offset] 
+size_t sizeof_load_const(){
+	return 8;
+}
+
+void write_load_const(uint8_t* bytecode, uint16_t src_index, uint16_t dest_offset){
+	uint16_t* rc_instr = (uint16_t*) bytecode;
+	rc_instr[0] = BC_READ_CONST;
+	rc_instr[1] = sizeof_load_const();
+	rc_instr[2] = src_index;
+	rc_instr[3] = dest_offset;
+}
+
+// ----------------
+// : DEREF_VAR
+// [2b kind] [2 next_offset] [2b src_offset] [2b dest_offset] 
+// [..16b DerefInfos]
+
+size_t sizeof_deref_var(Var* var){
+	return 8 + sizeof(DerefInfo) * var->size();
+}
+
+void write_deref_var(uint8_t* bytecode, Var* var, uint16_t src_offset, uint16_t dest_offset){
+	uint16_t* rc_instr = (uint16_t*) bytecode;
+	rc_instr[0] = BC_DEREF_VAR;
+	rc_instr[1] = sizeof_deref_var(var);
+	rc_instr[2] = src_offset;
+	rc_instr[3] = dest_offset;
+	DerefInfo* df_info = (DerefInfo*) &rc_instr[4];
+	memcpy(df_info, var->deref_infos, sizeof(DerefInfo) * var->size());
+}
+
+// ----------------
+// : CALL_FUNC
+// [2b kind] [2 next_offset] [2b ret_offset] [2b pad] [8b func*] 
+//    [...2b arg_offset] [?b pad] 
+size_t sizeof_call_func(Func* cf){
+	return 8 + 2 * (cf->n_root_args + cf->n_root_args % 4);
+}
+
+void write_call_func(uint8_t* bytecode, Func* cf, uint16_t ret_offset, std::vector<uint16_t>& head_offsets){
+	uint16_t* rc_instr = (uint16_t*) bytecode;
+	rc_instr[0] = BC_CALL_FUNC;
+	rc_instr[1] = sizeof_call_func(cf);
+	rc_instr[2] = ret_offset;
+	rc_instr[3] = 0;
+	Func** func_ptr = (Func**) &rc_instr[4];
+	func_ptr[0] = cf;
+
+	uint16_t* self_arg_offsets = (uint16_t*) &rc_instr[8];
+	for(uint16_t i=0; i < head_offsets.size(); i++){
+		// TODO
+		self_arg_offsets[i] = head_offsets[i];
+	}
+}
+
+// ----------------
+// : CLEANUP - [Free Str or Decref]
+// [2b kind] [2 next_offset] [4b pad] [8b f_ptr*] 
+typedef void(*cleanup_t)(uint8_t* data);
+
+size_t sizeof_cleanup(){
+	return 16;
+}
+
+void write_cleanup(uint8_t* bytecode, cleanup_t f_ptr){
+	uint16_t* rc_instr = (uint16_t*) bytecode;
+	rc_instr[0] = BC_CLEANUP;
+	rc_instr[1] = sizeof_cleanup();
+	rc_instr[2] = 0;
+	rc_instr[3] = 0;
+
+	cleanup_t* self_f_ptr = (cleanup_t*) &rc_instr[8];
+	self_f_ptr[0] = f_ptr;
+}
+
+
+size_t Func::calc_byte_code_size(){
+	// First pass to find the size of the bytecode
+	size_t byte_code_len = 0;
+	for(size_t i=0; i < this->root_arg_infos.size(); ++i){
+		auto arg_info = this->root_arg_infos[i];
+		switch(arg_info.kind){
+			case ARGINFO_CONST:
+			{
+				byte_code_len += sizeof_load_const();
+				break;
+			}
+			case ARGINFO_VAR:
+			{
+				Var* var = this->get(i)->as_var();
+				if(var->size() > 0){
+					byte_code_len += sizeof_deref_var(var);	
+				}
+				break;
+			}
+			case ARGINFO_FUNC_UNEXPANDED:
+			{
+				Func* cf = this->get(i)->as_func();
+				byte_code_len += sizeof_call_func(cf);	
+				break;
+			}
+		}
+	}
+	byte_code_len += sizeof_call_func(this);	
+	return byte_code_len;
+}
+
+std::string Func::bytecode_to_string() {
+	uint8_t* bc = bytecode;
+	std::stringstream ss;
+		
+	cout << "LEN: " << bytecode_end-bc << endl;
+	while(bc < bytecode_end){
+		uint16_t* rc_instr = (uint16_t*) bc;	
+		switch(rc_instr[0]){
+			case BC_READ_CONST:
+				ss << fmt::format("const(ind={}->@{})\n", rc_instr[2], rc_instr[3]);
+				break;
+			case BC_DEREF_VAR:
+				ss << fmt::format("deref(@{}->@{})\n", rc_instr[2], rc_instr[3]);
+				break;
+			case BC_CALL_FUNC:
+				ss << fmt::format("call_func(@{})\n", rc_instr[2]);
+				break;
+		}
+		cout << rc_instr[0] << " BC: " << uint64_t(bc) << ", " << rc_instr[1] << endl;
+		if(rc_instr[1] == 0){
+			break;
+		}
+		bc += rc_instr[1];
+	}
+	return ss.str();
+}
+
+// void Func::fill_byte_code(){
+
+	
+
+// 	// Fill in the bytecode
+// 	uint8_t* bytecode = new uint8_t[byte_code_len];
+// 	uint8_t* bc_head = bytecode;
+// 	for(size_t i=0; i < this->root_arg_infos.size(); ++i){
+// 		auto arg_info = this->root_arg_infos[i];
+// 		switch(arg_info.kind){
+// 			case ARGINFO_CONST:
+// 				write_load_const(bc_head, i, ??dest);
+// 				bc_head += sizeof_load_const();
+// 			case ARGINFO_VAR:
+// 				Var* var = this->get(i)->as_var();
+// 				if(var.size() > 0){
+// 					write_deref_var(bc_head, ??src, ??dest);
+// 					bc_head += sizeof_deref_var(var);	
+// 				}
+// 			case ARGINFO_FUNC:
+// 				Func* cf = this->get(i)->as_func();
+// 				write_call_func(bc_head, ??src, ??dest);
+// 				bc_head += sizeof_call_func(cf);	
+// 		}
+// 	}
+// }
+
+
 // ---------------------------------------------------------------
 // reinitialize()
 
@@ -366,18 +548,35 @@ void Func::reinitialize(){
 
 
 	// Build new base_var_map. This dictates a new signature when there are  
-	//  repeated Vars in a Func's expression. For instance, f = add(A, A),
-	//  maps a=Var("A", int) to two args for an effective signature of f(A). 
+	//  repeated Vars in a Func's expression. For instance, A=Var("A", int),
+	//  f = add(A, A), maps two args to one for an effective signature of f(A). 
 	std::map<void*, size_t> base_var_map = {};
 	std::vector<base_heads_pair_t> base_vars = {};
 	size_t n_vars = 0;
 
-	for(auto hrng : this->head_ranges){
-		for(uint16_t j=hrng.start; j < hrng.end; ++j){
-			HeadInfo& head_info = this->head_infos[j];
+	
 
-			// For ARGINFO_VAR kinds insert base_ptr into the base_var_map
-			if(head_info.kind == ARGINFO_VAR){
+	// ArgInfo& last_arg = root_arg_infos[root_arg_infos.size()-1];
+	uint16_t stack_offset = 0; //last_arg.offset + last_arg.type.byte_width;
+	std::vector<uint16_t> arg_stack_offsets = {};
+	
+
+	for(auto hrng : head_ranges){
+		for(uint16_t j=hrng.start; j < hrng.end; ++j){
+			HeadInfo head_info = head_infos[j];
+			ArgInfo root_info = root_arg_infos[head_info.arg_ind];
+			
+			switch(head_info.kind){
+				// For ARGINFO_VAR kinds insert base_ptr into the base_var_map
+				case ARGINFO_CONST: {
+				// arg_stack_offsets.push_back(stack_offset);
+				// stack_offset += head_info.base_type->byte_width;
+
+				break;
+				}
+
+				case ARGINFO_VAR: {				
+
 				Var* var = head_info.var_ptr;
 				void* base_ptr = (void*) var->base;
 
@@ -387,13 +586,18 @@ void Func::reinitialize(){
 					std::vector<HeadInfo> var_head_info = {};
 					base_vars.push_back({base_ptr, var_head_info});
 					++n_vars;
-				}
 
+					arg_stack_offsets.push_back(stack_offset);
+					stack_offset += head_info.base_type->byte_width;
+				}
 				std::get<1>(base_vars[it->second]).push_back(head_info);
+				break;
+				}
 
 			// For ARGINFO_FUNC_UNEXPANDED kind insert the base_ptrs of all of the
             //  CRE_Funcs's base vars into base_var_map
-			}else if(head_info.kind == ARGINFO_FUNC_UNEXPANDED){
+				case ARGINFO_FUNC_UNEXPANDED: {
+
 				Func* cf = head_info.cf_ptr;
 
 				for(auto& hrng_k : cf->head_ranges){
@@ -410,42 +614,124 @@ void Func::reinitialize(){
 							std::vector<HeadInfo> var_head_info = {};
 							base_vars.push_back({base_ptr, var_head_info});
 							++n_vars;
+
+							arg_stack_offsets.push_back(stack_offset);
+							stack_offset += head_info.base_type->byte_width;
 						}
 						std::get<1>(base_vars[it->second]).push_back(head_info);
+						
 						// it->second.push_back(head_info_n);
 					}
 					max_arg_depth = std::max(cf->depth, max_arg_depth);
+				}
+				break;
 				}
 			}
 		}
 	}
 
-	// Make new head_ranges according to base_var_map
+
+	
+	// Make new head_ranges (spans of HeadInfos for same base)
+	//   according to base_var_map. Count total to reserve head_infos.
 	size_t n_bases = base_var_map.size();
-	std::vector<HeadRange> head_ranges;
-	head_ranges.reserve(n_bases);
+	std::vector<HeadRange> new_head_ranges;
+	new_head_ranges.reserve(n_bases);
 	size_t n_heads = 0;
 	for(auto [_, base_head_infos] : base_vars){
-		cout << "SIZE:" << base_head_infos.size() << endl;
-		head_ranges.emplace_back(n_heads, n_heads+base_head_infos.size());
+		// cout << "SIZE:" << base_head_infos.size() << endl;
+		new_head_ranges.emplace_back(n_heads, n_heads+base_head_infos.size());
 		n_heads += base_head_infos.size();
 	}
 
-
 	// Make new head_infos according to base_var_map
-	std::vector<HeadInfo> head_infos;
-	head_infos.reserve(n_heads);
+	std::vector<HeadInfo> new_head_infos;
+	new_head_infos.reserve(n_heads);
 	for(auto [base_ptr, base_head_infos] : base_vars){
 		Var* base_var = (Var *) base_ptr;
 		for(HeadInfo& base_head_info : base_head_infos){
 			HeadInfo hi = base_head_info;
 			hi.base_type = base_var->base_type;
 
-			head_infos.push_back(std::move(hi));
+			new_head_infos.push_back(std::move(hi));
 		}
 	}
 
+
+	// Build the Func's bytecode, the instruction sequence
+	//  that is called when it is executed
+	size_t byte_code_len = this->calc_byte_code_size();
+	uint8_t* bytecode = new uint8_t[byte_code_len];
+	uint8_t* bc_head = bytecode;
+
+	std::vector<uint16_t> head_stack_offsets = {};
+
+	for(uint16_t i=0; i < head_ranges.size(); ++i){
+		auto hrng = head_ranges[i];
+	// for(auto hrng : head_ranges){
+		for(uint16_t j=hrng.start; j < hrng.end; ++j){
+			HeadInfo head_info = head_infos[j];
+			ArgInfo root_info = root_arg_infos[head_info.arg_ind];
+			
+			switch(head_info.kind){
+				// For ARGINFO_CONST copy a constant into stack
+				case  ARGINFO_CONST: {	
+				// TODO should attempt any dereferences if necessary
+				
+
+				// Write bytecode
+				// write_load_const(bc_head, i, root_info.offset);
+				write_load_const(bc_head, i, stack_offset);
+				bc_head += sizeof_load_const();
+
+				head_stack_offsets.push_back(stack_offset);
+				stack_offset += head_info.head_type->byte_width;
+				break;
+
+				}
+			// For ARGINFO_VAR kinds insert base_ptr into the base_var_map
+				case ARGINFO_VAR: {				
+				// Write bytecode 
+				Var* var = head_info.var_ptr;
+				if(var->size() > 0){
+					write_deref_var(bc_head, var, root_info.offset, stack_offset);
+					bc_head += sizeof_deref_var(var);	
+
+					head_stack_offsets.push_back(stack_offset);
+					stack_offset += head_info.head_type->byte_width;
+				}else{
+					head_stack_offsets.push_back(arg_stack_offsets[i]);
+				}
+				break;
+				}
+
+			// For ARGINFO_FUNC_UNEXPANDED kind insert the base_ptrs of all of the
+            //  CRE_Funcs's base vars into base_var_map
+				case ARGINFO_FUNC_UNEXPANDED: {
+				Func* cf = head_info.cf_ptr;
+				for(auto& hrng_k : cf->head_ranges){
+					for(uint16_t n=hrng.start; n < hrng.end; ++n){
+						//
+					}
+				}
+				break;
+				}
+			}
+		}
+	}
+	this->bytecode = bytecode;
+	this->bytecode_end = bytecode+byte_code_len;
+
+
+	// Write Bytecode for this Func's call 
+	write_call_func(bc_head, this, stack_offset, head_stack_offsets);
+	stack_offset += return_type->byte_width;
+	// bc_head += sizeof_call_func(cf);
+
+
+
 	this->n_args = n_bases;
+
 
 	// build_instr_set
 
@@ -463,3 +749,14 @@ void Func::reinitialize(){
     this->is_composed = is_composed;
     this->depth = this->depth + max_arg_depth;
 }
+
+// Example: 
+// a + (d + c + 1) + c 
+// sig: f(a,d,c,e)
+// bc : [a][d][c][1] [add3(@1, @2, @3)] [add3(@0, @4, @2)]
+
+
+
+
+
+
