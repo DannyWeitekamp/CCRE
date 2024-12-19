@@ -5,6 +5,7 @@
 #include "../include/intern.h"
 #include "../include/fact.h"
 #include "../include/var.h"
+#include "../include/func.h"
 #include <bit>
 #include <sstream>
 #include <functional>
@@ -143,12 +144,19 @@ Item::Item(const char* data, size_t _length) {
     // return str_to_item(sv);
 }
 
+
+// -- Fact -> Item ---
 Item::Item(Fact* x, bool _is_ref) : 
             val(std::bit_cast<uint64_t>(x)),
       hash(0), t_id(T_ID_FACT),
       is_ref(_is_ref), borrows(0), pad(0)
 {};
 
+Item::Item(ref<Fact> x, bool _is_ref) : ::Item((Fact*) x, _is_ref)
+{};
+
+
+// -- Var -> Item ---
 Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
                     hash(0), t_id(T_ID_VAR), 
                     is_ref(0), borrows(1), pad(0) 
@@ -157,6 +165,36 @@ Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
 //   to avoid pointless increfs
     x->inc_ref(); 
 };
+
+Item::Item(ref<Var> x) : ::Item((Var*) x)
+{};
+
+
+// -- Func -> Item ---
+Item::Item(Func* x) : val(std::bit_cast<uint64_t>(x)),
+                    hash(0), t_id(T_ID_FUNC), 
+                    is_ref(0), borrows(1), pad(0) 
+{
+// TODO: should figure out how to do this with move semantics
+//   to avoid pointless increfs
+    x->inc_ref(); 
+};
+
+Item::Item(ref<Func> x) : ::Item((Func*) x)
+{};
+
+
+
+// val(std::bit_cast<uint64_t>(x.get())),
+//                     hash(0), t_id(T_ID_VAR), 
+//                     is_ref(0), borrows(1), pad(0) 
+// {
+// // TODO: should figure out how to do this with move semantics
+// //   to avoid pointless increfs
+//     x->inc_ref(); 
+// };
+
+
 
 // Item::Item(bool arg) :
 //     val(static_cast<uint64_t>(arg)),
@@ -280,6 +318,9 @@ std::string item_to_string(const Item& item) {
             break;
         case T_ID_VAR:
             ss << item.as_var();
+            break;
+        case T_ID_FUNC:
+            ss << item.as_func();
             break;
         default:
             ss << "<item t_id=" << t_id << " val=" << item.val << ">";

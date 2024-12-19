@@ -84,6 +84,7 @@ ref<Var> new_var(const Item& _alias,
 
 // std::string var_to_string(Var* var);
 std::ostream& operator<<(std::ostream& out, Var* var);
+std::ostream& operator<<(std::ostream& out, ref<Var> var);
 
 extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf);
 extern "C" Item* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length);

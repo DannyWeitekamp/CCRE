@@ -13,6 +13,7 @@
 
 // Forward Declarations 
 struct Func;
+struct FuncRef;
 
 
 // ARGINFO type enums
@@ -161,9 +162,9 @@ struct Func : CRE_Obj{
 
 	// Keeps pointers to each head variable, their types, the CREFunc they live in 
     // among other things
-    std::vector<HeadInfo> head_infos = {};
+  std::vector<HeadInfo> head_infos = {};
 
-	std::vector<InstrType> prereq_instrs;    
+	// std::vector<InstrType> prereq_instrs;    
 
 	// Data ptr of the return value    
 	void* return_data_ptr;
@@ -188,7 +189,7 @@ struct Func : CRE_Obj{
     bool is_ptr_func;
 
     // The composition depth
-    uint16_t depth;
+    uint16_t depth = 1;
 
     
 
@@ -206,10 +207,19 @@ struct Func : CRE_Obj{
     	origin_data(_origin_data),
     	call_heads_addr(_cfunc_ptr)
     {}
+    // Func(const Func&) = default;
 
     std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
 
     void set_arg(size_t i, const Item& val);
+
+    // TODO: Could this be done by overloading item instead? 
+    // template<typename T>
+    // void set_arg(size_t i, const ref<T> val){
+		// 	set_arg(val.get());
+		// }
+
+
     // void set_const_arg(size_t i, const Item& val);
     // void set_var_arg(size_t i, Var* val);
     // void set_func_arg(size_t i, Func* val);
@@ -230,9 +240,40 @@ struct Func : CRE_Obj{
 
 	std::string bytecode_to_string();
 
+	FuncRef copy_shallow();
+	FuncRef copy_deep();
 	size_t calc_byte_code_size();
 	void reinitialize();
 };
+
+
+
+struct FuncRef : ref<Func> {
+	template <class ... Ts>
+	inline FuncRef operator()(Ts && ... inputs){
+		return compose(*this, inputs...);
+	}
+};
+
+
+template <class ... Ts>
+FuncRef compose(Func* self, Ts && ... inputs){
+  FuncRef cf = self->copy_deep();//new Func(*this);
+
+  cout << "COMPOSE: " << uint64_t(cf.get()) << endl;
+  int i = 0;
+  ([&]
+    {
+    		// cout << typeid(Ts).name() << endl;
+    		// cout << "INPUT:" << inputs << endl;
+    		cf->set_arg(i, inputs);	
+        ++i;        
+    } (), ...);
+  cf->reinitialize();
+  return cf;
+}
+
+
 
 // inline Func* _alloc_func(uint32_t n_args){
 //   Func* ptr = (Func*) malloc(sizeof(Func) + (n_args) * sizeof(Item));
@@ -242,7 +283,7 @@ struct Func : CRE_Obj{
 
 ref<Func> new_func(size_t n_args, void* cfunc_ptr, OriginData* origin_data);
 
-ref<Func> define_func(
+FuncRef define_func(
 		const std::string_view& name, 
 		void* cfunc_ptr,
 		CRE_Type* ret_type,
@@ -251,6 +292,7 @@ ref<Func> define_func(
 		const std::string_view& shorthand_template = "");
 
 std::ostream& operator<<(std::ostream& out, Func* func);
+std::ostream& operator<<(std::ostream& out, ref<Func> func);
 
 
 // ------------------------------------------------------------
@@ -310,7 +352,7 @@ template<auto Func>
 struct StackCallFunc final
 {
 	template <typename RT, typename... Args, std::size_t... I>
-	inline void variatic_call_w_indicies(RT (*func)(Args...),
+	inline void variatic_call_w_indicies(RT (* )(Args...),
 	 	uint8_t* ret, uint16_t* arg_offsets,
 	 	std::index_sequence<I...>) const {
 
@@ -318,16 +360,16 @@ struct StackCallFunc final
 	}	
 
 	template <typename RT, typename... Args>
-	inline void variatic_call(RT (*func)(Args...),
+	inline void variatic_call(RT (* )(Args...),
 	 	uint8_t* ret, uint16_t* arg_offsets) const {
 
 	    variatic_call_w_indicies(Func, ret, arg_offsets, std::index_sequence_for<Args...>{});
 	}	
     
-    void operator()(uint8_t* ret, uint16_t* arg_offsets) const
-    {
-        return variatic_call(Func, ret, arg_offsets);
-    }
+  void operator()(uint8_t* ret, uint16_t* arg_offsets) const
+  {
+      return variatic_call(Func, ret, arg_offsets);
+  }
 };
 
 template<auto Func>

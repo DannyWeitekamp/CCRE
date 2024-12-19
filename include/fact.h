@@ -199,6 +199,7 @@ Fact::Iterator end(const Fact* fact);
 
 
 std::ostream& operator<<(std::ostream& out, Fact* fact);
+std::ostream& operator<<(std::ostream& out, ref<Fact> fact);
 
 
 

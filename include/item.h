@@ -80,8 +80,13 @@ struct Item {
     Item(const char* data, size_t _length=-1);
 
     Item(Fact* x, bool _is_ref=false);
+    Item(ref<Fact> x, bool _is_ref=false);
 
     Item(Var* x);
+    Item(ref<Var> x);
+
+    Item(Func* x);
+    Item(ref<Func> x);
 
 
     inline bool is_primitive() const{

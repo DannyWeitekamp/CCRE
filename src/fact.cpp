@@ -363,6 +363,9 @@ extern "C" void fact_dtor(Fact* fact){
 std::ostream& operator<<(std::ostream& out, Fact* fact){
 	return out << fact->to_string();
 }
+std::ostream& operator<<(std::ostream& out, ref<Fact> fact){
+	return out << fact.get()->to_string();
+}
 
 
 

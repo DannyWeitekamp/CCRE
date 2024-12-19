@@ -97,7 +97,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 	}
  }
 
-ref<Func> define_func(
+FuncRef define_func(
 		const std::string_view& name, 
 		void* cfunc_ptr,
 		CRE_Type* ret_type,
@@ -129,8 +129,127 @@ ref<Func> define_func(
 	_init_arg_specs(func, arg_types);
 	func->return_type = ret_type;
 
+	return (FuncRef) func;
+}
 
-	return func;
+// -------------------------------------------------------------
+// copy()
+FuncRef Func::copy_shallow(){
+	ref<Func> nf = new_func(call_heads_addr, n_root_args, origin_data);
+	nf->dtor = &Func_dtor;
+
+	nf->return_type = return_type;
+	nf->n_args = n_args;
+	nf->n_root_args = n_root_args;
+
+	nf->root_arg_infos = root_arg_infos;
+	nf->head_ranges = head_ranges;
+	nf->head_infos = head_infos;
+
+	// # Make the arg_data_ptr and head_data_ptr point to the copy
+
+	for(size_t i=0; i < head_infos.size(); ++i){
+		HeadInfo& head_info = head_infos[i];
+		nf->head_infos[i] = head_info;
+		if(head_info.cf_ptr == this){
+			nf->head_infos[i].cf_ptr = nf.get();
+			// nf->head_infos[i].arg_data_ptr = ??;
+			// nf->head_infos[i].head_data_ptr = ??;
+		}
+	}
+   
+
+	cout << ":" << uint64_t(root_arg_infos.data()) << endl;
+	cout << ":" << uint64_t(nf->root_arg_infos.data()) << endl;
+
+	nf->is_initialized = false;	
+	nf->is_ptr_func = is_ptr_func;	
+	nf->depth = depth;	
+	nf->has_any_derefs = has_any_derefs;	
+	nf->is_composed = is_composed;	
+	return (FuncRef) nf;
+}
+
+FuncRef Func::copy_deep(){
+
+
+	ref<Func> cpy;
+	if(depth <= 1){
+		cpy = copy_shallow();
+		cout << "SHALLOW COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
+		return (FuncRef) cpy;
+	}
+
+	using stack_tuple = std::tuple<Func*, int, std::vector<ref<Func>>*>  ;
+	std::vector<stack_tuple> stack = {};
+	size_t i;
+
+	Func* cf = this;
+
+	std::vector<ref<Func>>* func_copies = new std::vector<ref<Func>>;
+	// HashMap<Func*, Func*> remap = {};
+
+	bool keep_looping = false;
+	
+	while(keep_looping){
+		ArgInfo arg_info = cf->root_arg_infos[i];
+		if(arg_info.kind == ARGINFO_FUNC){
+			stack.push_back(stack_tuple(cf, i+1, func_copies));
+			cf = (Func*) arg_info.ptr->as_func();
+			func_copies = new std::vector<ref<Func>>;
+			i =0;
+		}else{
+			i += 1;
+		}
+	
+
+		// When past end arg of deepest func, copy it. Then pop prev frame from stack.
+		
+		while(i >= cf->root_arg_infos.size()){
+	        cpy = cf->copy_shallow();
+	    	size_t j = 0;
+	    	for(size_t k=0; k < cpy->root_arg_infos.size(); ++k){
+	    		auto inf = cpy->root_arg_infos[k];
+	    		if(inf.kind == ARGINFO_FUNC){
+	    			Func* sub_func = (*func_copies)[j];
+	    			// inf.ptr = (void *) sub_func; // TODO This seems wrong
+	    			cpy->set(k, sub_func);
+	    			j += 1;
+	    		}
+	    	}
+
+	    	// remap[cf] = cpy;
+	    	// remap[return data ptr]
+
+	    	// Remap head info data ptrs
+	    	// for(size_t k=0; k < cpy->head_infos.size()){
+	    	// 	HeadInfo hi = cf->head_infos[k];
+	    	// 	HeadInfo hi_cpy = cpy->head_infos[k];
+	    	// 	// remap data ptrs
+	    	// }
+
+	    	// Pointers in bytecode (probabably don need)
+	    	// ...
+
+	    	
+
+	    	delete func_copies;
+
+	    	// End Case: Stack Exhausted
+
+	    	if(stack.size() == 0){
+	    		keep_looping = false;
+	    		break;
+	    	}
+
+	    	std::tie(cf, i, func_copies) = stack[stack.size()-1];
+	        stack.pop_back();
+	        func_copies->push_back(cpy);
+	    }
+    }
+
+    cout << "DEEP COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
+    return (FuncRef) cpy;
 }
 
 
@@ -155,6 +274,8 @@ std::string Func::to_string(uint8_t verbosity){
 	using fmt_args_t = fmt::dynamic_format_arg_store<fmt::format_context>;
 	using stack_tuple = std::tuple<Func*, int, fmt_args_t*> ;
 
+	cout << "TO STRING: " << uint64_t(this) << endl;
+
 	OriginData* od = this->origin_data;
 	bool use_derefs = true;
 	bool use_shorthand = verbosity == LOW_VERBOSITY && od->shorthand_template.size() > 0;
@@ -169,23 +290,31 @@ std::string Func::to_string(uint8_t verbosity){
 	while(keep_looping){
 		if(i < cf->root_arg_infos.size()){
 			auto& arg_info = cf->root_arg_infos[i];
+
+			cout << ">> i=" << i << ", kind=" << arg_info.kind << endl;
+
 			if(arg_info.kind == ARGINFO_FUNC){
+				cout << "FUNC:" << uint64_t(arg_info.ptr) << endl;
 				// Recurse Case: Func
 				stack.emplace_back(stack_tuple(cf, i+1, arg_strs));
 
+				// cf = cf->get(i).as_func(); 
 				cf = (*arg_info.ptr).as_func();
 				arg_strs = new fmt_args_t();
 				i =0;
 			}else{
 				// Terminal Case: Var/Const
 				if(arg_info.kind == ARGINFO_VAR){
+					cout << "VAR:" << uint64_t(arg_info.ptr) << endl;
 					Var* var = (*arg_info.ptr).as_var();
+					
 					if(use_derefs){
 						arg_strs->push_back(var->to_string());
 					}else{
 						arg_strs->push_back(var->alias.to_string());
 					}
 				}else if(arg_info.kind == ARGINFO_CONST){
+					cout << "CONST:" << uint64_t(arg_info.ptr) << endl;
 					Item& item = *cf->get(i);
 					arg_strs->push_back(item.to_string());
 				}else{
@@ -231,11 +360,16 @@ std::string Func::to_string(uint8_t verbosity){
             arg_strs->push_back(s);
 		}
 	}
+	cout << endl;
 	return s;
 }
 
 std::ostream& operator<<(std::ostream& out, Func* func){
 	return out << func->to_string();
+}
+
+std::ostream& operator<<(std::ostream& out, ref<Func> func){
+	return out << func.get()->to_string();
 }
 
 
@@ -289,13 +423,15 @@ void Func::set_arg(size_t i, const Item& val){
 		throw std::invalid_argument("Setting Func arg out of range.");
 	}
 	this->is_initialized = false;
-	auto& head_infos = this->head_infos;
+	// auto& head_infos = this->head_infos;
 	size_t start = this->head_ranges[i].start;
 	size_t end = this->head_ranges[i].end;
 
 	uint8_t kind = val.t_id == T_ID_VAR ? ARGINFO_VAR :
 				   val.t_id == T_ID_FUNC ? ARGINFO_FUNC_UNEXPANDED :
 				   ARGINFO_CONST;
+
+	cout << uint64_t(this) << "  set i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.t_id) << ", kind=" << uint64_t(kind) << endl;
 
 	// if(!kind){
 	// 	throw std::invalid_argument(
@@ -306,11 +442,15 @@ void Func::set_arg(size_t i, const Item& val){
 
 	
 	for(size_t j = start; j < end; ++j){
+
+
 		auto& head_info = head_infos[j];
 
 		Func* cf = head_info.cf_ptr;
 		auto arg_ind = head_info.arg_ind;
 		head_info.kind = kind;
+
+		cf->set(arg_ind, val);
 
 		bool has_deref = false;
 		switch(kind) {
@@ -348,15 +488,19 @@ void Func::set_arg(size_t i, const Item& val){
        	}
 		head_info.has_deref = false;
 
-		this->set(j, val);
+		
+
+		cout << "set j=" << j << ", arg_ind=" << arg_ind << endl;
 
 		cf->root_arg_infos[arg_ind].kind = kind;
 		cf->root_arg_infos[arg_ind].has_deref = has_deref;
-		cf->root_arg_infos[arg_ind].ptr = head_info.head_data_ptr;
+		cf->root_arg_infos[arg_ind].ptr = cf->get(arg_ind);
 		cf->root_arg_infos[arg_ind].type = head_info.head_type;
 	}
 	
 }
+
+
 
 
 
@@ -407,10 +551,10 @@ void write_deref_var(uint8_t* bytecode, Var* var, uint16_t src_offset, uint16_t 
 
 // ----------------
 // : CALL_FUNC
-// [2b kind] [2 next_offset] [2b ret_offset] [2b pad] [8b func*] 
+// [2b kind] [2 next_offset] [2b ret_offset] [2b n_args] [8b func*] 
 //    [...2b arg_offset] [?b pad] 
 size_t sizeof_call_func(Func* cf){
-	return 8 + 2 * (cf->n_root_args + cf->n_root_args % 4);
+	return 8 + 8 + 2 * (cf->n_root_args + cf->n_root_args % 4);
 }
 
 void write_call_func(uint8_t* bytecode, Func* cf, uint16_t ret_offset, std::vector<uint16_t>& head_offsets){
@@ -418,9 +562,11 @@ void write_call_func(uint8_t* bytecode, Func* cf, uint16_t ret_offset, std::vect
 	rc_instr[0] = BC_CALL_FUNC;
 	rc_instr[1] = sizeof_call_func(cf);
 	rc_instr[2] = ret_offset;
-	rc_instr[3] = 0;
+	rc_instr[3] = head_offsets.size();
+	// cout << "<::" << uint64_t(cf) << endl;
 	Func** func_ptr = (Func**) &rc_instr[4];
-	func_ptr[0] = cf;
+	*func_ptr = cf;
+	// cout << "<::" << uint64_t(*func_ptr) << endl;
 
 	uint16_t* self_arg_offsets = (uint16_t*) &rc_instr[8];
 	for(uint16_t i=0; i < head_offsets.size(); i++){
@@ -464,6 +610,7 @@ size_t Func::calc_byte_code_size(){
 			case ARGINFO_VAR:
 			{
 				Var* var = this->get(i)->as_var();
+				cout << "#" << uint64_t(var) << endl;
 				if(var->size() > 0){
 					byte_code_len += sizeof_deref_var(var);	
 				}
@@ -485,21 +632,31 @@ std::string Func::bytecode_to_string() {
 	uint8_t* bc = bytecode;
 	std::stringstream ss;
 		
-	cout << "LEN: " << bytecode_end-bc << endl;
+	// cout << "LEN: " << bytecode_end-bc << endl;
 	while(bc < bytecode_end){
 		uint16_t* rc_instr = (uint16_t*) bc;	
 		switch(rc_instr[0]){
 			case BC_READ_CONST:
-				ss << fmt::format("const(ind={}->@{})\n", rc_instr[2], rc_instr[3]);
+				ss << fmt::format("CONST: [{}]->@{})\n", rc_instr[2], rc_instr[3]);
 				break;
 			case BC_DEREF_VAR:
-				ss << fmt::format("deref(@{}->@{})\n", rc_instr[2], rc_instr[3]);
+				ss << fmt::format("DEREF: @{}->@{}\n", rc_instr[2], rc_instr[3]);
 				break;
 			case BC_CALL_FUNC:
-				ss << fmt::format("call_func(@{})\n", rc_instr[2]);
+			{
+				std::vector<std::string> arg_strs = {};
+				uint16_t n_args = rc_instr[3];
+				Func* cf = *((Func**) &rc_instr[4]);
+				// cout << "::" << uint64_t(cf) << endl;
+				for(int i=0; i < n_args; ++i){ 
+					arg_strs.push_back(fmt::format("@{}", rc_instr[8+i]));
+				}
+				
+				ss << fmt::format("CALL : {}({})->@{}\n", cf->origin_data->name, fmt::join(arg_strs, ", "), rc_instr[2]);
 				break;
+			}
 		}
-		cout << rc_instr[0] << " BC: " << uint64_t(bc) << ", " << rc_instr[1] << endl;
+		// cout << rc_instr[0] << " BC: " << uint64_t(bc) << ", " << rc_instr[1] << endl;
 		if(rc_instr[1] == 0){
 			break;
 		}
@@ -557,12 +714,14 @@ void Func::reinitialize(){
 	
 
 	// ArgInfo& last_arg = root_arg_infos[root_arg_infos.size()-1];
+	size_t byte_code_len = 0;
 	uint16_t stack_offset = 0; //last_arg.offset + last_arg.type.byte_width;
 	std::vector<uint16_t> arg_stack_offsets = {};
 	
 
 	for(auto hrng : head_ranges){
 		for(uint16_t j=hrng.start; j < hrng.end; ++j){
+
 			HeadInfo head_info = head_infos[j];
 			ArgInfo root_info = root_arg_infos[head_info.arg_ind];
 			
@@ -571,64 +730,71 @@ void Func::reinitialize(){
 				case ARGINFO_CONST: {
 				// arg_stack_offsets.push_back(stack_offset);
 				// stack_offset += head_info.base_type->byte_width;
+					byte_code_len += sizeof_load_const();
 
-				break;
+					break;
 				}
 
 				case ARGINFO_VAR: {				
 
-				Var* var = head_info.var_ptr;
-				void* base_ptr = (void*) var->base;
+					Var* var = head_info.var_ptr;
+					void* base_ptr = (void*) var->base;
 
-				auto [it, inserted] = base_var_map.try_emplace(
-					base_ptr, n_vars);
-				if(inserted){
-					std::vector<HeadInfo> var_head_info = {};
-					base_vars.push_back({base_ptr, var_head_info});
-					++n_vars;
+					auto [it, inserted] = base_var_map.try_emplace(
+						base_ptr, n_vars);
+					if(inserted){
+						std::vector<HeadInfo> var_head_info = {};
+						base_vars.push_back({base_ptr, var_head_info});
+						++n_vars;
 
-					arg_stack_offsets.push_back(stack_offset);
-					stack_offset += head_info.base_type->byte_width;
-				}
-				std::get<1>(base_vars[it->second]).push_back(head_info);
-				break;
+						// cout << "PB stack_offset:" << stack_offset <<  endl;
+						arg_stack_offsets.push_back(stack_offset);
+						stack_offset += head_info.base_type->byte_width;
+					}
+					if(var->size() > 0){
+						byte_code_len += sizeof_deref_var(var);	
+					}
+					std::get<1>(base_vars[it->second]).push_back(head_info);
+					break;
 				}
 
 			// For ARGINFO_FUNC_UNEXPANDED kind insert the base_ptrs of all of the
             //  CRE_Funcs's base vars into base_var_map
 				case ARGINFO_FUNC_UNEXPANDED: {
 
-				Func* cf = head_info.cf_ptr;
+					Func* cf = head_info.cf_ptr;
 
-				for(auto& hrng_k : cf->head_ranges){
-					for(uint16_t n=hrng.start; n < hrng.end; ++n){
-						HeadInfo& head_info_n = cf->head_infos[n];
+					for(auto& hrng_k : cf->head_ranges){
+						for(uint16_t n=hrng.start; n < hrng.end; ++n){
+							HeadInfo& head_info_n = cf->head_infos[n];
 
-						Var* var = head_info_n.var_ptr;
-						void* base_ptr = (void*) var->base;
+							Var* var = head_info_n.var_ptr;
+							void* base_ptr = (void*) var->base;
 
-						// std::vector<HeadInfo> var_head_info = {};
-						auto [it, inserted] = base_var_map.try_emplace(
-							base_ptr, n_vars);
-						if(inserted){
-							std::vector<HeadInfo> var_head_info = {};
-							base_vars.push_back({base_ptr, var_head_info});
-							++n_vars;
+							// std::vector<HeadInfo> var_head_info = {};
+							auto [it, inserted] = base_var_map.try_emplace(
+								base_ptr, n_vars);
+							if(inserted){
+								std::vector<HeadInfo> var_head_info = {};
+								base_vars.push_back({base_ptr, var_head_info});
+								++n_vars;
 
-							arg_stack_offsets.push_back(stack_offset);
-							stack_offset += head_info.base_type->byte_width;
+								arg_stack_offsets.push_back(stack_offset);
+								stack_offset += head_info.base_type->byte_width;
+							}
+							std::get<1>(base_vars[it->second]).push_back(head_info);
+							
+							// it->second.push_back(head_info_n);
 						}
-						std::get<1>(base_vars[it->second]).push_back(head_info);
-						
-						// it->second.push_back(head_info_n);
+						max_arg_depth = std::max(cf->depth, max_arg_depth);
 					}
-					max_arg_depth = std::max(cf->depth, max_arg_depth);
-				}
+					byte_code_len += sizeof_call_func(cf);	
 				break;
 				}
 			}
 		}
 	}
+	byte_code_len += sizeof_call_func(this);	
 
 
 	
@@ -660,7 +826,7 @@ void Func::reinitialize(){
 
 	// Build the Func's bytecode, the instruction sequence
 	//  that is called when it is executed
-	size_t byte_code_len = this->calc_byte_code_size();
+	//size_t byte_code_len = 0//this->calc_byte_code_size();
 	uint8_t* bytecode = new uint8_t[byte_code_len];
 	uint8_t* bc_head = bytecode;
 
@@ -669,6 +835,8 @@ void Func::reinitialize(){
 	for(uint16_t i=0; i < head_ranges.size(); ++i){
 		auto hrng = head_ranges[i];
 	// for(auto hrng : head_ranges){
+
+		// cout << "stack_offset:" << stack_offset <<  endl;
 		for(uint16_t j=hrng.start; j < hrng.end; ++j){
 			HeadInfo head_info = head_infos[j];
 			ArgInfo root_info = root_arg_infos[head_info.arg_ind];
@@ -700,7 +868,9 @@ void Func::reinitialize(){
 					head_stack_offsets.push_back(stack_offset);
 					stack_offset += head_info.head_type->byte_width;
 				}else{
-					head_stack_offsets.push_back(arg_stack_offsets[i]);
+					size_t ind = base_var_map[var->base];
+					// cout << "arg_stack_offsets[i]" << arg_stack_offsets[ind] << ", " << arg_stack_offsets.size() <<endl;
+					head_stack_offsets.push_back(arg_stack_offsets[ind]);
 				}
 				break;
 				}
@@ -731,6 +901,8 @@ void Func::reinitialize(){
 
 
 	this->n_args = n_bases;
+	this->head_infos = new_head_infos;
+	this->head_ranges = new_head_ranges;
 
 
 	// build_instr_set
@@ -748,6 +920,7 @@ void Func::reinitialize(){
     this->has_any_derefs = any_hd;
     this->is_composed = is_composed;
     this->depth = this->depth + max_arg_depth;
+    this->is_initialized = true;
 }
 
 // Example: 

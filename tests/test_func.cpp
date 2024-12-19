@@ -25,13 +25,32 @@ typedef int64_t (*two_int_func_t)(int64_t a, int64_t b);
 two_int_func_t add_ptr = &add;
 
 void test_define(){
-	ref<Func> func = define_func("add", (void*) &add, cre_int, {cre_int, cre_int});
-	cout << func << endl;
+	FuncRef add_f = define_func("add", (void*) &add, cre_int, {cre_int, cre_int});
+	cout << "add_f: " << add_f << endl;
+	cout << "add_f: " << add_f << endl;
 
-	func->set_arg(0,1);
-	cout << func << endl;
-	func->reinitialize();
-	cout << func->bytecode_to_string() << endl;
+	ref<Var> A = new_var("A", cre_int);
+	ref<Var> B = new_var("B", cre_int);
+	FuncRef f_1_A = add_f(7, A);
+	
+	cout << "add_f: " << add_f << endl;
+	cout << "f_1_A: " << f_1_A << endl;
+
+	
+	
+
+	cout << f_1_A->bytecode_to_string() << endl;
+
+	cout << "----------------" << endl;
+	FuncRef f_1_A_B = add_f(f_1_A, B);
+	cout << "f_1_A_B:" << f_1_A_B << endl;
+	cout << f_1_A_B->bytecode_to_string() << endl;
+
+	
+
+
+
+
 }
 
 Item add_items(Item* args){

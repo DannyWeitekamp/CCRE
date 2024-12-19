@@ -262,6 +262,10 @@ std::ostream& operator<<(std::ostream& out, Var* var){
 	return out << var->to_string();
 }
 
+std::ostream& operator<<(std::ostream& out, ref<Var> var){
+	return out << var.get()->to_string();
+}
+
 extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf){
 	switch(inf.deref_kind){
 
