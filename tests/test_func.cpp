@@ -31,25 +31,23 @@ void test_define(){
 
 	ref<Var> A = new_var("A", cre_int);
 	ref<Var> B = new_var("B", cre_int);
-	FuncRef f_1_A = add_f(7, A);
+	FuncRef f_1_A = add_f(1, A);
 	
 	cout << "add_f: " << add_f << endl;
 	cout << "f_1_A: " << f_1_A << endl;
 
-	
-	
-
-	cout << f_1_A->bytecode_to_string() << endl;
+	// cout << f_1_A->bytecode_to_string() << endl;
 
 	cout << "----------------" << endl;
 	FuncRef f_1_A_B = add_f(f_1_A, B);
 	cout << "f_1_A_B:" << f_1_A_B << endl;
-	cout << f_1_A_B->bytecode_to_string() << endl;
+	// cout << f_1_A_B->bytecode_to_string() << endl;
 
-	
-
-
-
+	cout << "----------------" << endl;
+	// FuncRef big = f_1_A_B(f_1_A, 9);
+	cout << "f_1_A_B copy:" << f_1_A_B->copy_deep() << endl;
+	FuncRef big = f_1_A_B(9, f_1_A);
+	cout << "big:" << big << endl;
 
 }
 

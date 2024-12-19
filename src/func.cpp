@@ -146,8 +146,7 @@ FuncRef Func::copy_shallow(){
 	nf->head_ranges = head_ranges;
 	nf->head_infos = head_infos;
 
-	// # Make the arg_data_ptr and head_data_ptr point to the copy
-
+	// Make the arg_data_ptr and head_data_ptr point to the copy
 	for(size_t i=0; i < head_infos.size(); ++i){
 		HeadInfo& head_info = head_infos[i];
 		nf->head_infos[i] = head_info;
@@ -159,8 +158,8 @@ FuncRef Func::copy_shallow(){
 	}
    
 
-	cout << ":" << uint64_t(root_arg_infos.data()) << endl;
-	cout << ":" << uint64_t(nf->root_arg_infos.data()) << endl;
+	// cout << ":" << uint64_t(root_arg_infos.data()) << endl;
+	// cout << ":" << uint64_t(nf->root_arg_infos.data()) << endl;
 
 	nf->is_initialized = false;	
 	nf->is_ptr_func = is_ptr_func;	
@@ -182,16 +181,18 @@ FuncRef Func::copy_deep(){
 
 	using stack_tuple = std::tuple<Func*, int, std::vector<ref<Func>>*>  ;
 	std::vector<stack_tuple> stack = {};
-	size_t i;
-
+	size_t i = 0;
 	Func* cf = this;
-
 	std::vector<ref<Func>>* func_copies = new std::vector<ref<Func>>;
-	// HashMap<Func*, Func*> remap = {};
 
-	bool keep_looping = false;
+	cout << "--START DEEP--" << endl;
+	std::map<Func*, Func*> remap = {};
+
+	bool keep_looping = true;
 	
 	while(keep_looping){
+		cout << "LOOP: " << stack.size() << ", " << i << endl;
+
 		ArgInfo arg_info = cf->root_arg_infos[i];
 		if(arg_info.kind == ARGINFO_FUNC){
 			stack.push_back(stack_tuple(cf, i+1, func_copies));
@@ -209,13 +210,20 @@ FuncRef Func::copy_deep(){
 	        cpy = cf->copy_shallow();
 	    	size_t j = 0;
 	    	for(size_t k=0; k < cpy->root_arg_infos.size(); ++k){
-	    		auto inf = cpy->root_arg_infos[k];
+	    		ArgInfo& inf = cpy->root_arg_infos[k];
 	    		if(inf.kind == ARGINFO_FUNC){
 	    			Func* sub_func = (*func_copies)[j];
-	    			// inf.ptr = (void *) sub_func; // TODO This seems wrong
 	    			cpy->set(k, sub_func);
+	    			inf.ptr = cpy->get(k); 
 	    			j += 1;
+	    		}else{
+	    			cpy->set(k, *cf->get(k));
 	    		}
+	    	}
+
+	    	remap[cf] = cpy;
+	    	for(size_t k=0; k < cpy->head_infos.size(); ++k){
+	    		cpy->head_infos[k].cf_ptr = remap[cf->head_infos[k].cf_ptr];
 	    	}
 
 	    	// remap[cf] = cpy;
@@ -232,7 +240,7 @@ FuncRef Func::copy_deep(){
 	    	// ...
 
 	    	
-
+	    	cout << "MOO: " << func_copies->size() << endl;
 	    	delete func_copies;
 
 	    	// End Case: Stack Exhausted
@@ -247,7 +255,7 @@ FuncRef Func::copy_deep(){
 	        func_copies->push_back(cpy);
 	    }
     }
-
+    
     cout << "DEEP COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
     return (FuncRef) cpy;
 }
@@ -274,7 +282,7 @@ std::string Func::to_string(uint8_t verbosity){
 	using fmt_args_t = fmt::dynamic_format_arg_store<fmt::format_context>;
 	using stack_tuple = std::tuple<Func*, int, fmt_args_t*> ;
 
-	cout << "TO STRING: " << uint64_t(this) << endl;
+	// cout << "TO STRING: " << uint64_t(this) << endl;
 
 	OriginData* od = this->origin_data;
 	bool use_derefs = true;
@@ -288,24 +296,29 @@ std::string Func::to_string(uint8_t verbosity){
 	std::string s;
 	bool keep_looping = true;	
 	while(keep_looping){
+		// cout << "S LOOP: " << stack.size() << ", " << i << endl;
+
 		if(i < cf->root_arg_infos.size()){
 			auto& arg_info = cf->root_arg_infos[i];
 
-			cout << ">> i=" << i << ", kind=" << arg_info.kind << endl;
+			// cout << ">> i=" << i << ", kind=" << arg_info.kind << endl;
 
 			if(arg_info.kind == ARGINFO_FUNC){
-				cout << "FUNC:" << uint64_t(arg_info.ptr) << endl;
+				// cout << "FUNC0 :" << uint64_t(cf) << endl;
+				
 				// Recurse Case: Func
+
 				stack.emplace_back(stack_tuple(cf, i+1, arg_strs));
 
 				// cf = cf->get(i).as_func(); 
 				cf = (*arg_info.ptr).as_func();
+				// cout << "FUNC  :" << uint64_t(cf) << endl;
 				arg_strs = new fmt_args_t();
 				i =0;
 			}else{
 				// Terminal Case: Var/Const
 				if(arg_info.kind == ARGINFO_VAR){
-					cout << "VAR:" << uint64_t(arg_info.ptr) << endl;
+					// cout << "VAR:" << uint64_t(arg_info.ptr) << endl;
 					Var* var = (*arg_info.ptr).as_var();
 					
 					if(use_derefs){
@@ -314,7 +327,7 @@ std::string Func::to_string(uint8_t verbosity){
 						arg_strs->push_back(var->alias.to_string());
 					}
 				}else if(arg_info.kind == ARGINFO_CONST){
-					cout << "CONST:" << uint64_t(arg_info.ptr) << endl;
+					// cout << "CONST:" << uint64_t(arg_info.ptr) << endl;
 					Item& item = *cf->get(i);
 					arg_strs->push_back(item.to_string());
 				}else{
@@ -360,7 +373,7 @@ std::string Func::to_string(uint8_t verbosity){
             arg_strs->push_back(s);
 		}
 	}
-	cout << endl;
+	// cout << endl;
 	return s;
 }
 
@@ -428,7 +441,7 @@ void Func::set_arg(size_t i, const Item& val){
 	size_t end = this->head_ranges[i].end;
 
 	uint8_t kind = val.t_id == T_ID_VAR ? ARGINFO_VAR :
-				   val.t_id == T_ID_FUNC ? ARGINFO_FUNC_UNEXPANDED :
+				   val.t_id == T_ID_FUNC ? ARGINFO_FUNC :
 				   ARGINFO_CONST;
 
 	cout << uint64_t(this) << "  set i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.t_id) << ", kind=" << uint64_t(kind) << endl;
@@ -444,11 +457,15 @@ void Func::set_arg(size_t i, const Item& val){
 	for(size_t j = start; j < end; ++j){
 
 
-		auto& head_info = head_infos[j];
+		HeadInfo& head_info = head_infos[j];
 
 		Func* cf = head_info.cf_ptr;
+		
+
 		auto arg_ind = head_info.arg_ind;
 		head_info.kind = kind;
+
+		cout << "  CF:" << cf << "; arg_ind=" << arg_ind << endl;
 
 		cf->set(arg_ind, val);
 
@@ -478,19 +495,19 @@ void Func::set_arg(size_t i, const Item& val){
 		        head_info.var_ptr = head_var.get();
 		    }
         		break;
-        	case ARGINFO_FUNC_UNEXPANDED:
+        	case ARGINFO_FUNC:
         		// TODO check func return type
-
+        		head_info.kind = ARGINFO_FUNC_UNEXPANDED;
         		head_info.cf_ptr = val.as_func();
         		break;
         	// default:
         		// Do nothing
        	}
-		head_info.has_deref = false;
+		head_info.has_deref = has_deref;
 
 		
 
-		cout << "set j=" << j << ", arg_ind=" << arg_ind << endl;
+		// cout << "set j=" << j << ", arg_ind=" << arg_ind << endl;
 
 		cf->root_arg_infos[arg_ind].kind = kind;
 		cf->root_arg_infos[arg_ind].has_deref = has_deref;
@@ -782,7 +799,7 @@ void Func::reinitialize(){
 								arg_stack_offsets.push_back(stack_offset);
 								stack_offset += head_info.base_type->byte_width;
 							}
-							std::get<1>(base_vars[it->second]).push_back(head_info);
+							std::get<1>(base_vars[it->second]).push_back(head_info_n);
 							
 							// it->second.push_back(head_info_n);
 						}

@@ -27,9 +27,9 @@ add_compile_options(-std=c++2a -lstdc++)
 add_compile_options(-g)
 
 # set(CMAKE_BUILD_TYPE Debug)
-# add_compile_options(-O0)
+add_compile_options(-O0)
 
-add_compile_options(-O3)
+# add_compile_options(-O3)
 
 add_subdirectory(external/fmt)
 add_subdirectory(external/nanobind)
