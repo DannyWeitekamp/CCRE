@@ -182,7 +182,18 @@ size_t Flattener::_fact_to_var_pairs(
 
 		ref<Var> verb_var;
 		if(type != nullptr && mbr_ind < type->members.size()){
-			verb_var = subj_var->_extend_unsafe(mbr_ind, DEREF_KIND_ATTR, builder.alloc_buffer);
+			// int mbr_ind = head_type->get_attr_index(attr);
+
+			DerefInfo* deref = (DerefInfo*) alloca(sizeof(DerefInfo));
+			deref->deref_type = ((FactType*) subj_var->head_type)->get_item_type(mbr_ind);
+			deref->mbr_ind = mbr_ind;
+			deref->deref_kind = DEREF_KIND_ATTR;
+
+			// derefs[0] = DEREF_KIND_ATTR;
+		// 	return _extend_unsafe(deref, 1, alloc_buffer);
+		// }
+
+			verb_var = subj_var->_extend_unsafe(deref, 1, builder.alloc_buffer);
 		}else{
 			verb_var = subj_var->extend_item(mbr_ind, builder.alloc_buffer);
 

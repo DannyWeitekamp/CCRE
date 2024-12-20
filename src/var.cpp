@@ -147,20 +147,22 @@ ref<Var> new_var(
 	
 // }
 
-ref<Var> Var::_extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* alloc_buffer){
+ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer){
 	// Allocate a new var 
 	// Var* new_var = _alloc_extension(var, 1);
 	Var* __restrict nv;
 	bool did_malloc = true;
 
+	size_t new_len = length+n_derefs;
+
 	// cout << "SIZEOF VAR" << sizeof(Var) << ", " << SIZEOF_VAR(length+1) << endl;
 	if(alloc_buffer != nullptr){
-		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(length+1), did_malloc);	
+		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(new_len), did_malloc);	
 	}else{
-		nv = (Var*) malloc(SIZEOF_VAR(length+1)); 
+		nv = (Var*) malloc(SIZEOF_VAR(new_len)); 
 	}
 
-	nv = new (nv) Var(alias, base_type, nullptr, length+1);
+	nv = new (nv) Var(alias, base_type, nullptr, new_len);
 
 	if(!did_malloc){
 		nv->alloc_buffer = alloc_buffer;
@@ -175,26 +177,35 @@ ref<Var> Var::_extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* allo
 	// }
 
 	memcpy(nv->deref_infos, deref_infos, length*sizeof(DerefInfo));
-	DerefInfo* __restrict new_deref_inf = &nv->deref_infos[length];
+
 
 	FactType* hf_type = (FactType*) head_type;
+
+	for(size_t i=0; i < n_derefs; ++i){
+		// DerefInfo* __restrict new_deref_inf = &nv->deref_infos[length+i];
+		nv->deref_infos[length+i] = derefs[i];
+
+	}
+	
+
+	
 	
 
 	// cout << "head_type: " << uint64_t(hf_type) << " " << int(hf_type->kind) << endl;
 	// Set the trailing deref_info
 
 	
-	CRE_Type* deref_type = hf_type->get_item_type(mbr_ind);
+	// CRE_Type* deref_type = hf_type->get_item_type(mbr_ind);
 	
-	new_deref_inf->deref_type = deref_type;
-	new_deref_inf->mbr_ind = mbr_ind;
-	new_deref_inf->deref_kind = deref_kind;
+	// new_deref_inf->deref_type = deref_type;
+	// new_deref_inf->mbr_ind = mbr_ind;
+	// new_deref_inf->deref_kind = deref_kind;
 
 	// Modify the new var 
 
 	nv->base = this->base; this->base->inc_ref();
-	nv->head_type = deref_type;
-	nv->length = length+1;
+	nv->head_type = derefs[n_derefs-1].deref_type;//deref_type;
+	nv->length = length+n_derefs;
 	nv->hash = CREHash{}(nv);
 	// _init_var(var, _type, _alias, _deref_infos, _length+1);
 	return nv;
@@ -217,11 +228,23 @@ ref<Var> Var::extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffe
 
 	FactType* hf_type = (FactType*) head_type;
 	int mbr_ind = hf_type->get_attr_index(attr);
-	return _extend_unsafe(mbr_ind, DEREF_KIND_ATTR, alloc_buffer);
+
+	DerefInfo* deref = (DerefInfo*) alloca(sizeof(DerefInfo));
+	deref->deref_type = hf_type->get_item_type(mbr_ind);
+	deref->mbr_ind = mbr_ind;
+	deref->deref_kind = DEREF_KIND_ATTR;
+
+	// derefs[0] = DEREF_KIND_ATTR;
+	return _extend_unsafe(deref, 1, alloc_buffer);
 }
 
 ref<Var> Var::extend_item(int16_t mbr_ind, AllocBuffer* alloc_buffer){
-	return _extend_unsafe(mbr_ind, DEREF_KIND_ITEM, alloc_buffer);	
+	FactType* hf_type = (FactType*) head_type;
+	DerefInfo* deref = (DerefInfo*) alloca(sizeof(DerefInfo));
+	deref->deref_type = hf_type->get_item_type(mbr_ind);
+	deref->mbr_ind = mbr_ind;
+	deref->deref_kind = DEREF_KIND_ITEM;
+	return _extend_unsafe(deref, 1, alloc_buffer);	
 }
 
 
