@@ -10,6 +10,7 @@
 
 void Var_dtor(const CRE_Obj* x){
 	Var* var = (Var*) x;
+	cout << "VAR DTOR" << endl;
 
 	if(var->base != 0 && var->base != var){
 		var->base->dec_ref();

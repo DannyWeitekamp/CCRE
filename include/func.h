@@ -78,16 +78,16 @@ struct InstrType {
 
 struct HeadInfo {
 	// The pointer to the CREFunc for which this is a head argument.
-	Func* cf_ptr;
+	Func* cf_ptr = nullptr;
 
 	// Enum for CONST, VAR, FUNC, FUNC_UNEXPANDED.
-	uint8_t kind;
+	uint8_t kind = ARGINFO_VAR;
 
 	// If the Var associated with this has a dereference chain.
-	bool has_deref;
+	bool has_deref = false;
 
 	// The index of the root argument this head corresponds to.
-	uint16_t arg_ind; 
+	uint16_t arg_ind = uint16_t(-1); 
 
 	// base value's type.
 	CRE_Type* base_type; 
@@ -96,7 +96,7 @@ struct HeadInfo {
 	CRE_Type* head_type; 
 
 	// The pointer to the Var for this head. Its ref is held in "ref{i}" member.
-	Var* var_ptr;
+	Var* var_ptr = nullptr;
 
 	// Data pointer for the a{i} member for the base.
 	Item* arg_data_ptr;
@@ -260,7 +260,7 @@ template <class ... Ts>
 FuncRef compose(Func* self, Ts && ... inputs){
   FuncRef cf = self->copy_deep();//new Func(*this);
 
-  cout << "COMPOSE: " << uint64_t(cf.get()) << endl;
+  // cout << "COMPOSE: " << uint64_t(cf.get()) << endl;
   int i = 0;
   ([&]
     {

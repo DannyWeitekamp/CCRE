@@ -175,7 +175,7 @@ FuncRef Func::copy_deep(){
 	ref<Func> cpy;
 	if(depth <= 1){
 		cpy = copy_shallow();
-		cout << "SHALLOW COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
+		// cout << "SHALLOW COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
 		return (FuncRef) cpy;
 	}
 
@@ -185,13 +185,13 @@ FuncRef Func::copy_deep(){
 	Func* cf = this;
 	std::vector<ref<Func>>* func_copies = new std::vector<ref<Func>>;
 
-	cout << "--START DEEP--" << endl;
+	// cout << "--START DEEP--" << endl;
 	std::map<Func*, Func*> remap = {};
 
 	bool keep_looping = true;
 	
 	while(keep_looping){
-		cout << "LOOP: " << stack.size() << ", " << i << endl;
+		// cout << "LOOP: " << stack.size() << ", " << i << endl;
 
 		ArgInfo arg_info = cf->root_arg_infos[i];
 		if(arg_info.kind == ARGINFO_FUNC){
@@ -240,7 +240,7 @@ FuncRef Func::copy_deep(){
 	    	// ...
 
 	    	
-	    	cout << "MOO: " << func_copies->size() << endl;
+	    	// cout << "MOO: " << func_copies->size() << endl;
 	    	delete func_copies;
 
 	    	// End Case: Stack Exhausted
@@ -256,7 +256,7 @@ FuncRef Func::copy_deep(){
 	    }
     }
     
-    cout << "DEEP COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
+    // cout << "DEEP COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
     return (FuncRef) cpy;
 }
 
@@ -432,9 +432,13 @@ std::ostream& operator<<(std::ostream& out, ref<Func> func){
 //  f = 1 + z + (a + b+ c)
 
 void Func::set_arg(size_t i, const Item& val){
-	if(i > this->head_infos.size()){
+	cout << "SIZE" << this->head_ranges.size() << endl;
+
+	if(i >= this->head_ranges.size()){
 		throw std::invalid_argument("Setting Func arg out of range.");
 	}
+
+
 	this->is_initialized = false;
 	// auto& head_infos = this->head_infos;
 	size_t start = this->head_ranges[i].start;
@@ -458,16 +462,16 @@ void Func::set_arg(size_t i, const Item& val){
 
 
 		HeadInfo& head_info = head_infos[j];
-
+ 
 		Func* cf = head_info.cf_ptr;
 		
 
 		auto arg_ind = head_info.arg_ind;
 		head_info.kind = kind;
 
-		cout << "  CF:" << cf << "; arg_ind=" << arg_ind << endl;
+		// cout << "  CF:" << cf << "; arg_ind=" << arg_ind << endl;
 
-		cf->set(arg_ind, val);
+		
 
 		bool has_deref = false;
 		switch(kind) {
@@ -481,6 +485,7 @@ void Func::set_arg(size_t i, const Item& val){
 
             	ref<Var> head_var;
         		if(head_info.has_deref){
+        			cout << "THIS CASE" << endl;
 		            auto old_head_var = head_info.var_ptr;
 
 		            // TODO;
@@ -505,7 +510,7 @@ void Func::set_arg(size_t i, const Item& val){
        	}
 		head_info.has_deref = has_deref;
 
-		
+		cf->set(arg_ind, val);
 
 		// cout << "set j=" << j << ", arg_ind=" << arg_ind << endl;
 
@@ -741,6 +746,8 @@ void Func::reinitialize(){
 
 			HeadInfo head_info = head_infos[j];
 			ArgInfo root_info = root_arg_infos[head_info.arg_ind];
+
+			cout << "KIND:" << uint64_t(head_info.kind) << endl;
 			
 			switch(head_info.kind){
 				// For ARGINFO_VAR kinds insert base_ptr into the base_var_map
@@ -753,9 +760,11 @@ void Func::reinitialize(){
 				}
 
 				case ARGINFO_VAR: {				
-
+					
 					Var* var = head_info.var_ptr;
 					void* base_ptr = (void*) var->base;
+
+					cout << "VP:" << uint64_t(head_info.var_ptr) << endl;
 
 					auto [it, inserted] = base_var_map.try_emplace(
 						base_ptr, n_vars);
@@ -782,10 +791,13 @@ void Func::reinitialize(){
 					Func* cf = head_info.cf_ptr;
 
 					for(auto& hrng_k : cf->head_ranges){
-						for(uint16_t n=hrng.start; n < hrng.end; ++n){
+						// cout << "HRNG" << endl;
+						for(uint16_t n=hrng_k.start; n < hrng_k.end; ++n){
 							HeadInfo& head_info_n = cf->head_infos[n];
 
 							Var* var = head_info_n.var_ptr;
+							// cout << var << endl;
+							// cout << "n=" << n << " UVP:" << uint64_t(head_info_n.var_ptr) << endl;
 							void* base_ptr = (void*) var->base;
 
 							// std::vector<HeadInfo> var_head_info = {};
@@ -797,11 +809,9 @@ void Func::reinitialize(){
 								++n_vars;
 
 								arg_stack_offsets.push_back(stack_offset);
-								stack_offset += head_info.base_type->byte_width;
+								stack_offset += head_info_n.base_type->byte_width;
 							}
-							std::get<1>(base_vars[it->second]).push_back(head_info_n);
-							
-							// it->second.push_back(head_info_n);
+							std::get<1>(base_vars[it->second]).push_back(head_info_n);							
 						}
 						max_arg_depth = std::max(cf->depth, max_arg_depth);
 					}
@@ -815,30 +825,6 @@ void Func::reinitialize(){
 
 
 	
-	// Make new head_ranges (spans of HeadInfos for same base)
-	//   according to base_var_map. Count total to reserve head_infos.
-	size_t n_bases = base_var_map.size();
-	std::vector<HeadRange> new_head_ranges;
-	new_head_ranges.reserve(n_bases);
-	size_t n_heads = 0;
-	for(auto [_, base_head_infos] : base_vars){
-		// cout << "SIZE:" << base_head_infos.size() << endl;
-		new_head_ranges.emplace_back(n_heads, n_heads+base_head_infos.size());
-		n_heads += base_head_infos.size();
-	}
-
-	// Make new head_infos according to base_var_map
-	std::vector<HeadInfo> new_head_infos;
-	new_head_infos.reserve(n_heads);
-	for(auto [base_ptr, base_head_infos] : base_vars){
-		Var* base_var = (Var *) base_ptr;
-		for(HeadInfo& base_head_info : base_head_infos){
-			HeadInfo hi = base_head_info;
-			hi.base_type = base_var->base_type;
-
-			new_head_infos.push_back(std::move(hi));
-		}
-	}
 
 
 	// Build the Func's bytecode, the instruction sequence
@@ -916,10 +902,37 @@ void Func::reinitialize(){
 	// bc_head += sizeof_call_func(cf);
 
 
+		// Make new head_ranges (spans of HeadInfos for same base)
+	//   according to base_var_map. Count total to reserve head_infos.
+	size_t n_bases = base_var_map.size();
+	std::vector<HeadRange> new_head_ranges;
+	new_head_ranges.reserve(n_bases);
+	size_t n_heads = 0;
+	for(auto [_, base_head_infos] : base_vars){
+		// cout << "SIZE:" << base_head_infos.size() << endl;
+		new_head_ranges.emplace_back(n_heads, n_heads+base_head_infos.size());
+		n_heads += base_head_infos.size();
+	}
+
+	// Make new head_infos according to base_var_map
+	std::vector<HeadInfo> new_head_infos;
+	new_head_infos.reserve(n_heads);
+	for(auto [base_ptr, base_head_infos] : base_vars){
+		Var* base_var = (Var *) base_ptr;
+		for(HeadInfo& base_head_info : base_head_infos){
+			HeadInfo hi = base_head_info;
+			hi.base_type = base_var->base_type;
+
+			new_head_infos.push_back(std::move(hi));
+		}
+	}
+
+
 
 	this->n_args = n_bases;
 	this->head_infos = new_head_infos;
 	this->head_ranges = new_head_ranges;
+	cout << "n_bases: " << n_bases << endl;
 
 
 	// build_instr_set
@@ -938,6 +951,8 @@ void Func::reinitialize(){
     this->is_composed = is_composed;
     this->depth = this->depth + max_arg_depth;
     this->is_initialized = true;
+
+    cout << "-----" << endl;
 }
 
 // Example: 

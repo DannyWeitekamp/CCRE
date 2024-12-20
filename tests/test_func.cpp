@@ -1,4 +1,5 @@
 #include "../include/helpers.h"
+#include "../include/fact.h"
 #include "../include/func.h"
 #include "../include/item.h"
 #include "test_macros.h"
@@ -29,8 +30,13 @@ void test_define(){
 	cout << "add_f: " << add_f << endl;
 	cout << "add_f: " << add_f << endl;
 
+
 	ref<Var> A = new_var("A", cre_int);
 	ref<Var> B = new_var("B", cre_int);
+	ref<Var> C = new_var("C", cre_int);
+	ref<Var> D = new_var("D", cre_int);
+
+	// Set Const
 	FuncRef f_1_A = add_f(1, A);
 	
 	cout << "add_f: " << add_f << endl;
@@ -39,17 +45,79 @@ void test_define(){
 	// cout << f_1_A->bytecode_to_string() << endl;
 
 	cout << "----------------" << endl;
+	// Compose Func
 	FuncRef f_1_A_B = add_f(f_1_A, B);
 	cout << "f_1_A_B:" << f_1_A_B << endl;
 	// cout << f_1_A_B->bytecode_to_string() << endl;
 
 	cout << "----------------" << endl;
 	// FuncRef big = f_1_A_B(f_1_A, 9);
-	cout << "f_1_A_B copy:" << f_1_A_B->copy_deep() << endl;
+	// cout << "f_1_A_B copy:" << f_1_A_B->copy_deep() << endl;
+
+	// Deep Compose Func
 	FuncRef big = f_1_A_B(9, f_1_A);
 	cout << "big:" << big << endl;
 
+
+	// Deep Compose Repeat Vars
+	cout << "----------------" << endl;
+	FuncRef dub = f_1_A_B(A, add_f(B, A));
+	cout << "dub:" << dub << endl;
+	cout << "dub:" << dub->n_args << endl;
+
+	// Deep Compose Repeat Vars; insert const
+	FuncRef dub_const = dub(1, A);
+	cout << "dub_const:" << dub_const << endl;	
+
+
+	// Deep Compose Repeat Vars; insert funcs
+	cout << "<----------------" << endl;
+	FuncRef dub_func = dub(add_f(A,B), add_f(C,D));
+	cout << "dub_func:" << dub_func << endl;	
 }
+
+void test_compose_derefs(){
+	FuncRef add_f = define_func("add_flt", (void*) &add, cre_float, {cre_float, cre_float});
+
+	FactType* Person = define_fact("Person", 
+	    {{"id", cre_str, {{"unique_id", true}}},
+	     {"money", cre_float},
+	     {"mom", new DefferedType("Person")},
+	     {"dad", new DefferedType("Person")},
+	     {"best_bud", new DefferedType("Person")}
+	 	}
+	);
+
+	ref<Fact> olpops = make_fact(Person, "Ol'Pops", 3.50);
+	ref<Fact> pops = make_fact(Person, "Pops", 100.0, nullptr, olpops, nullptr);
+	ref<Fact> ma = make_fact(Person, "Ma", 0.0, pops);
+	ref<Fact> ricky = make_fact(Person, "Ricky", 7.11);
+	ref<Fact> thedude = make_fact(Person, "TheDude", 23131.73, ricky, pops, ma);
+
+
+	cout << "Ol'Pops: " << olpops << endl;
+	cout << "Pops: " << pops << endl;
+	cout << "Ma: " << ma << endl;
+	cout << "Ricky: " << ricky << endl;
+	cout << "TheDude: " << thedude << endl;
+
+	ref<Var> A = new_var("A", Person);
+	ref<Var> B = new_var("B", Person);
+
+	ref<Var> Ad = A->extend_attr("dad");
+	ref<Var> Bd = B->extend_attr("dad");
+
+	FuncRef dadd_m = add_f(Ad->extend_attr("money"), Bd->extend_attr("money"));
+	cout << dadd_m;
+
+	FuncRef bdadd_m = dadd_m(A->extend_attr("best_bud"), B->extend_attr("best_bud"));
+
+
+	
+
+}
+
+
 
 Item add_items(Item* args){
 	int a = args[0].as_int();
@@ -184,7 +252,8 @@ int64_t run_stack_call(){
 
 
 int main(){
-	test_define();
+	// test_define();
+	test_compose_derefs();
 
 	return 0;
 
