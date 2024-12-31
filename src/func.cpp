@@ -485,15 +485,20 @@ void Func::set_arg(size_t i, const Item& val){
 
             	ref<Var> head_var;
         		if(head_info.has_deref){
-        			cout << "THIS CASE" << endl;
+        			
 		            auto old_head_var = head_info.var_ptr;
 
+		            // cout << "*THIS CASE: " << var << ", " << old_head_var << endl;
+		            // cout << "+THIS CASE: " << var->length << ", " << old_head_var->length << endl;
 		            // TODO;
-		            // head_var = var_extend(var, old_head_var.deref_infos)
+		            head_var = var->_extend_unsafe(old_head_var->deref_infos, old_head_var->length);//var_extend(var, old_head_var.deref_infos)
+		            // cout << "-THIS CASE: " << head_var << ", " << head_var->length << endl;
 		            has_deref = true;
+		            cf->set(arg_ind, Item(head_var));
 		        }else{
 		            head_var = var;
 		            has_deref = var->size() > 0;
+		            cf->set(arg_ind, val);
 		        }
 
 		        head_info.has_deref = has_deref;
@@ -504,13 +509,15 @@ void Func::set_arg(size_t i, const Item& val){
         		// TODO check func return type
         		head_info.kind = ARGINFO_FUNC_UNEXPANDED;
         		head_info.cf_ptr = val.as_func();
+        		cf->set(arg_ind, val);
         		break;
-        	// default:
+        	default:
+        		cf->set(arg_ind, val);
         		// Do nothing
        	}
 		head_info.has_deref = has_deref;
 
-		cf->set(arg_ind, val);
+		
 
 		// cout << "set j=" << j << ", arg_ind=" << arg_ind << endl;
 
@@ -539,7 +546,7 @@ const uint16_t BC_CLEANUP = 4;
 
 // ----------------
 // : READ_CONST
-// [2b kind] [2 next_offset] [2b src_index] [2b dest_offset] 
+// [2b kind] [2 next_offset] [2b byte-width] [2b dest_offset] [...?b data] 
 size_t sizeof_load_const(){
 	return 8;
 }

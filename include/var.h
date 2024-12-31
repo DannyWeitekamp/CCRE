@@ -54,7 +54,7 @@ struct Var : public CRE_Obj{
 	// 	size_t _length=0);
 
 	// ref<Var> _extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* alloc_buffer=nullptr);
-	ref<Var> _extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer);
+	ref<Var> _extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_item(int16_t mbr_ind, 			   AllocBuffer* alloc_buffer);
 	// uint8_t is_not;

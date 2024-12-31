@@ -110,8 +110,9 @@ void test_compose_derefs(){
 	FuncRef dadd_m = add_f(Ad->extend_attr("money"), Bd->extend_attr("money"));
 	cout << dadd_m;
 
+	cout << "--------------" << endl;
 	FuncRef bdadd_m = dadd_m(A->extend_attr("best_bud"), B->extend_attr("best_bud"));
-
+	cout << bdadd_m;
 
 	
 

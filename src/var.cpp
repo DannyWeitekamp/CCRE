@@ -205,7 +205,7 @@ ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* al
 
 	nv->base = this->base; this->base->inc_ref();
 	nv->head_type = derefs[n_derefs-1].deref_type;//deref_type;
-	nv->length = length+n_derefs;
+	nv->length = new_len;
 	nv->hash = CREHash{}(nv);
 	// _init_var(var, _type, _alias, _deref_infos, _length+1);
 	return nv;
