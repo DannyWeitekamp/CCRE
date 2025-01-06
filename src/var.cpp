@@ -2,6 +2,7 @@
 #include "../include/intern.h"
 #include "../include/fact.h"
 #include "../include/ref.h"
+#include "../include/member.h"
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -290,13 +291,13 @@ std::ostream& operator<<(std::ostream& out, ref<Var> var){
 	return out << var.get()->to_string();
 }
 
-extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf){
+Member* deref_once(CRE_Obj* obj, const DerefInfo& inf){
 	switch(inf.deref_kind){
 
 	case DEREF_KIND_ATTR:
 		{
 		Fact* fact = (Fact*) obj;
-		return fact->get(inf.mbr_ind);
+		return fact->get_ptr(inf.mbr_ind);
 		}
 	case DEREF_KIND_ITEM:
 		std::cerr << "Unimplemented... " << std::endl;
@@ -309,14 +310,14 @@ extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf){
 	return nullptr;
 }
 
-extern "C" Item* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length){
-	Item* item_ptr = nullptr;
+Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length){
+	Member* mbr_ptr = nullptr;
 	for(int i=0; i < length; i++){
-		item_ptr = deref_once(obj, deref_infos[i]);
-		if(item_ptr == nullptr) break;
-		obj = (CRE_Obj*) item_ptr->val;
+		mbr_ptr = deref_once(obj, deref_infos[i]);
+		if(mbr_ptr == nullptr) break;
+		obj = (CRE_Obj*) mbr_ptr->val;
 	}
-	return item_ptr;
+	return mbr_ptr;
 }
 
 

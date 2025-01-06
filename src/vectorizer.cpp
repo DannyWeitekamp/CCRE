@@ -83,11 +83,11 @@ size_t Vectorizer::_get_flt_slot(Fact* fact){
 	return slot;
 }
 
-size_t Vectorizer::_encode_item(const Item& val_item){
+size_t Vectorizer::_encode_mbr(const Member& val_mbr){
 	size_t enc = enumerize_map.size();
-	auto [it, inserted] = enumerize_map.try_emplace(val_item, enc);
+	auto [it, inserted] = enumerize_map.try_emplace(val_mbr, enc);
 	if(inserted){
-		inv_enumerize_map.push_back(val_item);
+		inv_enumerize_map.push_back(val_mbr);
 	}else{
 		enc = it->second;
 	}
@@ -126,13 +126,14 @@ void Vectorizer::_map_fact(Fact* fact){
 	// Default =1 for existence of L=1 fact 
 	size_t nom_enc = 1; 
 	bool val_is_nominal = true;
-	Item* last_item = nullptr;
+
+	Member* last_mbr_ptr = nullptr;
 	if(fact->length > 1){
-		last_item = fact->get(fact->length-1);
-		if(last_item->t_id == T_ID_FLOAT){
+		last_mbr_ptr = fact->get_ptr(fact->length-1);
+		if(last_mbr_ptr->t_id == T_ID_FLOAT){
 			val_is_nominal = false;
 		}else{
-			nom_enc = this->_encode_item(*last_item);	
+			nom_enc = this->_encode_mbr(*last_mbr_ptr);	
 		}
 	}
 
@@ -152,9 +153,9 @@ void Vectorizer::_map_fact(Fact* fact){
 			nom_vec[slot] = nom_enc;	
 		}
 	}else{
-		// cout << "Map float" << last_item->as_float() << endl;
+		// cout << "Map float" << last_mbr->as_float() << endl;
 		size_t slot = this->_get_flt_slot(fact);
-		flt_vec[slot] = last_item->as_float();
+		flt_vec[slot] = last_mbr_ptr->as_float();
 	}
 }
 

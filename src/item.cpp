@@ -113,7 +113,7 @@ Item::Item(const std::string_view& arg) {
 
     UnicodeItem item;
     item.data = data;
-    item.hash = intern_str.hash;
+    // item.hash = intern_str.hash;
     item.t_id = T_ID_STR;
     item.kind = 1; // TODO
     item.is_ascii = 1; // TODO
@@ -148,7 +148,7 @@ Item::Item(const char* data, size_t _length) {
 // -- Fact -> Item ---
 Item::Item(Fact* x, bool _is_ref) : 
             val(std::bit_cast<uint64_t>(x)),
-      hash(0), t_id(T_ID_FACT),
+      t_id(T_ID_FACT),
       is_ref(_is_ref), borrows(0), pad(0)
 {};
 
@@ -158,7 +158,7 @@ Item::Item(ref<Fact> x, bool _is_ref) : ::Item((Fact*) x, _is_ref)
 
 // -- Var -> Item ---
 Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
-                    hash(0), t_id(T_ID_VAR), 
+                    t_id(T_ID_VAR), 
                     is_ref(0), borrows(1), pad(0) 
 {
 // TODO: should figure out how to do this with move semantics
@@ -172,7 +172,7 @@ Item::Item(ref<Var> x) : ::Item((Var*) x)
 
 // -- Func -> Item ---
 Item::Item(Func* x) : val(std::bit_cast<uint64_t>(x)),
-                    hash(0), t_id(T_ID_FUNC), 
+                    t_id(T_ID_FUNC), 
                     is_ref(0), borrows(1), pad(0) 
 {
 // TODO: should figure out how to do this with move semantics
@@ -186,7 +186,7 @@ Item::Item(ref<Func> x) : ::Item((Func*) x)
 
 
 // val(std::bit_cast<uint64_t>(x.get())),
-//                     hash(0), t_id(T_ID_VAR), 
+//                     t_id(T_ID_VAR), 
 //                     is_ref(0), borrows(1), pad(0) 
 // {
 // // TODO: should figure out how to do this with move semantics
@@ -347,9 +347,9 @@ std::ostream& operator<<(std::ostream& out, Item item){
 // template <typename T = Item>
 // uint64_t CREHash::operator()(const T& x) {        
 uint64_t hash_item(const Item& x){
-    if(x.hash != 0){
-        return x.hash;
-    }
+    // if(x.hash != 0){
+    //     return x.hash;
+    // }
 
     uint16_t t_id = x.t_id;
     uint64_t hash; 

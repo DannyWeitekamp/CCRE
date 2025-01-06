@@ -104,7 +104,7 @@ ref<FactSet> random_cats(size_t N){
 		 Item(rand_flt()),
 		 Item(rand_flt())
 		};
-		fs_builder.add_fact(CatType, items);
+		fs_builder.new_fact(CatType, items);
 	}
 	return fs_builder.fact_set;
 }
@@ -121,7 +121,7 @@ ref<FactSet> setup_factset(size_t N){
 	FactSetBuilder fs_builder = FactSetBuilder(N, N*SIZEOF_FACT(3));
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		fs_builder.add_fact(BoopType, items.data(), items.size());
+		fs_builder.new_fact(BoopType, items.data(), items.size());
 	}
 	return fs_builder.fact_set;
 }

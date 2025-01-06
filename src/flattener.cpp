@@ -168,16 +168,18 @@ size_t Flattener::_fact_to_var_pairs(
 	
 	// Make stub like (varname,)
 	if(add_exist_stubs){
-		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
+		ref<Fact> subj_fact = builder.alloc_fact(nullptr, 1);
 		subj_fact->set_unsafe(0, subj_var.get());	
+		subj_fact->immutable = true;
 		builder.fact_set->_declare_back(std::move(subj_fact));
+
 	}
 
 	
 	// Make pairs like (varname.attr, value)
 	auto make_preds = [&](size_t mbr_ind){
 		// size=2, untyped, and immutable, 
-		ref<Fact> out_fact = builder.add_empty(2, nullptr, true);
+		ref<Fact> out_fact = builder.alloc_fact(nullptr, 2);
 
 
 		ref<Var> verb_var;
@@ -210,7 +212,7 @@ size_t Flattener::_fact_to_var_pairs(
 		// }
 
 		// If 'value' is another fact then (varname.attr, other_varname)
-		Item obj_item = *in_fact->get(mbr_ind);
+		Item obj_item = in_fact->get(mbr_ind);
 		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
 			Fact* obj_fact = obj_item.as_fact();
 			ref<Var> obj_var = fact_vars[obj_fact->f_id];
@@ -223,7 +225,7 @@ size_t Flattener::_fact_to_var_pairs(
 
 
 		
-		// out_fact->immutable = true;
+		out_fact->immutable = true;
 		builder.fact_set->_declare_back(std::move(out_fact));
 		// out_fact->alloc_buffer = builder.alloc_buffer;
 		// builder.alloc_buffer->inc_ref();
@@ -258,20 +260,22 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 
 	Item subj_item = (u_ind == -1 ? 
 						Item(in_fact->f_id) :
-						*in_fact->get(u_ind)
+						in_fact->get(u_ind)
 					);
 
 	// Make a new Fact 
 	if(add_exist_stubs){
-		ref<Fact> subj_fact = builder.add_empty(1, nullptr, true);
-		subj_fact->set_unsafe(0, subj_item);	
+		ref<Fact> subj_fact = builder.alloc_fact(nullptr, 1);
+		subj_fact->set_unsafe(0, subj_item);
+		subj_fact->immutable = true;
 		builder.fact_set->_declare_back(std::move(subj_fact));
+		
 		// subj_item = Item(subj_fact);
 	}
 	
 
 	auto make_preds = [&](size_t ind){
-		ref<Fact> out_fact = builder.add_empty(3, nullptr, true);
+		ref<Fact> out_fact = builder.alloc_fact(nullptr, 3);
 
 		out_fact->set_unsafe(subj_ind /* 0 or 1 */, subj_item);
 
@@ -283,19 +287,19 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 			out_fact->set(verb_ind /* 1 or 0 */, int(ind));
 		}
 
-		Item obj_item = *in_fact->get(ind);
+		Item obj_item = in_fact->get(ind);
 		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
 			Fact* obj_fact = obj_item.as_fact();
 			auto u_ind = get_unique_id_index(obj_fact->type);
 
 			obj_item = (u_ind == -1 ? 
 						Item(obj_fact->f_id) :
-						*obj_fact->get(u_ind)
+						obj_fact->get(u_ind)
 					);
 		}
 
 		out_fact->set_unsafe(2, obj_item);	
-		// out_fact->immutable = true;
+		out_fact->immutable = true;
 		builder.fact_set->_declare_back(std::move(out_fact));
 		// out_fact->alloc_buffer = builder.alloc_buffer;
 		// builder.alloc_buffer->inc_ref();
@@ -327,7 +331,7 @@ std::vector<ref<Var>> Flattener::_make_fact_vars(FactSet* input){
 
 		Item subj_item = (u_ind == -1 ? 
 					Item(fact->f_id) :
-					*fact->get(u_ind)
+					fact->get(u_ind)
 				);
 
 		CRE_Type* var_type = fact->type == nullptr ? cre_Fact : fact->type;

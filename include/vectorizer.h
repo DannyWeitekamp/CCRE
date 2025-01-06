@@ -7,6 +7,7 @@
 #include "../include/fact.h"
 #include "../include/factset.h"
 #include "../include/incr_processor.h"
+#include "../include/member.h"
 
 
 // struct FactOffsetPtr {
@@ -42,9 +43,9 @@ struct Vectorizer : public IncrementalProcessor{
 	HashMap<FactView, size_t> flt_slot_map = {};
 	std::vector<ref<Fact>> inv_flt_slot_map = {};
 
-	// Map: Fact Value (last item) -> nominal_encoding
-	HashMap<Item, size_t> enumerize_map = {{Item(), 0}};
-	std::vector<Item> inv_enumerize_map = {Item()};
+	// Map: Fact Value (last member) -> nominal_encoding
+	HashMap<Member, size_t> enumerize_map = {{Member(), 0}};
+	std::vector<Member> inv_enumerize_map = {Member()};
 
 	// Map: (slot, nominal_encoding) -> one_hot_slot
 	HashMap<UintPair, size_t> one_hot_map = {};
@@ -69,7 +70,7 @@ struct Vectorizer : public IncrementalProcessor{
 
 	size_t _get_nom_slot(Fact* fact);
 	size_t _get_flt_slot(Fact* fact);
-	size_t _encode_item(const Item& val_item);
+	size_t _encode_mbr(const Member& val_item);
 	size_t _get_one_hot_slot(size_t slot, size_t enc);
 	void _init_new(FactSet* fs);
 	void _map_fact(Fact* fact);

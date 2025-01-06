@@ -34,36 +34,16 @@
 // 	return ptr;
 // }
 
-extern "C" void _zfill_fact(Fact* fact, uint32_t start_a_id, uint32_t end_a_id){
-	// Pointer to the 0th Item of the FactHeader
-	Item* data_ptr = std::bit_cast<Item*>(
-      std::bit_cast<uint64_t>(fact) + sizeof(Fact)
-  );
-	FactType* type = fact->type;
-	// cout << "ZFILL: " << start_a_id << ", " << end_a_id << endl;
-  for(int a_id = start_a_id; a_id < end_a_id; a_id++){
-	    data_ptr[a_id] = Item();
-
-	    if(type != nullptr && a_id < type->members.size()){
-	    	CRE_Type* mbr_typ = (&type->members[a_id])->type;
-	    	// cout << uint64_t(mbr_typ) << " FILL BACK" << std::to_string(a_id) <<
-	    	//  		" T_ID: " << mbr_typ->t_id <<
-	    	//  		" Type: " << mbr_typ << " [" << 
-	    	//  							int(mbr_typ->kind) << "]" << endl;
-	    	data_ptr[a_id].t_id = mbr_typ->t_id;
-	    }
-	}
-}
 
 void Fact_dtor(const CRE_Obj* x){
 		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
 		// cout << "dtor " << uint64_t(x) << endl;
 		Fact* fact = (Fact*) x;
 		for(size_t i=0; i < fact->length; i++){
-			Item* item = fact->get(i);
-			// cout << "~ITEM:" << *item << ", t_id=" << item->t_id << ", borrows=" << uint64_t(item->borrows) << endl;
-			if(item->t_id > T_ID_STR && item->borrows){
-				CRE_Obj* item_obj = (CRE_Obj*) item->val;
+			Item item = fact->get(i);
+			// cout << "~ITEM: " << "i=" << i << " " << item << ", t_id=" << item.t_id << ", borrows=" << uint64_t(item.borrows) << endl;
+			if(item.t_id > T_ID_STR && item.borrows){
+				CRE_Obj* item_obj = (CRE_Obj*) item.val;
 				// cout << "~ITEM REFS: " << item_obj->get_refcount() << endl;
 				item_obj->dec_ref();
 			}
@@ -79,31 +59,23 @@ void Fact_dtor(const CRE_Obj* x){
 		}
 }
 
-Fact::Fact(uint32_t _length, FactType* _type, bool _immutable) :
-	CRE_Obj(&Fact_dtor),
-	type(_type),
-	parent(nullptr),
-	f_id(-1),
-	length(_type ? std::max(_length, uint32_t(_type->members.size())) : _length),
-	hash(0),
-	immutable(_immutable)
-{}
 
 
-ref<Fact> empty_fact(FactType* type){
-	uint32_t _length = (uint32_t) type->members.size();
-	Fact* fact = _alloc_fact(_length);
-	_init_fact(fact, _length, type);
-	_zfill_fact(fact, 0, _length);
-	return fact;
-}
+// ref<Fact> empty_fact(FactType* type){
+// 	uint32_t _length = (uint32_t) type->members.size();
+// 	Fact* fact = alloc_fact(_length);
+// 	_init_fact(fact, _length, type);
+// 	_zfill_fact(fact, 0, _length);
+// 	return fact;
+// }
 
-ref<Fact> empty_untyped_fact(uint32_t _length){
-	Fact* fact = _alloc_fact(_length);
-	_init_fact(fact, _length, nullptr);
-	_zfill_fact(fact, 0, _length);
-	return fact;
-}
+// ref<Fact> empty_untyped_fact(uint32_t length){
+// 	Fact* fact_addr = alloc_fact(length);
+// 	ref<Fact> fact = new (fact_addr) Fact(length, nullptr, false);
+// 	// _init_fact(fact, _length, nullptr);
+// 	_zfill_fact(fact, 0, length);
+// 	return fact;
+// }
 
 // void Fact::operator delete(void* p){
 // 	CRE_Obj* x = (CRE_Obj*) p;
@@ -116,90 +88,81 @@ ref<Fact> empty_untyped_fact(uint32_t _length){
 // 	}
 // }
 
-// ---------------------
-// : new_fact()
 
 
 
-inline Fact* _new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items, uint32_t length){
 
-	fact = new (fact) Fact(length, type);
 
-	// Set items
-	try{
-		for(int i=0; i < n_items; i++){
-			fact->set(i, items[i]);
-		}
-	} catch (const std::exception& e) {
-		// Make sure that fact is freed on error
-		Fact_dtor(fact);
-		throw;
-	}
-	
 
-	// Zero-fill any trailing items
-	_zfill_fact(fact, n_items, length);
-	return fact;
-}
+// ref<Fact> new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items){
+// 	uint32_t length = _resolve_fact_len(n_items, type);	
+// 	return _new_fact(fact, type, items, n_items, length);
+// }
 
-ref<Fact> new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items){
-	uint32_t length = _resolve_fact_len(n_items, type);	
-	return _new_fact(fact, type, items, n_items, length);
-}
+// ref<Fact> new_fact(FactType* type, const Item* items, size_t n_items){
+// 	uint32_t length = _resolve_fact_len(n_items, type);	
+// 	Fact* fact = alloc_fact(length);
+// 	return _new_fact(fact, type, items, n_items, length);
+// }
 
-ref<Fact> new_fact(FactType* type, const Item* items, size_t n_items){
-	uint32_t length = _resolve_fact_len(n_items, type);	
-	Fact* fact = _alloc_fact(length);
-	return _new_fact(fact, type, items, n_items, length);
-}
+// ref<Fact> new_fact(Fact* fact, FactType* type, const std::vector<Item>& items){
+// 	uint32_t length = _resolve_fact_len(items.size(), type);	
+// 	return _new_fact(fact, type, items.data(), items.size(), length);
+// }
 
-ref<Fact> new_fact(Fact* fact, FactType* type, const std::vector<Item>& items){
-	uint32_t length = _resolve_fact_len(items.size(), type);	
-	return _new_fact(fact, type, items.data(), items.size(), length);
-}
+// ref<Fact> new_fact(FactType* type, const std::vector<Item>& items){
+// 	uint32_t length = _resolve_fact_len(items.size(), type);	
+// 	Fact* fact = alloc_fact(length);
+// 	return _new_fact(fact, type, items.data(), items.size(), length);
+// }
 
-ref<Fact> new_fact(FactType* type, const std::vector<Item>& items){
-	uint32_t length = _resolve_fact_len(items.size(), type);	
-	Fact* fact = _alloc_fact(length);
-	return _new_fact(fact, type, items.data(), items.size(), length);
-}
-
-std::vector<Item*> Fact::get_items() const{
-  std::vector<Item*> out;
+std::vector<Member> Fact::get_members() const{
+  std::vector<Member> out;
   out.reserve(this->length);
   for(int i=0; i < this->length; i++){
-    Item* item = this->get(i);
-    out.push_back(item);
+    out.push_back(this->get(i));
   }
   return out;
 }
+
+// std::vector<Member*> Fact::get_member_ptrs() const{
+//   std::vector<Member*> out;
+//   out.reserve(this->length);
+//   for(int i=0; i < this->length; i++){
+//     Item* item = 
+//     out.push_back(this->get(i););
+//   }
+//   return out;
+// }
 
 // inline size_t Fact::size() const{
 // 	return this->length;
 // }
 
-void _copy_fact_slice(Fact* src, Fact* dest, size_t start, size_t end){
+void _fill_fact_slice_copy(Fact* src, Fact* dest, size_t start, size_t end){
 	size_t length = end-start;
 
-	_init_fact(dest, length, nullptr);	
+	new (dest) Fact(nullptr, length);
+
+	// _init_fact(dest, length, nullptr);	
 	size_t src_end = std::min(size_t(src->length), end);
 
 	int j=0;
 	int i=start;
 	for(; i < src_end; i++, j++){
-		Item* item = src->get(i);
+		Item item = src->get(i);
 		
-		if(item->t_id == T_ID_FACT && item->val != 0){
-			Fact* item_fact = item->as_fact();
+		if(item.t_id == T_ID_FACT && item.val != 0){
+			Fact* item_fact = item.as_fact();
 			if(item_fact->immutable){
 				// TODO
 			}
 		}else{
-			// Everything else can just be copied;
-			dest->set_unsafe(j, *item);
+			// Everything else can be copied w/o type checking or recursion;
+			dest->set_unsafe(j, item);
 		}
-		if(!item->is_primitive() && item->borrows){
-			((CRE_Obj*) item->val)->inc_ref();
+		if(!item.is_primitive() && item.borrows){
+			((CRE_Obj*) item.val)->inc_ref();
 		}
 	}
 	if(i < end){
@@ -232,7 +195,7 @@ ref<Fact> Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy)
 	// 				"<< end: " << uint64_t(end) <<
 	// 	      "<< LENGTH: " << uint64_t(length) << endl;
 	auto [start, end] = _format_slice(_start, _end);
-	_copy_fact_slice(this, new_fact, start, end);
+	_fill_fact_slice_copy(this, new_fact, start, end);
 	// cout << "ALLOC ADDR: " << uint64_t(new_fact) << endl;
 	
 	return new_fact;
@@ -243,7 +206,7 @@ ref<Fact> Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_
 	size_t length = end-start;
 	bool did_malloc = false;
 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length), did_malloc);
-	_copy_fact_slice(this, new_fact, start, end);
+	_fill_fact_slice_copy(this, new_fact, start, end);
 	if(!did_malloc){
 		new_fact->alloc_buffer = &buffer;
 		buffer.inc_ref();
@@ -255,14 +218,14 @@ ref<Fact> Fact::slice(int _start, int _end, bool deep_copy){
 	auto [start, end] = _format_slice(_start, _end);
 	size_t length = end-start;
 	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
-	_copy_fact_slice(this, new_fact, start, end);
+	_fill_fact_slice_copy(this, new_fact, start, end);
 	return new_fact;
 }
 
 ref<Fact> Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
 	bool did_malloc = false;
 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length), did_malloc);
-	_copy_fact_slice(this, new_fact, 0, this->length);
+	_fill_fact_slice_copy(this, new_fact, 0, this->length);
 	if(!did_malloc){
 		new_fact->alloc_buffer = &buffer;
 		buffer.inc_ref();
@@ -275,7 +238,7 @@ ref<Fact> Fact::copy(bool deep_copy){
 	// AllocBuffer buffer = AllocBuffer(SIZEOF_FACT(this->length), true);
 	// cout << "MALLOC" << SIZEOF_FACT(this->length) << endl; 
 	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(this->length));
-	_copy_fact_slice(this, new_fact, 0, this->length);
+	_fill_fact_slice_copy(this, new_fact, 0, this->length);
 	// Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
 	return new_fact;
 }
@@ -287,7 +250,7 @@ std::string Fact::get_unique_id(){
 	// cout << "unique_id_index: " << unique_id_index << uint64_t(type) << endl ;
 	if(unique_id_index != -1){
 		// cout << "unique_id_index: " << unique_id_index << endl ;
-		Item item = *get(unique_id_index);
+		Item item = get(unique_id_index);
 		if(item.t_id == T_ID_STR){
 			UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
 			return std::string(uitem.data, uitem.length);
@@ -331,8 +294,8 @@ std::string Fact::to_string(uint8_t verbosity){
 				ss << mbr_spec->name << "=";
 			}
 		}
-		Item* item = get(i);
-		ss << item_to_string(*item);
+		Item item = get(i);
+		ss << item_to_string(item);
 		if(i != L-1){
 			ss << ", ";  
 		}    
@@ -343,11 +306,11 @@ std::string Fact::to_string(uint8_t verbosity){
 }
 
 
-extern "C" void fact_dtor(Fact* fact){
+void fact_dtor(Fact* fact){
 	for(size_t i=0; i < fact->length; i++){
-		Item* item = fact->get(i);
-		if(item->t_id == T_ID_OBJ){
-			ObjItem* o_item = (ObjItem*) item;
+		Item item = fact->get(i);
+		if(item.t_id == T_ID_OBJ){
+			ObjItem* o_item = (ObjItem*) &item;
 			((CRE_Obj*) o_item->data)->dec_ref();
 			// CRE_decref((CRE_Obj*) o_item->data);	
 		}
@@ -409,16 +372,24 @@ uint64_t _hash_fact_range(const Fact* x, uint16_t start, uint16_t end){
 	uint64_t constexpr fnv_prime = 1099511628211ULL;
   uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
 
-
   // cout << "Fact: " << x << endl;
  	uint64_t hash = fnv_offset_basis; //^ (end-start * fnv_prime);
+
+ 	// Always initialize hash w/ length
+ 	hash = hash ^ (end-start)*fnv_prime;
+
   for(uint16_t i=start; i < end; i++){
-  		// cout << "i: " << i << endl;
-      Item& item = *x->get(i);
+      Member mbr = x->get(i);
       // cout << "item: " << item << endl;
-      uint64_t item_hash = CREHash{}(item);
-      hash ^= item_hash ^ (i * fnv_prime);
+      // uint64_t item_hash = CREHash{}(item);
+      hash ^= mbr.hash ^ (i * fnv_prime);
   }
+
+  // Never allow the hash to be 0
+  if(hash == 0){
+  	hash = fnv_offset_basis;
+  }
+
   return hash; 
 }
 
@@ -482,9 +453,9 @@ bool Fact::operator==(const Fact& other) const {
 	if(length != other.length) return false;
 
 	for(size_t i=0; i < length; i++){
-		Item* ia = this->get(i);
-		Item* ib = other.get(i);
-		if(!item_eq(*ia, *ib)) return false;
+		Item ia = this->get(i);
+		Item ib = other.get(i);
+		if(!item_eq(ia, ib)) return false;
 	}
 	return true;
 };
@@ -494,9 +465,9 @@ bool FactView::operator==(const FactView& other) const {
 	const Fact* fact_a = (const Fact*) this->fact;
 	const Fact* fact_b = (const Fact*) other.fact;
 	for(size_t i=0; i < this->size(); i++){
-		Item* ia = fact_a->get(this->start + i);
-		Item* ib = fact_b->get(other.start + i);
-		if(!item_eq(*ia, *ib)) return false;
+		Item ia = fact_a->get(this->start + i);
+		Item ib = fact_b->get(other.start + i);
+		if(!item_eq(ia, ib)) return false;
 	}
 	return true;
 }

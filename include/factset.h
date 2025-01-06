@@ -47,8 +47,8 @@ public:
 	void retract(Fact* fact);
     std::vector<ref<Fact>> get_facts();
 
-    ref<Fact> add_fact(FactType* type, const Item* items, size_t n_items);
-    ref<Fact> add_fact(FactType* type, const std::vector<Item>& items);
+    // ref<Fact> declare_new(FactType* type, const Item* items, size_t n_items);
+    // ref<Fact> declare_new(FactType* type, const std::vector<Item>& items);
 
     std::string to_string(
         std::string_view format="FactSet{{\n  {}\n}}",
@@ -139,12 +139,12 @@ public:
 
 std::ostream& operator<<(std::ostream& out, FactSet* fs);
 
-extern "C" bool is_declared(Fact* fact);
-extern "C" void assert_undeclared(FactSet* fs, Fact* fact);
-extern "C" uint32_t declare(FactSet* fs, Fact* fact);
-extern "C" void retract_f_id(FactSet* fs, uint32_t f_id);
-extern "C" void retract(FactSet* fs, Fact* fact);
-extern "C" void fs_dtor(FactSet* fs);
+bool is_declared(Fact* fact);
+void assert_undeclared(FactSet* fs, Fact* fact);
+uint32_t declare(FactSet* fs, Fact* fact);
+void retract_f_id(FactSet* fs, uint32_t f_id);
+void retract(FactSet* fs, Fact* fact);
+void fs_dtor(FactSet* fs);
 // extern "C" FactSet* FactSet_from_json(char* json_str, size_t length=-1, bool copy_buffer=true);
 // extern "C" FactSet* FactSet_from_json_file(const char* json);
 // extern "C" char* FactSet_to_json(FactSet*);
@@ -166,27 +166,27 @@ public:
     // --- Methods ---
     FactSetBuilder(size_t size=0, size_t buffer_size=0);
 
-    inline Fact* next_empty(size_t size){
-        Fact* fact = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size));
-        fact = new (fact) Fact(size, nullptr, false);
-        // fact->alloc_buffer = alloc_buffer;
-        // fact->alloc_buffer->inc_ref();
-        return fact;
-        // uint8_t* next_head = buff.head + sizeof(Fact) + size * sizeof(Item);    
+    // inline Fact* next_empty(size_t size){
+    //     Fact* fact = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size));
+    //     fact = new (fact) Fact(size, nullptr, false);
+    //     // fact->alloc_buffer = alloc_buffer;
+    //     // fact->alloc_buffer->inc_ref();
+    //     return fact;
+    //     // uint8_t* next_head = buff.head + sizeof(Fact) + size * sizeof(Item);    
 
-        // if(next_head <= buff.end){
-        //     fact = (Fact*) buff.head;
-        //     buff.head = next_head;
-        //     // cout << sizeof(Fact) << endl;
-        //     // cout << "Buff: " << uint64_t(buff.head) << " " << endl; 
-        // }else{
-        //     fact = empty_untyped_fact(size);
-        //     // cout << "ALLOCED! " << endl; 
-        // }
-        // fact->length = size;
-        // fact->type = NULL;
+    //     // if(next_head <= buff.end){
+    //     //     fact = (Fact*) buff.head;
+    //     //     buff.head = next_head;
+    //     //     // cout << sizeof(Fact) << endl;
+    //     //     // cout << "Buff: " << uint64_t(buff.head) << " " << endl; 
+    //     // }else{
+    //     //     fact = empty_untyped_fact(size);
+    //     //     // cout << "ALLOCED! " << endl; 
+    //     // }
+    //     // fact->length = size;
+    //     // fact->type = NULL;
         
-    }
+    // }
 
     // inline ref<Fact> new_var(
     //         const Item& _alias,
@@ -217,16 +217,13 @@ public:
     //     return fact;
     // }
 
-    inline ref<Fact> add_empty(size_t length,
-                               FactType* type,
-                               bool immutable=false){
-        uint32_t size =_resolve_fact_len(length, type);
+    inline ref<Fact> alloc_fact(FactType* type,
+                               uint32_t length=0){
+        length = _resolve_fact_len(type, length);
         bool did_malloc = false;
-        Fact* fact_addr = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size), did_malloc);
-        ref<Fact> fact = new (fact_addr) Fact(size, type, immutable);
+        Fact* fact_addr = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(length), did_malloc);
+        ref<Fact> fact = new (fact_addr) Fact(type, length);
 
-        // cout << "refcount: " << fact->get_refcount() << endl;
-        // cout << "did_malloc:" << did_malloc << endl;
         if(!did_malloc){
             fact->alloc_buffer = alloc_buffer;
             fact->alloc_buffer->inc_ref();
@@ -234,28 +231,51 @@ public:
         return fact;
     }
 
-    inline ref<Fact> add_fact(FactType* __restrict  type,
-                          const Item* __restrict items,
+    inline ref<Fact> empty_fact(FactType* type,
+                               size_t length=0){
+        ref<Fact> fact = this->alloc_fact(type, length);
+        _zfill_fact(fact, 0, fact->length);
+        return fact;
+    }
+
+    // inline ref<Fact> new_fact
+
+    template<std::derived_from<Item> ItemOrMbr>
+    ref<Fact> new_fact(FactType* __restrict  type,
+                          const ItemOrMbr* __restrict items,
                           uint32_t n_items,
                           bool immutable=false){
 
-        uint32_t size =_resolve_fact_len(n_items, type);
-        // Fact* fact = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(size));
-        // fact = new (fact) Fact(size, type, immutable);
-        // fact->alloc_buffer = alloc_buffer;
-        // fact->alloc_buffer->inc_ref();
-        ref<Fact> fact = add_empty(size, type, immutable);
+        // uint32_t length = n_items;//_resolve_fact_len(n_items, type);
+        ref<Fact> fact = this->alloc_fact(type, n_items);
 
-        // cout << "refcount: " << fact->get_refcount() << endl;
-        memcpy(((uint8_t*)fact.get()) + sizeof(Fact), (uint8_t*) items, size * sizeof(Item));
+        _fill_fact(fact, items, n_items);
+        fact->immutable = immutable;
+        return fact;
+    }
+
+    template<std::derived_from<Item> ItemOrMbr>
+    inline ref<Fact> new_fact(FactType* __restrict  type,
+                          const std::vector<ItemOrMbr>& items,
+                          bool immutable=false){
+        return new_fact(type, items.data(), items.size(), immutable);
+    }
+
+    template<std::derived_from<Item> ItemOrMbr>
+    ref<Fact> declare_new(FactType* __restrict  type,
+                          const ItemOrMbr* __restrict items,
+                          uint32_t n_items,
+                          bool immutable=false){
+        ref<Fact> fact = this->new_fact(type, items, n_items, immutable);
         fact_set->_declare_back(fact);
         return fact;
     }
 
-    inline ref<Fact> add_fact(FactType* __restrict  type,
-                          const std::vector<Item>& items,
+    template<std::derived_from<Item> ItemOrMbr>
+    inline ref<Fact> declare_new(FactType* __restrict  type,
+                          const std::vector<ItemOrMbr>& items,
                           bool immutable=false){
-        return add_fact(type, items.data(), items.size(), immutable);
+        return declare_new(type, items.data(), items.size(), immutable);
     }
 };
 
@@ -351,6 +371,7 @@ struct ToFactSetTranslator {
                 }
             }else{
                 std::string obj_str = "<Could not convert Object to String>";
+
                 try{
                     obj_str = T::obj_to_str(val);//nb::cast<std::string>(nb::str(fact_obj));
                 } catch (...) {
@@ -358,7 +379,7 @@ struct ToFactSetTranslator {
                 }
                 
                 std::string error_msg = 
-                    "CRE could not resolve FactType of object:\n" +
+                    "CRE could not resolve FactType of object: " +
                     obj_str +"\n"
                     "  Untyped facts cannot be created from attribute-value containers like Python dicts or JSON objects. " +
                     "Add attribute {'type' : 'type_name',...} to the object, or set the type_attr='my_custom_attr' keyword arg " +
@@ -582,7 +603,7 @@ struct ToFactSetTranslator {
             size_t length = std::get<2>(fact_info);
             // size_t offset = std::get<3>(fact_info);
 
-            ref<Fact> fact = builder.add_empty(length, type);
+            ref<Fact> fact = builder.alloc_fact(type, length);
             fact->type = type;
 
             if(T::is_dict(fact_obj)){

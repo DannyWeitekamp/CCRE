@@ -8,6 +8,7 @@
 #include "../include/intern.h"
 #include "../include/var.h"
 #include "../include/item.h"
+#include "../include/member.h"
 
 
 
@@ -299,7 +300,7 @@ std::ostream& operator<<(std::ostream& out, ref<Func> func);
 // : SIZEOF_FUNC(n)
 
 constexpr bool FUNC_ALIGN_IS_POW2 = (alignof(Func) & (alignof(Func) - 1)) == 0;
-#define _SIZEOF_FUNC(n) (sizeof(Func)+(n)*sizeof(Item))
+#define _SIZEOF_FUNC(n) (sizeof(Func)+(n)*sizeof(Member))
 
 // Because Funcs are regularly allocated with buffers and have an atomic
 //  for their refcount we need to make sure to pad Funcs so that
@@ -311,7 +312,7 @@ constexpr bool FUNC_ALIGN_IS_POW2 = (alignof(Func) & (alignof(Func) - 1)) == 0;
   #define ALIGN_PADDING(n_bytes) ((alignof(Func) - (n_bytes % (alignof(Func)))) % (alignof(Func)))
 #endif
 
-constexpr bool FUNC_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Func)) | ALIGN_PADDING(sizeof(Item))) != 0;
+constexpr bool FUNC_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Func)) | ALIGN_PADDING(sizeof(Member))) != 0;
 
 #if FUNC_NEED_ALIGN_PAD
   #define SIZEOF_FUNC(n) (_SIZEOF_FUNC(n) + ALIGN_PADDING(_SIZEOF_FUNC(n)))

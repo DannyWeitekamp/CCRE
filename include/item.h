@@ -20,7 +20,7 @@ struct Func;
 
 struct UnicodeItem {
     const char* data;
-    uint64_t hash;
+    // uint64_t hash;
     uint16_t t_id;
     uint8_t kind;
     uint8_t is_ascii;
@@ -29,7 +29,7 @@ struct UnicodeItem {
 
 struct ObjItem {
     void* data;
-    uint64_t hash;
+    // uint64_t hash;
     uint16_t t_id;
     uint8_t is_ref;
     uint8_t borrows;
@@ -38,7 +38,7 @@ struct ObjItem {
 
 struct Item {
     uint64_t val;
-    uint64_t hash;
+    // uint64_t hash;
     uint16_t t_id;
     uint8_t is_ref;
     uint8_t borrows;
@@ -46,33 +46,40 @@ struct Item {
 
     bool operator==(const Item& other) const;
 
-    Item() : val(0), hash(0), t_id(0),
+    Item() : val(0), t_id(0),
              is_ref(0), borrows(0), pad(0) 
     {};
 
+    // NOTE: Default copy constructor okay
+    // Item(const Item& item) : val(item.val), t_id(item.t_id),
+    //          is_ref(item.is_ref), borrows(item.borrows), pad(item.pad) 
+    // {};
+
+
+
     Item(std::nullptr_t arg) : val(std::bit_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_NULL),
+                    t_id(T_ID_NULL),
                     is_ref(0), borrows(0), pad(0)
     {};
 
     Item(bool arg) : val(static_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_BOOL),
+                    t_id(T_ID_BOOL),
                     is_ref(0), borrows(0), pad(0)
     {};
 
     Item(void* arg) : val(std::bit_cast<uint64_t>(arg)),
-                    hash(0), t_id(T_ID_NULL),
+                    t_id(T_ID_NULL),
                     is_ref(0), borrows(0), pad(0)
     {};
 
     template <std::integral T>
-    Item(const T& x) : val(x), hash(0), t_id(T_ID_INT),
+    Item(const T& x) : val(x), t_id(T_ID_INT),
                         is_ref(0), borrows(0), pad(0)
     {}
 
     template <std::floating_point T>
     Item(const T& x) : val(std::bit_cast<uint64_t>(double(x))),
-                       hash(0), t_id(T_ID_FLOAT),
+                       t_id(T_ID_FLOAT),
                        is_ref(0), borrows(0), pad(0)
     {}
 
@@ -167,5 +174,12 @@ Fact* item_get_fact(const Item& item);
 
 std::string item_to_string(const Item& item);
 std::string to_string(Item& item);
+
+
+
+
+
+
+
 
 #endif // _ITEM_H_

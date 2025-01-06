@@ -29,11 +29,11 @@ using std::endl;
 
 // ---- Main C interface ----
 
-extern "C" bool is_declared(Fact* fact){
+bool is_declared(Fact* fact){
 	return fact->parent != nullptr;
 }
 
-extern "C" void assert_undeclared(FactSet* fs, Fact* fact){
+void assert_undeclared(FactSet* fs, Fact* fact){
 	if(is_declared(fact)){
 		std::stringstream err;
 		if(fact->parent == fs){
@@ -46,7 +46,7 @@ extern "C" void assert_undeclared(FactSet* fs, Fact* fact){
 	}	
 }
 
-extern "C" uint32_t declare(FactSet* fs, Fact* fact){
+uint32_t declare(FactSet* fs, Fact* fact){
 	assert_undeclared(fs, fact);
 	
 	// cout << "A" << endl;
@@ -79,7 +79,7 @@ extern "C" uint32_t declare(FactSet* fs, Fact* fact){
 	return f_id;
 }
 
-extern "C" void retract_f_id(FactSet* fs, uint32_t f_id){
+void retract_f_id(FactSet* fs, uint32_t f_id){
 	if(f_id >= fs->facts.size()){
 		std::stringstream err;
 		err << "Retract f_id=" << f_id << " is out of range.";
@@ -102,7 +102,7 @@ extern "C" void retract_f_id(FactSet* fs, uint32_t f_id){
 	// fact->dec_ref();
 }
 
-extern "C" void retract(FactSet* fs, Fact* fact){
+void retract(FactSet* fs, Fact* fact){
 	if(fact->parent != fs){
 		std::stringstream err;
 		err << "Attempt to retract ";
@@ -119,7 +119,7 @@ extern "C" void retract(FactSet* fs, Fact* fact){
 	retract_f_id(fs, f_id);
 }
 
-extern "C" std::vector<ref<Fact>> fs_get_facts(FactSet* fs){
+std::vector<ref<Fact>> fs_get_facts(FactSet* fs){
 	std::vector<ref<Fact>> facts = {};
 	facts.reserve(fs->size());
 	for (auto it = fs->begin(); it != fs->end(); ++it) { 
@@ -201,17 +201,17 @@ std::ostream& operator<<(std::ostream& out, FactSet* fs){
 	return out << fs->to_string("FactSet{{{}}} ", ", ");
 }
 
-ref<Fact> FactSet::add_fact(FactType* type, const Item* items, size_t n_items){
-	ref<Fact> fact = new_fact(type, items, n_items);
-	this->declare(fact);
-	return fact;
-}
+// ref<Fact> FactSet::declare_new(FactType* type, const Item* items, size_t n_items){
+// 	ref<Fact> fact = new_fact(type, items, n_items);
+// 	this->declare(fact);
+// 	return fact;
+// }
 
-ref<Fact> FactSet::add_fact(FactType* type, const std::vector<Item>& items){
-	ref<Fact> fact = new_fact(type, items);
-	this->declare(fact);
-	return fact;
-}
+// ref<Fact> FactSet::declare_new(FactType* type, const std::vector<Item>& items){
+// 	ref<Fact> fact = new_fact(type, items);
+// 	this->declare(fact);
+// 	return fact;
+// }
 
 
 

@@ -12,6 +12,7 @@
 
 // Forward Declarations
 struct Item;
+struct Member;
 class Fact;
 class Var;
 class FactView;
@@ -46,6 +47,10 @@ struct CREHash {
     using is_transparent = void;
     using key_equal = std::equal_to<>;  // Pred to use
 
+    uint64_t operator()([[maybe_unused]] std::nullptr_t x){
+        return 0;
+    }
+
     template <std::integral T>
     uint64_t operator()(const T& x) const {
         return x;
@@ -61,9 +66,12 @@ struct CREHash {
         return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
     }
 
-    uint64_t operator()(const std::string& x) const {
-        // return fnv1a((const uint8_t*) x.c_str(), x.length());
-        return MurmurHash64A((const uint8_t*) x.c_str(), x.length(), 0xFF);
+    // uint64_t operator()(const std::string& x) const {
+    //     // return fnv1a((const uint8_t*) x.c_str(), x.length());
+    //     return MurmurHash64A((const uint8_t*) x.c_str(), x.length(), 0xFF);
+    // }
+    uint64_t operator()(const char* x){
+        return CREHash{}(std::string_view(x));
     }
 
     uint64_t operator()(const Item& x) const{

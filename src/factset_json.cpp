@@ -77,7 +77,8 @@ public:
 
 	inline static bool is_dict(const auto& x){return x.IsObject();}
 	inline static bool is_list(const auto& x){return x.IsArray();}
-	inline static bool is_tuple(const auto& x){return false;}
+	inline static bool is_tuple([[maybe_unused]] 
+								 const auto& x){return false;}
 
 	inline static std::string_view to_string_view(const auto& x){
 		return std::string_view(x.GetString(), x.GetStringLength());
@@ -255,7 +256,7 @@ ref<FactSet>  _FactSet_from_doc(rapidjson::Document& d){
 		size_t length = std::get<2>(fact_info);
 		// size_t offset = std::get<3>(fact_info);
 
-		ref<Fact> fact_ref = builder.add_empty(length, type);
+		ref<Fact> fact_ref = builder.alloc_fact(type, length);
 		Fact* __restrict fact = fact_ref.get();
 		fact->type = type;
 		// cout << uint64_t(builder->alloc_buffer->data) + offset << endl;
@@ -493,7 +494,7 @@ struct FactSetJSONWriter {
 				std::string_view attr_name = std::string_view(type->members[i].name);
 				rapidjson::Value attr_name_obj(attr_name.data(), attr_name.size(), alloc);
 
-				Item item = *fact->get(i);
+				Item item = fact->get(i);
 				rapidjson::Value item_obj = item_to_value(item);
 
 				// cout << " Adding Fact Attr: " << attr_name << " : " << repr_item(item) << endl;
@@ -506,7 +507,7 @@ struct FactSetJSONWriter {
 			std::string attr_name = std::to_string(i);
 			rapidjson::Value attr_name_obj(attr_name.c_str(), attr_name.size(), alloc);
 
-			Item item = *fact->get(i);
+			Item item = fact->get(i);
 			rapidjson::Value item_obj = item_to_value(item);
 
 			// cout << " Adding Fact Attr: " << attr_name << " : " << repr_item(item) << endl;
@@ -520,7 +521,7 @@ struct FactSetJSONWriter {
 		rapidjson::Value fact_array(rapidjson::kArrayType);
 			
 		for(size_t i=0; i < fact->length; ++i){
-			Item item = *fact->get(i);
+			Item item = fact->get(i);
 			rapidjson::Value item_obj = item_to_value(item);
 
 			fact_array.PushBack(item_obj, alloc);

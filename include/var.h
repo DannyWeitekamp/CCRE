@@ -5,6 +5,7 @@
 #include "../include/hash.h"
 #include "../include/intern.h"
 #include "../include/ref.h"
+#include "../include/member.h"
 
 const uint16_t DEREF_KIND_ATTR = 1;
 const uint16_t DEREF_KIND_ITEM = 2 ;
@@ -87,8 +88,8 @@ ref<Var> new_var(const Item& _alias,
 std::ostream& operator<<(std::ostream& out, Var* var);
 std::ostream& operator<<(std::ostream& out, ref<Var> var);
 
-extern "C" Item* deref_once(CRE_Obj* obj, const DerefInfo& inf);
-extern "C" Item* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length);
+Member* deref_once(CRE_Obj* obj, const DerefInfo& inf);
+Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length);
 
 
 #define SIZEOF_VAR(n) (sizeof(Var)+(n)*sizeof(DerefInfo))

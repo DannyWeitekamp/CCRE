@@ -43,7 +43,7 @@ ref<FactSet> test_individual_build(size_t N){
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
 		// std::vector<Item> items = {Item(i), str_item, Item(bool(i%2))};
-		ref<Fact> fact = new_fact(NULL, items.data(), items.size());
+		ref<Fact> fact = new_fact(nullptr, items.data(), items.size());
 		declare(fs, fact);
 	}
 	return fs;
@@ -55,7 +55,7 @@ ref<FactSet> test_unbuffered_build(size_t N){
 	// Item str_item = Item("A");
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		fs_builder.add_fact(nullptr, items.data(), items.size());
+		fs_builder.declare_new(nullptr, items.data(), items.size());
 		// cout << fact << endl;
 	}
 	return fs_builder.fact_set;
@@ -68,7 +68,7 @@ ref<FactSet> test_buffered_build(size_t N){
 	// Item str_item = Item("A");
 	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
 	for(int i=0; i < N; i++){
-		fs_builder.add_fact(nullptr, items.data(), items.size());
+		fs_builder.declare_new(nullptr, items.data(), items.size());
 		// cout << fact << endl;
 	}
 	return fs_builder.fact_set;
@@ -99,10 +99,11 @@ void test_build_from_json(){
 	time_it_n("to_json", json_str = fs->to_json(), 50);
 
 	fs = new FactSet();
-	ref<Fact> a = fs->add_fact(nullptr, {Item(0), Item("A"), Item(false)});
-	ref<Fact> b = fs->add_fact(nullptr, {Item(1), Item("B"), Item(true)});
-	ref<Fact> c = fs->add_fact(nullptr, {Item(2), Item("C"), Item(false)});
-	fs->add_fact(nullptr, {Item(a), Item(b), Item(c)});
+	ref<Fact> a = make_fact(nullptr, 0, "A", false);
+	ref<Fact> b = make_fact(nullptr, 1, "B", true);
+	ref<Fact> c = make_fact(nullptr, 2, "C", false);
+	fs->declare(a); fs->declare(b); fs->declare(c);
+	fs->declare(make_fact(nullptr, a, b, c));
 
 	cout << fs << endl;
 	json_str = fs->to_json();

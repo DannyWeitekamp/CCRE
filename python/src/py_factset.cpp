@@ -165,27 +165,11 @@ ref<FactSet> _FactSet_from_py(
         size_t length = std::get<2>(fact_info);
         // size_t offset = std::get<3>(fact_info);
 
-        ref<Fact> fact = builder.add_empty(length, type);
+        ref<Fact> fact = builder.alloc_fact(type, length);
         fact->type = type;
 
         if(nb::isinstance<nb::dict>(fact_obj)){
-        	cout << "TYPE:" << uint64_t(type) << endl;
-        	if(type == nullptr){
-        		std::string obj_str = "<Could not convert Object to String>";
-        		try{
-        			obj_str = nb::cast<std::string>(nb::str(fact_obj));
-        		} catch (...) {
-        			// pass
-        		}
-        		
-        		std::string error_msg = 
-        			"CRE could not resolve FactType of object:\n" +
-        			obj_str +"\n"
-        			"Untyped facts cannot be created from attribute-value-pair containers like Python dicts or JSON objects." +
-        			"Provide a valid 'type' : 'type_name' or set the type_attr='CustomTypeAttribute' to interpret an available attribute as the object's type." +
-        			"Alternatively an untyped fact can be instantiated from a list or tuple";
-        		throw std::invalid_argument(error_msg);
-        	}
+        	
 
             nb::dict fact_dict = nb::cast<nb::dict>(fact_obj);
             for (auto [key, val] : fact_dict){

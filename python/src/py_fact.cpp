@@ -36,7 +36,7 @@ nb::object py_fact_getitem(Fact* fact, int64_t index) {
             "] out of bounds for Fact with length=" + std::to_string(fact->length) + "."
         );
     }
-    return Item_to_py(*fact->get(index));
+    return Item_to_py(fact->get(index));
 }
 
 nb::object py_fact_getattr(Fact* fact, std::string_view attr) {
@@ -46,7 +46,7 @@ nb::object py_fact_getattr(Fact* fact, std::string_view attr) {
     //         "] out of bounds for Fact with length=" + std::to_string(fact->length) + "."
     //     );
     // }
-    return Item_to_py(*fact->get(attr));
+    return Item_to_py(fact->get(attr));
 }
 
 
