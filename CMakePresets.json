@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "release",
+      "displayName": "release",
+      "description": "Release build.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/release",
+      "cacheVariables": {
+        "DCMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3"
+      }
+    },
+    {
+      "name": "debug",
+
+      "displayName": "debug",
+      "description": "Debug build.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/debug",
+      "cacheVariables": {
+        "DCMAKE_BUILD_TYPE" : "Release",
+        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g"
+      }
+    }
+  ]
+}
