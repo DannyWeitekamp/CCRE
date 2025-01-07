@@ -111,7 +111,7 @@ def _standard_cat():
 def test_fact_create():
     from cre import define_fact, NewFact, Fact, iFact
 
-    Cat, _  = _standard_cat()
+    Cat, snowball  = _standard_cat()
 
     with pytest.raises(Exception):
         Cat("snowball", 77, 3, False, 1.0, 1.0)

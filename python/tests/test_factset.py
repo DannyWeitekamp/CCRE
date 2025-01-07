@@ -268,9 +268,11 @@ if __name__ == "__main__":
     # test_mem_leaks_basic()
     # test_mem_leaks_refs()
     # test_long_hash()
-    # test_from_py_basic()
-    # test_to_json_basic()
-    # test_from_json_basic()
-    # test_from_py_ref()
+
+    
+    test_from_py_basic()
+    test_to_json_basic()
+    test_from_json_basic()
+    test_from_py_ref()
     test_creation_errors()
     

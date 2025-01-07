@@ -14,7 +14,7 @@
       "binaryDir": "${sourceDir}/release",
       "cacheVariables": {
         "DCMAKE_BUILD_TYPE" : "Release",
-        "CMAKE_CXX_FLAGS_RELEASE": "-O3"
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -g"
       }
     },
     {

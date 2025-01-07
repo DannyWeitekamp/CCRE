@@ -351,7 +351,8 @@ struct ToFactSetTranslator {
             length = T::dict_size(fact_dict);
             
             // "type" keyword ignored when computing length
-            if(T::has_attr(fact_dict, type_attr_ref)){
+            bool has_type_attr = T::has_attr(fact_dict, type_attr_ref);
+            if(has_type_attr){
                 type = T::to_fact_type(T::get_attr(fact_dict, type_attr_ref));
                 if(type->members.size() > length){
                     length = type->members.size();
@@ -369,7 +370,7 @@ struct ToFactSetTranslator {
                         uid_item = T::to_item(T::get_attr(fact_dict, unq_attr_getter));   
                     }
                 }
-            }else{
+            }else if(has_type_attr){
                 std::string obj_str = "<Could not convert Object to String>";
 
                 try{
@@ -607,6 +608,11 @@ struct ToFactSetTranslator {
             fact->type = type;
 
             if(T::is_dict(fact_obj)){
+                // Note: Dict instatiated facts must be zero filled
+                //  since there is no gaurentee that all of their fields
+                //  were provided. 
+                _zfill_fact(fact, 0, length);
+
                 auto fact_dict = T::to_dict(fact_obj);
                 for (auto itr = T::dict_itr_begin(fact_dict); itr != T::dict_itr_end(fact_dict); ++itr){
                     const auto& [key, val] = *itr;
