@@ -368,39 +368,58 @@ Fact::Iterator end(const Fact* fact){return fact->end();}
 // -------------------------------------------------------
 // : Fact Hashing 
 
-uint64_t _hash_fact_range(const Fact* x, uint16_t start, uint16_t end){
-	uint64_t constexpr fnv_prime = 1099511628211ULL;
-  uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
+/**
+   * @brief The hash function for Facts and FactViews. Incorperates
+   *  the hash of each Member in the fact and its index using XORs 
+   *  so that calling `set()` on the fact updates its hash without
+   *  rescanning every Member.
+   * 
+   * @param ind The member's index 
+   * @param val The member's value
+   * @return void 
+   */
+uint64_t _hash_fact_range(const Fact* x, int64_t start, int64_t end){
+
+	// Use signed integers so that multiplication overflows wrap 
+	//  instead of truncating.
+	// int64_t constexpr fnv_prime = 1099511628211ULL;
+  // int64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
 
   // cout << "Fact: " << x << endl;
- 	uint64_t hash = fnv_offset_basis; //^ (end-start * fnv_prime);
+ 	int64_t hash = FNV_BASIS; //^ (end-start * fnv_prime);
 
  	// Always initialize hash w/ length
- 	hash = hash ^ (end-start)*fnv_prime;
+ 	hash = hash ^ (end-start)*FNV_PRIME;
 
-  for(uint16_t i=start; i < end; i++){
+  for(int64_t i=start; i < end; i++){
       Member mbr = x->get(i);
-      // cout << "item: " << item << endl;
-      // uint64_t item_hash = CREHash{}(item);
-      hash ^= mbr.hash ^ (i * fnv_prime);
+
+      // Cast int64_t so multiply wraps instead of trucating.
+      hash ^= int64_t(mbr.hash) * int64_t(i+1) * int64_t(FNV_PRIME);
   }
 
-  // Never allow the hash to be 0
-  if(hash == 0){
-  	hash = fnv_offset_basis;
-  }
+  // NOTE: Since hashes changing along w/ set(), forcing non-zero hashes
+  //  could cause a rare edge case violation to commutativity. So we
+  //  shouldn't do the following, and we shouldn't need to since we
+  //  are not using lazy hashing, so zero doesn't indicated inintialized.
+  // if(hash == 0){
+  // 	hash = FNV_BASIS;
+  // }
 
-  return hash; 
+  return uint64_t(hash); 
 }
 
 
 uint64_t CREHash::operator()(Fact* x) {
-    if(x->hash != 0){
-        return x->hash;
-    }   
-    uint64_t hash = _hash_fact_range(x, 0, x->length);
-    x->hash = hash;
-    return hash;
+		return x->hash;
+		// NOTE: Fact's `hash` field is always up to date so the logic below
+		//   is unecessary, and could cause issues, since 0 is a legitimate hash.
+    // if(x->hash != 0){
+    //     return x->hash;
+    // }   
+    // uint64_t hash = _hash_fact_range(x, 0, x->length);
+    // x->hash = hash;
+    // return hash;
 }
 
 uint64_t CREHash::operator()(const FactView& x) const{

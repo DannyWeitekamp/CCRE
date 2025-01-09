@@ -26,6 +26,10 @@ extern const uint64_t _PyHASH_XXPRIME_5;
 extern const uint64_t siphash_k0_default;
 extern const uint64_t siphash_k1_default;
 
+uint64_t constexpr FNV_PRIME = 1099511628211ULL;
+uint64_t constexpr FNV_BASIS = 14695981039346656037ULL;
+
+
 uint64_t _PyHASH_XXROTATE(uint64_t x);
 
 

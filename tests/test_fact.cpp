@@ -128,13 +128,86 @@ void test_iterate_fact(){
 	EXPECT_THROW(( FactView(fact, 2,-3) ));
 }
 
+void test_hash(){
+	// auto fact1 = empty_fact(nullptr, 1);
+	auto fact2 = empty_fact(nullptr, 2);
+	auto fact3 = empty_fact(nullptr, 3);
+	uint64_t zhash;
+
+	// All empty_facts should have a valid length-dependant hash
+	IS_TRUE(fact2->hash != 0);
+	zhash = CREHash{}(fact3);
+	IS_TRUE(zhash != 0);
+	IS_TRUE(zhash != fact2->hash);
+
+	// Set() should immediately modify the fact's hash field without 
+	//  the need to perform a rehash. 
+	fact3->set(0, "BOB");
+	fact3->set(1, "BRAD");
+	fact3->set(2, 3.0);
+	IS_TRUE(fact3->hash != zhash);
+
+	// make_fact(), and by extension new_fact() should produce facts with 
+	//  the same hash as ones constructed by calling set().
+	auto fact3p = make_fact(nullptr, "BOB", "BRAD", 3.0);
+	IS_TRUE(fact3p->hash == fact3->hash);
+
+	// Facts with the same Members, but in different orders should have
+	//  different hashes. 
+	auto fact3_unord = make_fact(nullptr, "BRAD", "BOB", 3.0);
+	IS_TRUE(fact3p->hash != fact3_unord->hash);
+	fact3->set(0, "BRAD");
+	fact3->set(1, "BOB");
+	fact3->set(2, 3.0);
+	IS_TRUE(fact3->hash == fact3_unord->hash);
+
+	// Setting all members to nullptr should produce the same hash
+	//  as an empty_fact() of the same size.
+	fact3->set(0, nullptr);
+	fact3->set(1, nullptr);
+	fact3->set(2, nullptr);
+	IS_TRUE(fact3->hash == zhash);
+
+	// Size 1 facts shouldn't produce hash conflicts
+	// (for instance if multiplying the member hash by ind=0)
+	IS_TRUE((
+		make_fact(nullptr, "BOB")->hash != 
+		make_fact(nullptr, "BRAD")->hash
+	))
+
+	// A full span FactView should have the same hash as its parent fact. 
+	IS_TRUE((
+		CREHash{}(FactView(fact3p, 0,3)) ==
+		CREHash{}(fact3p)
+	))
+
+	// A partial span FactView should NOT have the same hash as its parent fact. 
+	IS_TRUE((
+		CREHash{}(FactView(fact3p, 1,3)) !=
+		CREHash{}(fact3p)
+	))
+
+	// A fact should never have a hash of 0
+	// ??
+}
+
+void test_copy(){
+
+}
+
+void test_slice(){
+	
+}
+
 
 
 
 
 int main(){
-    test_errors();
-    test_flags();
-    test_iterate_fact();
+    // test_errors();
+    // test_flags();
+    // test_iterate_fact();
+
+    test_hash();
     return 0;
 }

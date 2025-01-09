@@ -51,7 +51,7 @@ public:
     parent(nullptr),
     f_id(-1),
     length(_type ? std::max(_length, uint32_t(_type->members.size())) : _length),
-    hash(0),
+    hash(FNV_BASIS ^ (int64_t(length) * FNV_PRIME)),
     immutable(false)
 {}
 
@@ -61,7 +61,24 @@ public:
   // void operator delete(void * p);
     //
 
-  
+  inline void verify_member_type(uint32_t ind, const Member& member){
+    if(this->type != nullptr && ind < this->type->members.size()){
+      CRE_Type* mbr_type = this->type->members[ind].type;
+
+      // if(member.t_id == T_ID_NULL){
+      //   member.t_id = mbr_type->t_id;
+      // }
+      if(member.t_id != T_ID_NULL && // Members can always be null
+         mbr_type->t_id != member.t_id &&
+         mbr_type->t_id != 0){
+
+        CRE_Type* type = current_context->types[member.t_id-1];
+        throw std::invalid_argument("Setting item[" + std::to_string(ind) + "] with type '" + mbr_type->name + "' to value " \
+          + item_to_string(member) + " with type '" + type->name + "'");
+      }
+      // return true;
+    }
+  }
 
   // Executes type specific .set()
   template<class T>
@@ -81,22 +98,23 @@ public:
     }
 
     // Handle type checking against the fact's type   
-    if(this->type != nullptr && ind < this->type->members.size()){
-      CRE_Type* mbr_type = this->type->members[ind].type;
-
-      if(member.t_id == T_ID_NULL){
-        member.t_id = mbr_type->t_id;
-      }else if(mbr_type->t_id != member.t_id && mbr_type->t_id != 0){
-        CRE_Type* type = current_context->types[member.t_id-1];
-        throw std::invalid_argument("Setting item[" + std::to_string(ind) + "] with type '" + mbr_type->name + "' to value " \
-              + item_to_string(member) + " with type '" + type->name + "'");
-      }
-    }
+    verify_member_type(ind, member);
+    // if(!member_type_is_valid(ind, member)) [[unlikely]] {
+    //   CRE_Type* mbr_type = this->type->members[ind].type;
+    //   CRE_Type* type = current_context->types[member.t_id-1];
+      
+    // } 
+    
 
     // Get pointer to the 0th Item
     Member* data_ptr(std::bit_cast<Member*>(
         ((uint8_t*) this) + sizeof(Fact)
     ));
+
+    // Replace the XOR contribution of the old hash with the new
+    hash ^= int64_t(data_ptr[ind].hash) * int64_t(ind+1) * int64_t(FNV_PRIME);
+    hash ^= int64_t(member.hash) * int64_t(ind+1) * int64_t(FNV_PRIME);    
+
     // Assign to the ind'th item
     data_ptr[ind] = member;
   }
@@ -105,12 +123,27 @@ public:
   //   set_unsafe(ind, Member(val));
   // }
 
+  /**
+   * @brief A variant of `Fact::set`, for efficiently filling fact members 
+   *  immediately after instantiating them with `alloc_fact`.
+   *  `set_unsafe` is useful for optimizing code that will fill every 
+   *  member slot in a new allocated fact, and has undefined behavior outside
+   *  of this context. If you're unsure use `empty_fact` and `Fact::set` instead.
+   *  
+   * 
+   * @param ind The member's index 
+   * @param val The member's value
+   * @return void 
+   */
   template<class T>
   inline void set_unsafe(uint32_t ind, const T& val){
     Member* data_ptr = std::bit_cast<Member*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)
     );
-    data_ptr[ind] = Member(val);
+    Member member = Member(val);
+    data_ptr[ind] = member;
+
+    hash ^= int64_t(member.hash) * int64_t(ind+1) * int64_t(FNV_PRIME);    
   }
 
   
@@ -250,8 +283,8 @@ std::ostream& operator<<(std::ostream& out, ref<Fact> fact);
 //   new (fact) Fact(_length, _type, _immutable);
 // }
 
-ref<Fact> empty_fact(FactType* type);
-ref<Fact> empty_untyped_fact(uint32_t _length);
+// ref<Fact> empty_fact(FactType* type);
+// ref<Fact> empty_untyped_fact(uint32_t _length);
 
 // ref<Fact> new_fact(Fact* fact, FactType* type, const Item* items, size_t n_items);
 // ref<Fact> new_fact(FactType* type, const Item* items, size_t n_items);
@@ -387,6 +420,18 @@ constexpr bool FACT_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Fact)) | ALIGN_PADDIN
 // ---------------------
 // : new_fact() + alloc_fact() + empty_fact()
 
+
+/**
+   * @brief Returns the length of a fact with a particular type and 
+   *   number of items. The length will be at least as long as the 
+   *   number of members in the type specification, or longer if 
+   *   n_items exceeds this. 
+   * 
+   * @param type A FactType 
+   * @param n_items 
+   * @return The fact's length
+   */
+
 inline uint32_t _resolve_fact_len(FactType* type, size_t n_items){
   // Resolve length + finalize type
   uint32_t length;
@@ -400,6 +445,20 @@ inline uint32_t _resolve_fact_len(FactType* type, size_t n_items){
 }
 
 
+/**
+   * @brief An unsafe way to allocates a new fact. Slightly faster than 
+   *  the safer empty_fact(), but has undefined behavior unless all of the 
+   *  allocated member slots of a fact are gaurenteed to be filled shortly 
+   *  after the allocation. Thus this should really only be used in internal
+   *  subroutines.
+   *  
+   * 
+   * @param fact A fact recently allocated with alloc_fact.
+   * @param start The start index 
+   * @param end The end index
+   * @return The newly allocated fact
+   */
+
 inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0){
   length = _resolve_fact_len(type, length); 
   Fact* fact_addr = (Fact*) malloc(SIZEOF_FACT(length));
@@ -409,6 +468,15 @@ inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0){
   return fact;
 }
 
+
+/**
+   * @brief Fills a span within a newly allocated fact with NULL. 
+   * 
+   * @param fact A fact recently allocated with alloc_fact.
+   * @param start The start index 
+   * @param end The end index
+   * @return void 
+   */
 inline void _zfill_fact(Fact* fact, uint32_t start, uint32_t end){
   // Pointer to the 0th Item of the FactHeader
   Member* data_ptr = std::bit_cast<Member*>(
@@ -431,7 +499,16 @@ inline void _zfill_fact(Fact* fact, uint32_t start, uint32_t end){
 }
 
 
-
+/**
+   * @brief Fills a newly allocated fact with items from an array. Will
+   *  fill any trailing members with NULL. Tightly coupled with alloc_fact
+   *  and should be mostly reserved for internal use.
+   * 
+   * @param fact A fact recently allocated with alloc_fact.
+   * @param items A pointer to the array of items. 
+   * @param n_items The number of items in the array.
+   * @return void 
+   */
 template<std::derived_from<Item> ItemOrMbr>
 inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
   // Set items
@@ -441,7 +518,6 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
       // Note/Verify TODO: copy elision optimization should prevent copying
       //   this temporary.
       Item item = items[i];
-
       fact->set(i, item);
 
       if(!item.is_primitive() && item.borrows){
@@ -456,15 +532,41 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
   
   // Zero-fill any trailing items
   _zfill_fact(fact, n_items, fact->length);
+
+  // fact->hash = CREHash{}(fact);
 }
 
+
+/**
+   * @brief Makes an empty fact, filled with NULLs. 
+   * 
+   * @param type The type of the fact, use nullptr for untyped facts 
+   * @param length The length of the fact. If shorter than the type length,
+   *   will be overrided by the type length. If longer, the fact will have,
+   *   additional trailing members (which is unusual but not forbidden).
+   * @return The new empty fact
+   */
 inline ref<Fact> empty_fact(FactType* type,
                             uint32_t length=0){
     ref<Fact> fact = alloc_fact(type, length);
     _zfill_fact(fact, 0, fact->length);
+    fact->hash = CREHash{}(fact);
     return fact;
 }
 
+
+// NOTE
+// Facts have their hashes computed at instantiation since:
+  //  1) Always having .hash hold a valid value makes rehashing
+  //     cheap since the hash function is commutative by XORing members.
+  //  2) At instantiation members are already in the L1-cache so it 
+  //     is arguably cheaper to do here than later. And the hash function
+  //     itself is a FNV-1a variant (very fast), so cache-delays would likely
+  //     overpower any advantages to lazy execution.
+  //  3) There are potential speculative execution benfits. One could, 
+  //     in principle, remove branches where hash==0, triggering a full
+  //     hash recompute. (Too early as of Jan 7, 2025 to bother with such
+  //     an optimization).
 
 template<std::derived_from<Item> ItemOrMbr>
 ref<Fact> new_fact(FactType* type, const ItemOrMbr* items, size_t n_items, bool immutable=false){

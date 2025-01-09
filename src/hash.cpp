@@ -144,14 +144,14 @@ uint64_t siphash24(uint64_t k0, uint64_t k1, const void* src, uint64_t src_sz) {
 
 // uint64_t fnv1a(std::string const & text) {
 uint64_t fnv1a(const uint8_t *val, uint64_t _len) {
-    uint64_t constexpr fnv_prime = 1099511628211ULL;
-    uint64_t constexpr fnv_offset_basis = 14695981039346656037ULL;
+    uint64_t constexpr FNV_PRIME = 1099511628211ULL;
+    uint64_t constexpr FNV_BASIS = 14695981039346656037ULL;
     
-    uint64_t hash = fnv_offset_basis;
+    uint64_t hash = FNV_BASIS;
         
     for(uint64_t i=0; i < _len; i++){
         hash ^= val[i];
-        hash *= fnv_prime;
+        hash *= FNV_PRIME;
     }
 
     return hash;

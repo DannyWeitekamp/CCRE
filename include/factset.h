@@ -228,6 +228,9 @@ public:
             fact->alloc_buffer = alloc_buffer;
             fact->alloc_buffer->inc_ref();
         }
+
+        // fact->hash = ;
+
         return fact;
     }
 
