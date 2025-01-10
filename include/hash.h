@@ -47,6 +47,9 @@ uint64_t siphash24(uint64_t k0, uint64_t k1, const void* src, uint64_t src_sz);
 uint64_t accum_item_hash(uint64_t acc, uint64_t lane);
 uint64_t process_return(uint64_t val);
 
+uint64_t IntHash(const uint64_t& n);
+std::string bytes_to_base64(std::vector<uint8_t> bytes);
+
 struct CREHash {
     using is_transparent = void;
     using key_equal = std::equal_to<>;  // Pred to use
@@ -57,7 +60,7 @@ struct CREHash {
 
     template <std::integral T>
     uint64_t operator()(const T& x) const {
-        return x;
+        return IntHash(x);
     }
 
     template <std::floating_point T>

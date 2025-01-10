@@ -15,6 +15,7 @@
 #include "../include/xxhash.h"
 #include "../include/intern.h"
 #include "../include/fact.h"
+#include "../include/factset.h"
 #include "test_macros.h"
 
 
@@ -225,13 +226,125 @@ void bench_hash() {
 
 }
 
-void test_fact_hash(){
-    Fact* boop = make_fact(NULL, "A", 1);
-    cout << CREHash{}(boop) << endl;
+std::string bits_to_string(uint64_t x) {
+    std::string result;
+    for (int i = 63; i >= 0; i--) {
+        result += ((x >> i) & 1) ? '1' : '0';
+        if (i % 8 == 0 && i != 0) result += ' ';
+    }
+    return result;
+}
+
+std::string bits_to_string(const std::vector<uint8_t>& x) {
+    std::string result;
+    for (int i = 0; i < x.size(); i++) {
+        for (int j = 7; j >= 0; --j) {
+            result += ((x[i] >> j) & 1) ? '1' : '0';
+            if (j % 8 == 0 && j != 0) result += ' ';
+        }
+    }
+    return result;
+}
+
+void test_factset_hash(int N=1000){
+    
+    cout << IntHash(0) << endl;
+    cout << IntHash(1) << endl;
+    cout << IntHash(1) << endl;
+    cout << IntHash(2) << endl;
+    cout << IntHash(3) << endl;
+    cout << bits_to_string(FNV_BASIS) << endl;
+    cout << bits_to_string(FNV_BASIS*FNV_BASIS) << endl;
+    cout << bits_to_string(int64_t(FNV_BASIS) * int64_t(FNV_BASIS)) << endl;
+    cout << bits_to_string(uint64_t(FNV_BASIS) * uint64_t(FNV_BASIS))<< endl;
+
+    //  --- Check that simple facts have random-ish hashes ---
+    std::vector<int> ones(64, 0);
+    for(int i=0; i < N; i++){
+        ref<Fact> fact = make_fact(nullptr, Item(i), Item(std::to_string(i)), Item(i%2));
+
+        uint64_t hash = CREHash{}(fact);
+        for (int j = 0; j < 64; j++) {
+            ones[j] += (hash >> j) & 1;
+        }   
+    }
+    double avg_bias = 0;
+    for(int i=0; i < 64; i++){
+        double one_prop = double(ones[i]) / N;
+        avg_bias += std::abs(.5-one_prop);
+    }
+    avg_bias /= 64;
+    // cout << "avg_bias" << avg_bias << endl;
+    IS_TRUE(avg_bias < .05);
+
+
+    // --- Check that FactSets have random-ish hashes --
+    int byte_width = 24;
+    double total_duration;
+    // total_duration = 0;
+    ones = std::vector(byte_width*8, 0);
+    for(int k=0; k < N; k++){
+        ref<FactSet> fs = new FactSet();
+        for(int i=0; i < N; i++){
+            ref<Fact> fact = make_fact(nullptr, Item(i*k), Item(std::to_string(i*k)), Item(i%2));
+            fs->declare(fact);
+        }
+
+        auto start = high_resolution_clock::now();        
+        std::vector<uint8_t> hash = fs->long_hash_bytes(byte_width);//CREHash{}(fact);
+        auto stop = high_resolution_clock::now();        
+        auto dur = duration_cast<microseconds>(stop-start);
+        // cout << dur.count() / 1000.0 << endl;
+        total_duration += dur.count() / 1000.0;
+
+        for (int j = 0; j < byte_width*8; j++) {
+            ones[j] += (hash[j/8] >> (j%8)) & 1;
+        }
+    }
+    avg_bias = 0;
+    for(int i=0; i < byte_width*8; i++){
+        double one_prop = double(ones[i]) / N;
+        avg_bias += std::abs(.5-one_prop);
+        // cout << "bit=" << i << " one_prop=" << one_prop << endl;
+    }
+    avg_bias /= byte_width*8;
+    IS_TRUE(avg_bias < .05);
+    cout << "avg_bias:" << avg_bias << endl;
+    cout << "avg_time:" <<  total_duration / N << " ms" << endl;
+    
+
+    // --- Check that the order of the elements doesn't effect the hash ---
+    ref<FactSet> fs_fwd = new FactSet();
+    for(int i=0; i < 10; i++){
+        ref<Fact> fact = make_fact(nullptr, Item(i), Item(std::to_string(i)), Item(i%2));
+        cout << fact->hash << endl;
+        fs_fwd->declare(fact);
+    }
+    std::vector<uint8_t> fwd_hash = fs_fwd->long_hash_bytes(byte_width);
+    cout << " -- -- " << endl;
+    ref<FactSet> fs_rev = new FactSet();
+    for(int i=10-1; i > -1; --i){
+        ref<Fact> fact = make_fact(nullptr, Item(i), Item(std::to_string(i)), Item(i%2));
+        cout << fact->hash << endl;
+        fs_rev->declare(fact);
+    }
+    std::vector<uint8_t> rev_hash = fs_rev->long_hash_bytes(byte_width);
+
+    cout << fs_fwd << endl;
+    cout << fs_rev << endl;
+
+    cout << bits_to_string(fwd_hash) << endl;
+    cout << bits_to_string(rev_hash) << endl;
+
+    IS_TRUE(fwd_hash == rev_hash);
+
+    cout << fs_rev->long_hash_string(byte_width) << endl;
+
+
 }
 
 int main(void) {
     // Call all tests. Using a test framework would simplify this.
-    bench_hash();
-    test_fact_hash();
+    // bench_hash();
+    test_factset_hash();
 }

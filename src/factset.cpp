@@ -143,6 +143,42 @@ std::string FactSet::to_string(
 	return fmt::format(fmt::runtime(format), fmt::join(fact_strs, delim));	
 }
 
+std::vector<uint8_t> FactSet::long_hash_bytes(size_t byte_width){
+
+	// std::vector<uint8_t>* hash_bytes_ptr = new std::vector<uint8_t>(byte_width, 0);
+	std::vector<uint8_t> hash_bytes = std::vector<uint8_t>(byte_width, 0);
+
+	for (auto it = begin(); it != end(); ++it) {
+		Fact* fact = (*it);
+		uint64_t fact_hash = CREHash{}(fact);
+
+		uint8_t b0 = (fact_hash >> 0)  & 0xFF;  // Least significant byte
+		uint8_t b1 = (fact_hash >> 8)  & 0xFF;
+		uint8_t b2 = (fact_hash >> 16) & 0xFF;
+		uint8_t b3 = (fact_hash >> 24) & 0xFF;
+		uint8_t b4 = (fact_hash >> 32) & 0xFF;
+		uint8_t b5 = (fact_hash >> 40) & 0xFF;
+		uint8_t b6 = (fact_hash >> 48) & 0xFF;
+		uint8_t b7 = (fact_hash >> 56) & 0xFF;  // Most significant byte
+
+		hash_bytes[b7 % byte_width] ^= b0;
+		hash_bytes[b0 % byte_width] ^= b1;
+		hash_bytes[b1 % byte_width] ^= b2;
+		hash_bytes[b2 % byte_width] ^= b3;
+		hash_bytes[b3 % byte_width] ^= b4;
+		hash_bytes[b4 % byte_width] ^= b5;
+		hash_bytes[b5 % byte_width] ^= b6;
+		hash_bytes[b6 % byte_width] ^= b7;
+	}
+
+	return hash_bytes;
+}
+
+std::string FactSet::long_hash_string(size_t byte_width){
+	std::vector<uint8_t> hash = long_hash_bytes(byte_width);
+	return bytes_to_base64(hash);
+}
+
 // std::string FactSet::to_string(){
 // 	return to_string("FactSet{{\n  {}\n}}", "\n  ");
 // }

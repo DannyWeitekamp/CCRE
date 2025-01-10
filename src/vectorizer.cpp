@@ -51,7 +51,7 @@ size_t Vectorizer::_get_nom_slot(Fact* fact){
 		// cout << "BEFORE" << fact << endl;
 
 		FactView* fv_ptr = (FactView*) &(it->first);
-		ref<Fact> fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
+		ref<Fact> fact_slice = fact->slice(0, fv.end_, COPY_DEEP, buffer);
 
 		// cout << "AFTER" << fact_slice << endl;
 
@@ -74,7 +74,7 @@ size_t Vectorizer::_get_flt_slot(Fact* fact){
 	auto [it, inserted] = flt_slot_map.try_emplace(fv, slot);
 	if(inserted){
 		FactView* fv_ptr = (FactView*) &(it->first);
-		ref<Fact> fact_slice = fact->slice_into(*buffer, 0, fv.end_, true);
+		ref<Fact> fact_slice = fact->slice(0, fv.end_, COPY_DEEP, buffer);
 		fv_ptr->fact = fact_slice;
 		inv_flt_slot_map.push_back(std::move(fact_slice));
 	}else{

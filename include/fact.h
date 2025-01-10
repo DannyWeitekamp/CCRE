@@ -16,6 +16,10 @@
 
 
 
+const uint8_t COPY_SHALLOW = 0;
+const uint8_t COPY_DEEP = 1;
+const uint8_t COPY_DEEP_REFS = 2;
+
 
 // Externally Defined Forward Declares
 struct FactSet;
@@ -51,7 +55,7 @@ public:
     parent(nullptr),
     f_id(-1),
     length(_type ? std::max(_length, uint32_t(_type->members.size())) : _length),
-    hash(FNV_BASIS ^ (int64_t(length) * FNV_PRIME)),
+    hash(FNV_BASIS ^ (_length * FNV_PRIME)),
     immutable(false)
 {}
 
@@ -60,34 +64,9 @@ public:
 
   // void operator delete(void * p);
     //
-
-  inline void verify_member_type(uint32_t ind, const Member& member){
-    if(this->type != nullptr && ind < this->type->members.size()){
-      CRE_Type* mbr_type = this->type->members[ind].type;
-
-      // if(member.t_id == T_ID_NULL){
-      //   member.t_id = mbr_type->t_id;
-      // }
-      if(member.t_id != T_ID_NULL && // Members can always be null
-         mbr_type->t_id != member.t_id &&
-         mbr_type->t_id != 0){
-
-        CRE_Type* type = current_context->types[member.t_id-1];
-        throw std::invalid_argument("Setting item[" + std::to_string(ind) + "] with type '" + mbr_type->name + "' to value " \
-          + item_to_string(member) + " with type '" + type->name + "'");
-      }
-      // return true;
-    }
-  }
-
-  // Executes type specific .set()
   template<class T>
-  inline void set(uint32_t ind, const T& val){
-    if(ind >= length){
-      throw std::out_of_range("Setting fact member [" + std::to_string(ind) + "] beyond its length (" + std::to_string(length) + ").");
-    }
-
-    // Convert to Item, always intern strings, always hash on assignment;
+  inline Member val_as_member(const T& val){
+    // Convert to Member, always intern strings, always hash on assignment;
     Member member;
     if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
       InternStr intern_str(intern(val));
@@ -96,15 +75,40 @@ public:
       uint64_t hash = CREHash{}(val); 
       member = Member(val, hash);
     }
+    return member;
+  }
+
+  inline void verify_member_type(uint32_t ind, const Item& item){
+    if(this->type != nullptr && ind < this->type->members.size()){
+      CRE_Type* mbr_type = this->type->members[ind].type;
+
+      // if(member.t_id == T_ID_NULL){
+      //   member.t_id = mbr_type->t_id;
+      // }
+      if(item.t_id != T_ID_NULL && // Members can always be null
+         mbr_type->t_id != item.t_id &&
+         mbr_type->t_id != 0){
+
+        CRE_Type* type = current_context->types[item.t_id-1];
+        throw std::invalid_argument("Setting item[" + std::to_string(ind) + "] with type '" + mbr_type->name + "' to value " \
+          + item_to_string(item) + " with type '" + type->name + "'");
+      }
+      // return true;
+    }
+  }
+
+  #define MBR_HASH(_mbr_hash, __ind) ( (_mbr_hash * (__ind+1) * FNV_PRIME) )
+
+  // Executes type specific .set()
+  template<class T>
+  inline void set(uint32_t ind, const T& val){
+    if(ind >= length){
+      throw std::out_of_range("Setting fact member [" + std::to_string(ind) + "] beyond its length (" + std::to_string(length) + ").");
+    }
+    Member member = val_as_member(val);
 
     // Handle type checking against the fact's type   
     verify_member_type(ind, member);
-    // if(!member_type_is_valid(ind, member)) [[unlikely]] {
-    //   CRE_Type* mbr_type = this->type->members[ind].type;
-    //   CRE_Type* type = current_context->types[member.t_id-1];
-      
-    // } 
-    
 
     // Get pointer to the 0th Item
     Member* data_ptr(std::bit_cast<Member*>(
@@ -112,8 +116,8 @@ public:
     ));
 
     // Replace the XOR contribution of the old hash with the new
-    hash ^= int64_t(data_ptr[ind].hash) * int64_t(ind+1) * int64_t(FNV_PRIME);
-    hash ^= int64_t(member.hash) * int64_t(ind+1) * int64_t(FNV_PRIME);    
+    hash ^= MBR_HASH(data_ptr[ind].hash, ind);
+    hash ^= MBR_HASH(member.hash, ind);
 
     // Assign to the ind'th item
     data_ptr[ind] = member;
@@ -137,13 +141,17 @@ public:
    */
   template<class T>
   inline void set_unsafe(uint32_t ind, const T& val){
+    Member member = val_as_member(val);
+
     Member* data_ptr = std::bit_cast<Member*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)
     );
-    Member member = Member(val);
-    data_ptr[ind] = member;
+    
+    // Add the XOR contribution of the member
+    hash ^= MBR_HASH(member.hash, ind);
 
-    hash ^= int64_t(member.hash) * int64_t(ind+1) * int64_t(FNV_PRIME);    
+    // Assign to the ind'th item
+    data_ptr[ind] = member;
   }
 
   
@@ -209,13 +217,15 @@ public:
   inline size_t size() const {return length;}
 
   std::tuple<size_t, size_t> _format_slice(int _start, int _end);
-  ref<Fact> slice_into(Fact* new_fact,      int start, int end, bool deep_copy=false);
-  ref<Fact> slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy=false);
-  ref<Fact> slice(int start, int end, bool deep_copy=false);
+  // ref<Fact> slice_into(Fact* new_fact,      int start, int end, bool deep_copy=false);
+  // ref<Fact> slice_into(AllocBuffer& buffer, int start, int end, bool deep_copy=false);
+  ref<Fact> slice(int start, int end, uint8_t copy_kind=COPY_SHALLOW, 
+                  AllocBuffer* buffer=nullptr);
 
-  ref<Fact> copy_into(Fact* new_fact, bool deep_copy=false);
-  ref<Fact> copy_into(AllocBuffer& buffer, bool deep_copy=false);
-  ref<Fact> copy(bool deep_copy);
+  // ref<Fact> copy_into(Fact* new_fact, bool deep_copy=false);
+  // ref<Fact> copy_into(AllocBuffer& buffer, bool deep_copy=false);
+  ref<Fact> copy(uint8_t copy_kind=COPY_SHALLOW, 
+                 AllocBuffer* buffer=nullptr);
 
   bool operator==(const Fact& other) const;
 
@@ -459,11 +469,25 @@ inline uint32_t _resolve_fact_len(FactType* type, size_t n_items){
    * @return The newly allocated fact
    */
 
-inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0){
-  length = _resolve_fact_len(type, length); 
-  Fact* fact_addr = (Fact*) malloc(SIZEOF_FACT(length));
+inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0, AllocBuffer* buffer=nullptr){
+  length = _resolve_fact_len(type, length);
+
+  bool did_malloc = false;
+  Fact* fact_addr = nullptr;
+  if(buffer != nullptr){
+    fact_addr = (Fact*) buffer->alloc_bytes(SIZEOF_FACT(length), did_malloc);
+    
+  }else{
+    did_malloc = true;
+    fact_addr = (Fact*) malloc(SIZEOF_FACT(length));
+  }
 
   ref<Fact> fact = new (fact_addr) Fact(type, length);
+
+  if(!did_malloc){
+      fact->alloc_buffer = buffer;
+      buffer->inc_ref();
+  }
 
   return fact;
 }
@@ -517,8 +541,10 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
 
       // Note/Verify TODO: copy elision optimization should prevent copying
       //   this temporary.
-      Item item = items[i];
-      fact->set(i, item);
+      ItemOrMbr item = items[i];
+
+      fact->verify_member_type(i, item);
+      fact->set_unsafe(i, item);
 
       if(!item.is_primitive() && item.borrows){
         ((CRE_Obj*) item.val)->inc_ref();

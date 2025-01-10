@@ -135,6 +135,11 @@ public:
     Iterator end() { return  Iterator(facts.end(), facts.end());}
 
 
+    std::vector<uint8_t> long_hash_bytes(size_t byte_width=24);
+    std::string long_hash_string(size_t byte_width=24);
+
+
+
 };
 
 std::ostream& operator<<(std::ostream& out, FactSet* fs);

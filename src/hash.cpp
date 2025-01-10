@@ -364,5 +364,43 @@ uint64_t accum_item_hash(uint64_t acc, uint64_t lane){
 }
 
 
+// From https://stackoverflow.com/a/57556517
+uint64_t xorshift(const uint64_t& n,int i){
+  return n^(n>>i);
+}
+uint64_t IntHash(const uint64_t& n){
+  uint64_t p = 0x5555555555555555ull; // pattern of alternating 0 and 1
+  uint64_t c = 17316035218449499591ull;// random uneven integer constant; 
+  return c*xorshift(p*xorshift(n,32),32);
+}
 
 
+const char base64_alpha_num[64] = {
+              'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
+              'P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d',
+              'e','f','g','h','i','j','k','l','m','n','o','p','q','r','s',
+              't','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9'
+              // Note this encoding has some degeneracy
+              ,'A','B'};
+
+std::string bytes_to_base64(std::vector<uint8_t> bytes){
+    int n_char = std::ceil(bytes.size() * (8.0/6.0));
+    cout << "N CHAR" << n_char << endl;
+    char out_str[n_char+1];
+
+    for(size_t i=0; i < n_char; ++i){
+        int bit_ind = (i*6);
+        int lower_ind = bit_ind >> 3;
+        int upper_ind = (bit_ind+6) >> 3;
+        int offset = std::max(bit_ind-(lower_ind << 3),0);
+        int overflow = std::max((bit_ind+6)-((lower_ind+1) << 3),0);
+        int lower_width = (6-overflow);
+
+        char byte = (bytes[lower_ind] >> offset) & (255 >> (8-lower_width));
+        char overflow_byte = bytes[upper_ind] & (255 >> (8-overflow));
+        byte |= overflow_byte << lower_width;
+
+        out_str[i] = base64_alpha_num[byte];
+    }
+    return std::string(out_str, n_char);
+}

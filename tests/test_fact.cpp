@@ -192,7 +192,33 @@ void test_hash(){
 }
 
 void test_copy(){
+	
+	FactType* CatType = define_fact("Cat", 
+	    {{"id", cre_str, {{"unique_id", Item(true)}} },
+	     {"color", cre_str},
+	     {"legs", cre_int, {{"verbosity", Item(2)}}},
+	     {"frisky", cre_bool}
+	 	}
+	);
+	FactType* CatOwner = define_fact("CatOwner", 
+	    {{"id", cre_str, {{"unique_id", Item(true)}} },
+	     {"cat", CatType},
+	 	}
+	);
 
+	// // Okay
+	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
+	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball);
+
+	ref<Fact> snowball_copy = snowball->copy();
+	ref<Fact> Jeff_copy = Jeff->copy();
+
+	cout << snowball << endl;
+	cout << snowball_copy << endl;
+
+	cout << Jeff << Jeff->hash << endl;
+	cout << Jeff_copy << Jeff_copy->hash << endl;
+	
 }
 
 void test_slice(){
@@ -207,7 +233,7 @@ int main(){
     // test_errors();
     // test_flags();
     // test_iterate_fact();
-
-    test_hash();
+    // test_hash();
+    test_copy();
     return 0;
 }

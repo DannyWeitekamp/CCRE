@@ -139,10 +139,13 @@ std::vector<Member> Fact::get_members() const{
 // 	return this->length;
 // }
 
-void _fill_fact_slice_copy(Fact* src, Fact* dest, size_t start, size_t end){
-	size_t length = end-start;
+void _fill_fact_slice_copy(Fact* src, Fact* dest, 
+													 size_t start, size_t end,
+													 uint8_t copy_kind=COPY_SHALLOW,
+													 AllocBuffer* buffer=nullptr){
+	// size_t length = end-start;
 
-	new (dest) Fact(nullptr, length);
+	// new (dest) Fact(nullptr, length);
 
 	// _init_fact(dest, length, nullptr);	
 	size_t src_end = std::min(size_t(src->length), end);
@@ -151,12 +154,19 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest, size_t start, size_t end){
 	int i=start;
 	for(; i < src_end; i++, j++){
 		Item item = src->get(i);
-		
-		if(item.t_id == T_ID_FACT && item.val != 0){
-			Fact* item_fact = item.as_fact();
-			if(item_fact->immutable){
+	
+		Fact* item_fact = nullptr;		
+		if(copy_kind >= COPY_DEEP  && 
+			 item.t_id == T_ID_FACT && 
+			 item.val != 0 && 
+			 (!item.is_ref || copy_kind == COPY_DEEP_REFS) ){
+			 // (item_fact = item.as_fact())->immutable){
+
+				Fact* item_fact = item.as_fact();
+				dest->set_unsafe(j, item_fact->copy(copy_kind, buffer));
+			// if(item_fact->immutable){
 				// TODO
-			}
+			// }
 		}else{
 			// Everything else can be copied w/o type checking or recursion;
 			dest->set_unsafe(j, item);
@@ -189,56 +199,60 @@ std::tuple<size_t, size_t> Fact::_format_slice(int _start, int _end){
 }
 
 
-ref<Fact> Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy){
+// ref<Fact> Fact::slice_into(Fact* new_fact, int _start, int _end, bool deep_copy){
 	
-	// cout << "<< start: " << uint64_t(start) <<
-	// 				"<< end: " << uint64_t(end) <<
-	// 	      "<< LENGTH: " << uint64_t(length) << endl;
-	auto [start, end] = _format_slice(_start, _end);
-	_fill_fact_slice_copy(this, new_fact, start, end);
-	// cout << "ALLOC ADDR: " << uint64_t(new_fact) << endl;
+// 	// cout << "<< start: " << uint64_t(start) <<
+// 	// 				"<< end: " << uint64_t(end) <<
+// 	// 	      "<< LENGTH: " << uint64_t(length) << endl;
+// 	auto [start, end] = _format_slice(_start, _end);
+// 	_fill_fact_slice_copy(this, new_fact, start, end);
+// 	// cout << "ALLOC ADDR: " << uint64_t(new_fact) << endl;
 	
-	return new_fact;
-}
+// 	return new_fact;
+// }
 
-ref<Fact> Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy){
+// ref<Fact> Fact::slice_into(AllocBuffer& buffer, int _start, int _end, bool deep_copy){
+// 	auto [start, end] = _format_slice(_start, _end);
+// 	size_t length = end-start;
+// 	bool did_malloc = false;
+// 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length), did_malloc);
+// 	_fill_fact_slice_copy(this, new_fact, start, end);
+// 	if(!did_malloc){
+// 		new_fact->alloc_buffer = &buffer;
+// 		buffer.inc_ref();
+// 	}
+// 	return new_fact;
+// }
+
+ref<Fact> Fact::slice(int _start, int _end, uint8_t copy_kind, 
+											AllocBuffer* buffer){
 	auto [start, end] = _format_slice(_start, _end);
-	size_t length = end-start;
-	bool did_malloc = false;
-	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(length), did_malloc);
-	_fill_fact_slice_copy(this, new_fact, start, end);
-	if(!did_malloc){
-		new_fact->alloc_buffer = &buffer;
-		buffer.inc_ref();
-	}
+	ref<Fact> new_fact = alloc_fact(nullptr, end-start, buffer);
+	// Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
+	_fill_fact_slice_copy(this, new_fact, start, end, copy_kind, buffer);
 	return new_fact;
 }
 
-ref<Fact> Fact::slice(int _start, int _end, bool deep_copy){
-	auto [start, end] = _format_slice(_start, _end);
-	size_t length = end-start;
-	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(length));
-	_fill_fact_slice_copy(this, new_fact, start, end);
-	return new_fact;
-}
+// ref<Fact> Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
+// 	bool did_malloc = false;
+// 	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length), did_malloc);
+// 	_fill_fact_slice_copy(this, new_fact, 0, this->length);
+// 	if(!did_malloc){
+// 		new_fact->alloc_buffer = &buffer;
+// 		buffer.inc_ref();
+// 	}
+// 	return new_fact;
+// }
 
-ref<Fact> Fact::copy_into(AllocBuffer& buffer, bool deep_copy){
-	bool did_malloc = false;
-	Fact* new_fact = (Fact *) buffer.alloc_bytes(SIZEOF_FACT(this->length), did_malloc);
-	_fill_fact_slice_copy(this, new_fact, 0, this->length);
-	if(!did_malloc){
-		new_fact->alloc_buffer = &buffer;
-		buffer.inc_ref();
-	}
-	return new_fact;
-}
-
-ref<Fact> Fact::copy(bool deep_copy){
+ref<Fact> Fact::copy(uint8_t copy_kind, 
+										 AllocBuffer* buffer){
 	// Fact* fact = () _alloc_fact(_length);
 	// AllocBuffer buffer = AllocBuffer(SIZEOF_FACT(this->length), true);
 	// cout << "MALLOC" << SIZEOF_FACT(this->length) << endl; 
-	Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(this->length));
-	_fill_fact_slice_copy(this, new_fact, 0, this->length);
+	// Fact* new_fact = (Fact *) malloc(SIZEOF_FACT(this->length));
+	ref<Fact> new_fact = alloc_fact(this->type, this->length, buffer);
+	_fill_fact_slice_copy(this, new_fact, 0, this->length, copy_kind, buffer);
+	// new_fact->type = this->type;
 	// Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
 	return new_fact;
 }
@@ -395,7 +409,7 @@ uint64_t _hash_fact_range(const Fact* x, int64_t start, int64_t end){
       Member mbr = x->get(i);
 
       // Cast int64_t so multiply wraps instead of trucating.
-      hash ^= int64_t(mbr.hash) * int64_t(i+1) * int64_t(FNV_PRIME);
+      hash ^= MBR_HASH(mbr.hash, i);//mbr.hash * (i+1) * FNV_PRIME;
   }
 
   // NOTE: Since hashes changing along w/ set(), forcing non-zero hashes

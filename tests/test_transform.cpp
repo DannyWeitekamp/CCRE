@@ -225,11 +225,11 @@ int main(){
 	// cout << "SIZE:" << SIZEOF_FACT(4) << endl;
 
 
-	// test_flattener();
-	// bench_flattener(10, 1);
+	test_flattener();
+	bench_flattener(10, 1);
 	// bench_flattener(1000, 500);
-	// test_vectorizer();
-	// bench_vectorizer(10, 1);
+	test_vectorizer();
+	bench_vectorizer(10, 1);
 	// bench_vectorizer(1000, 500);
 	return 0;
 }
