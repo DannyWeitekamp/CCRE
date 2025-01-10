@@ -115,8 +115,11 @@ Item::Item(const std::string_view& arg) {
     item.data = data;
     // item.hash = intern_str.hash;
     item.t_id = T_ID_STR;
-    item.kind = 1; // TODO
-    item.is_ascii = 1; // TODO
+    item.is_ref = 1; // TODO
+    item.borrows = 0; // TODO
+    // TODO
+    // item.kind = 1; 
+    // item.is_ascii = 1; // TODO
     item.length = intern_str.length();
 
     *this = std::bit_cast<Item>(item);
@@ -146,13 +149,15 @@ Item::Item(const char* data, size_t _length) {
 
 
 // -- Fact -> Item ---
-Item::Item(Fact* x, bool _is_ref) : 
+Item::Item(Fact* x, uint8_t _is_ref) : 
             val(std::bit_cast<uint64_t>(x)),
       t_id(T_ID_FACT),
-      is_ref(_is_ref), borrows(0), pad(0)
-{};
+      is_ref(_is_ref == 0xFF ? !x->immutable : _is_ref), borrows(1), pad(0)
+{
+    // x->inc_ref();
+};
 
-Item::Item(ref<Fact> x, bool _is_ref) : ::Item((Fact*) x, _is_ref)
+Item::Item(ref<Fact> x, uint8_t _is_ref) : ::Item((Fact*) x, _is_ref)
 {};
 
 
@@ -163,7 +168,7 @@ Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
 {
 // TODO: should figure out how to do this with move semantics
 //   to avoid pointless increfs
-    x->inc_ref(); 
+    // x->inc_ref(); 
 };
 
 Item::Item(ref<Var> x) : ::Item((Var*) x)
@@ -177,13 +182,28 @@ Item::Item(Func* x) : val(std::bit_cast<uint64_t>(x)),
 {
 // TODO: should figure out how to do this with move semantics
 //   to avoid pointless increfs
-    x->inc_ref(); 
+    // x->inc_ref(); 
 };
 
 Item::Item(ref<Func> x) : ::Item((Func*) x)
 {};
 
 
+void Item::borrow(){
+    if(!is_primitive() && borrows){
+     ((CRE_Obj*) val)->inc_ref();
+    }
+}
+
+void Item::release(){
+    if(!is_primitive() && borrows){
+     ((CRE_Obj*) val)->dec_ref();
+    }
+}
+
+// void Item::destroy(){
+    
+// }
 
 // val(std::bit_cast<uint64_t>(x.get())),
 //                     t_id(T_ID_VAR), 

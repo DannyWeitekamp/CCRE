@@ -22,8 +22,12 @@ struct UnicodeItem {
     const char* data;
     // uint64_t hash;
     uint16_t t_id;
-    uint8_t kind;
-    uint8_t is_ascii;
+    uint8_t is_ref;
+    uint8_t borrows;
+
+    // TODO: Need a way of encoding larger bytewidths
+    // uint8_t kind;
+    // uint8_t is_ascii;
     uint32_t length;
 };
 
@@ -86,14 +90,25 @@ struct Item {
     Item(const std::string_view& arg);
     Item(const char* data, size_t _length=-1);
 
-    Item(Fact* x, bool _is_ref=false);
-    Item(ref<Fact> x, bool _is_ref=false);
+    Item(Fact* x, uint8_t _is_ref=0xFF);
+    Item(ref<Fact> x, uint8_t _is_ref=0xFF);
 
     Item(Var* x);
     Item(ref<Var> x);
 
     Item(Func* x);
     Item(ref<Func> x);
+
+    void borrow();
+    void release();
+
+
+    // ~Item();
+    // inline void destroy(){
+    //     if(borrows){
+    //         ((CRE_Obj*) val)->dec_ref();
+    //     }  
+    // } 
 
 
     inline bool is_primitive() const{
@@ -132,7 +147,7 @@ struct Item {
     }
 
     std::string to_string() const;
-    
+        
 };
 
 

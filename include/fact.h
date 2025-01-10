@@ -65,7 +65,7 @@ public:
   // void operator delete(void * p);
     //
   template<class T>
-  inline Member val_as_member(const T& val){
+  inline Member borrow_val_as_member(const T& val){
     // Convert to Member, always intern strings, always hash on assignment;
     Member member;
     if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
@@ -75,6 +75,7 @@ public:
       uint64_t hash = CREHash{}(val); 
       member = Member(val, hash);
     }
+    member.borrow();
     return member;
   }
 
@@ -105,7 +106,7 @@ public:
     if(ind >= length){
       throw std::out_of_range("Setting fact member [" + std::to_string(ind) + "] beyond its length (" + std::to_string(length) + ").");
     }
-    Member member = val_as_member(val);
+    Member member = borrow_val_as_member(val);
 
     // Handle type checking against the fact's type   
     verify_member_type(ind, member);
@@ -141,7 +142,7 @@ public:
    */
   template<class T>
   inline void set_unsafe(uint32_t ind, const T& val){
-    Member member = val_as_member(val);
+    Member member = borrow_val_as_member(val);
 
     Member* data_ptr = std::bit_cast<Member*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)
@@ -313,22 +314,32 @@ std::ostream& operator<<(std::ostream& out, ref<Fact> fact);
 
 template <class ... Ts>
 ref<Fact> make_fact(FactType* type, Ts && ... inputs){
-  // std::cout << std::endl;
   Member mbrs[sizeof...(Ts)];
-  // std::vector<Item> items = {};
-  // items.reserve();
   int i = 0;
   ([&]
     {
-        // Do things in your "loop" lambda
-        // Item item = to_item(inputs);
-        // items.push_back(item);
         // cout << "!!" << Member(inputs) << " " << sizeof(Member) << " " << endl;
         mbrs[i] = Member(inputs);
         ++i;
         
     } (), ...);
-  ref<Fact> fact = new_fact(type, mbrs, i);
+  ref<Fact> fact = new_fact(type, mbrs, i, false);
+  
+  return fact;
+}
+
+template <class ... Ts>
+ref<Fact> make_tuple(Ts && ... inputs){
+  Member mbrs[sizeof...(Ts)];
+  int i = 0;
+  ([&]
+    {
+        // cout << "!!" << Member(inputs) << " " << sizeof(Member) << " " << endl;
+        mbrs[i] = Member(inputs);
+        ++i;
+        
+    } (), ...);
+  ref<Fact> fact = new_fact(nullptr, mbrs, i, true);
   
   return fact;
 }
@@ -546,9 +557,9 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
       fact->verify_member_type(i, item);
       fact->set_unsafe(i, item);
 
-      if(!item.is_primitive() && item.borrows){
-        ((CRE_Obj*) item.val)->inc_ref();
-      }
+      // if(!item.is_primitive() && item.borrows){
+      //   ((CRE_Obj*) item.val)->inc_ref();
+      // }
     }
   } catch (const std::exception& e) {
     // Make sure that fact is freed on error
@@ -572,8 +583,8 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
    *   additional trailing members (which is unusual but not forbidden).
    * @return The new empty fact
    */
-inline ref<Fact> empty_fact(FactType* type,
-                            uint32_t length=0){
+inline ref<Fact> empty_fact(FactType* type, uint32_t length=0,
+                            AllocBuffer* buffer=nullptr){
     ref<Fact> fact = alloc_fact(type, length);
     _zfill_fact(fact, 0, fact->length);
     fact->hash = CREHash{}(fact);
@@ -595,15 +606,18 @@ inline ref<Fact> empty_fact(FactType* type,
   //     an optimization).
 
 template<std::derived_from<Item> ItemOrMbr>
-ref<Fact> new_fact(FactType* type, const ItemOrMbr* items, size_t n_items, bool immutable=false){
-  ref<Fact> fact = alloc_fact(type, n_items);
+ref<Fact> new_fact(FactType* type, const ItemOrMbr* items, size_t n_items,
+                    bool immutable=false, AllocBuffer* buffer=nullptr){
+  ref<Fact> fact = alloc_fact(type, n_items, buffer);
   _fill_fact(fact, items, n_items);
+  fact->immutable = immutable;
   return fact;
 }
 
 template<std::derived_from<Item> ItemOrMbr>
-ref<Fact> new_fact(FactType* type, const std::vector<ItemOrMbr>& items, bool immutable=false){
-  return new_fact(type, items.data(), items.size());
+ref<Fact> new_fact(FactType* type, const std::vector<ItemOrMbr>& items,
+                    bool immutable=false, AllocBuffer* buffer=nullptr){
+  return new_fact(type, items.data(), items.size(), buffer);
 }
 
 

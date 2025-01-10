@@ -41,12 +41,15 @@ void Fact_dtor(const CRE_Obj* x){
 		Fact* fact = (Fact*) x;
 		for(size_t i=0; i < fact->length; i++){
 			Item item = fact->get(i);
+
 			// cout << "~ITEM: " << "i=" << i << " " << item << ", t_id=" << item.t_id << ", borrows=" << uint64_t(item.borrows) << endl;
-			if(item.t_id > T_ID_STR && item.borrows){
-				CRE_Obj* item_obj = (CRE_Obj*) item.val;
-				// cout << "~ITEM REFS: " << item_obj->get_refcount() << endl;
-				item_obj->dec_ref();
-			}
+			// if(!item.is_primitive() && item.borrows){
+			// 	// CRE_Obj* item_obj = ;
+			// 	cout << "i=" << i << " ~ITEM REFS: " << ((CRE_Obj*) item.val)->get_refcount() << endl;
+			// 	cout << item << endl;
+			// // 	item_obj->dec_ref();
+			// }
+			item.release();
 		}
 
 		if(x->alloc_buffer == nullptr){
@@ -155,7 +158,6 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest,
 	for(; i < src_end; i++, j++){
 		Item item = src->get(i);
 	
-		Fact* item_fact = nullptr;		
 		if(copy_kind >= COPY_DEEP  && 
 			 item.t_id == T_ID_FACT && 
 			 item.val != 0 && 
@@ -163,17 +165,27 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest,
 			 // (item_fact = item.as_fact())->immutable){
 
 				Fact* item_fact = item.as_fact();
-				dest->set_unsafe(j, item_fact->copy(copy_kind, buffer));
+				ref<Fact> fact_copy = item_fact->copy(copy_kind, buffer);
+
+				// cout << "BREF COUNT" << fact_copy->get_refcount() << endl;
+				// cout << "j=" << j << " ITEM FACT:" << item_fact << endl;
+				dest->set_unsafe(j, fact_copy);
+
+				// cout << "AREF COUNT" << fact_copy->get_refcount() << endl;
+
+				// cout << "?? " << dest->get(j) << endl;
 			// if(item_fact->immutable){
 				// TODO
 			// }
 		}else{
 			// Everything else can be copied w/o type checking or recursion;
 			dest->set_unsafe(j, item);
+
+			// if(!item.is_primitive() && item.borrows){
+			// 	((CRE_Obj*) item.val)->inc_ref();
+			// }
 		}
-		if(!item.is_primitive() && item.borrows){
-			((CRE_Obj*) item.val)->inc_ref();
-		}
+		
 	}
 	if(i < end){
 		_zfill_fact(dest, j, end-start);
@@ -320,21 +332,28 @@ std::string Fact::to_string(uint8_t verbosity){
 }
 
 
-void fact_dtor(Fact* fact){
-	for(size_t i=0; i < fact->length; i++){
-		Item item = fact->get(i);
-		if(item.t_id == T_ID_OBJ){
-			ObjItem* o_item = (ObjItem*) &item;
-			((CRE_Obj*) o_item->data)->dec_ref();
-			// CRE_decref((CRE_Obj*) o_item->data);	
-		}
-	}
-	if(fact->alloc_buffer != (void *) NULL){
-		fact->alloc_buffer->dec_ref();
-		// CRE_decref((CRE_Obj*) fact->alloc_buffer);
-	}
-	free(fact);
-}
+// void fact_dtor(Fact* fact){
+// 	cout << "DTOR" << endl;
+// 	for(size_t i=0; i < fact->length; i++){
+// 		Item item = fact->get(i);
+// 		cout << "REF COUNT: " << ((CRE_Obj*) item.val)->get_refcount() << endl;
+// 		item.release();
+
+
+
+// 		// item.~Item();
+// 		// if(item.t_id == T_ID_OBJ){
+// 		// 	ObjItem* o_item = (ObjItem*) &item;
+// 		// 	((CRE_Obj*) o_item->data)->dec_ref();
+// 		// 	// CRE_decref((CRE_Obj*) o_item->data);	
+// 		// }
+// 	}
+// 	if(fact->alloc_buffer != (void *) NULL){
+// 		fact->alloc_buffer->dec_ref();
+// 		// CRE_decref((CRE_Obj*) fact->alloc_buffer);
+// 	}
+// 	free(fact);
+// }
 
 
 std::ostream& operator<<(std::ostream& out, Fact* fact){

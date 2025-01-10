@@ -191,8 +191,7 @@ void test_hash(){
 	// ??
 }
 
-void test_copy(){
-	
+auto nested_objects(){
 	FactType* CatType = define_fact("Cat", 
 	    {{"id", cre_str, {{"unique_id", Item(true)}} },
 	     {"color", cre_str},
@@ -203,22 +202,51 @@ void test_copy(){
 	FactType* CatOwner = define_fact("CatOwner", 
 	    {{"id", cre_str, {{"unique_id", Item(true)}} },
 	     {"cat", CatType},
+	     {"fudge", cre_Fact},
+	     {"buddy", new DefferedType("CatOwner")}
 	 	}
 	);
 
-	// // Okay
+	ref<Fact> fudge = make_tuple("This", "is", "fudge");
 	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
-	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball);
+	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball, fudge, nullptr);
+	ref<Fact> double_fudge = make_tuple("double", fudge);
+	ref<Fact> Bobby = make_fact(CatOwner, "Bobby", snowball, double_fudge, Jeff);	
+	return std::make_tuple(fudge, snowball, Jeff, double_fudge, Bobby);
+}
+
+void test_copy(){
+	
+	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
+
+	// cout << "FUDGE: " << fudge->get_refcount() << endl;
+	// cout << "SNOWBALL: " << snowball->get_refcount() << endl;
 
 	ref<Fact> snowball_copy = snowball->copy();
-	ref<Fact> Jeff_copy = Jeff->copy();
+	ref<Fact> Jeff_copy = Jeff->copy(COPY_SHALLOW);
+	ref<Fact> Jeff_deep_copy = Jeff->copy(COPY_DEEP);
+	ref<Fact> Jeff_deep_ref_copy = Jeff->copy(COPY_DEEP_REFS);
 
-	cout << snowball << endl;
-	cout << snowball_copy << endl;
-
-	cout << Jeff << Jeff->hash << endl;
-	cout << Jeff_copy << Jeff_copy->hash << endl;
+	// Copies should have the same string as originals
+	IS_TRUE(snowball->to_string() == snowball_copy->to_string());
 	
+	// SHALLOW copies should just copy pointers 
+	ref<Fact> Jeff_copy_cat = Jeff_copy->get("cat").as_fact(); 
+	IS_TRUE(Jeff->to_string() == Jeff_copy->to_string());
+	IS_TRUE(uint64_t(Jeff_copy_cat.get()) == uint64_t(snowball.get()));
+
+	// DEEP copies should copy whole objects if they are not references
+	IS_TRUE(Jeff->to_string() == Jeff_deep_copy->to_string());
+	IS_TRUE(uint64_t(Jeff_deep_copy.get()) != uint64_t(snowball.get()));
+
+	// DEEP_REFS copies should copy whole objects even if they are references
+	IS_TRUE(Jeff->to_string() == Jeff_deep_ref_copy->to_string());
+	IS_TRUE(uint64_t(Jeff_deep_ref_copy.get()) != uint64_t(snowball.get()));
+
+
+	cout << double_fudge << endl;
+	cout << Bobby << endl;
+
 }
 
 void test_slice(){
