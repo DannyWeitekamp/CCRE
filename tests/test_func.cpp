@@ -2,6 +2,7 @@
 #include "../include/fact.h"
 #include "../include/func.h"
 #include "../include/item.h"
+#include "../include/var.h"
 #include "test_macros.h"
 #include <random>
 
@@ -10,7 +11,7 @@
 
 using std::cout;
 using std::endl;
-
+using namespace cre;
 // template<typename func>
 // struct test_func {
 // 	Item& operator()(Item&, ...){

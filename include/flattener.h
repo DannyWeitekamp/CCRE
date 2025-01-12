@@ -1,5 +1,4 @@
-#ifndef _CRE_FLATTENER_H_
-#define _CRE_FLATTENER_H_
+#pragma once
 
 #include <vector>
 #include <map>
@@ -8,6 +7,7 @@
 #include "../include/factset.h"
 #include "../include/incr_processor.h"
 
+namespace cre {
 
 // Subject Verb Object
 const uint8_t TRIPLE_ORDER_SVO = 1;
@@ -104,4 +104,5 @@ struct Flattener : public IncrementalProcessor {
 	ref<FactSet> apply(FactSet* fs);
 };
 
-#endif /* #ifndef _CRE_FLATTENER_H_ */
+} // NAMESPACE_END(cre)
+

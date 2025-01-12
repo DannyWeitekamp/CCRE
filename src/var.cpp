@@ -6,7 +6,7 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
-
+namespace cre {
 // extern "C" 
 
 void Var_dtor(const CRE_Obj* x){
@@ -378,3 +378,5 @@ uint64_t CREHash::operator()(Var* var){
   var->hash = hash;
   return hash; 
 }
+
+} // NAMESPACE_END(cre)

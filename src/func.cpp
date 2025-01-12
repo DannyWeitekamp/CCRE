@@ -15,6 +15,7 @@
 #include "../include/var.h"
 
 
+namespace cre {
 
 void Func_dtor(const CRE_Obj* x){
 	Func* func = (Func*) x;
@@ -967,7 +968,7 @@ void Func::reinitialize(){
 // sig: f(a,d,c,e)
 // bc : [a][d][c][1] [add3(@1, @2, @3)] [add3(@0, @4, @2)]
 
-
+} // NAMESPACE_END(cre)
 
 
 

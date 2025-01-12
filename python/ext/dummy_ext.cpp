@@ -15,6 +15,9 @@ using std::unique_ptr;
 using std::shared_ptr;
 using std::cout;
 using std::endl;
+// using cre::ref;
+// using cre::CRE_Obj;
+using namespace cre;
 
 
 struct Dog : public CRE_Obj{

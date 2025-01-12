@@ -10,9 +10,9 @@
 #define XXH_INLINE_ALL 1
 
 
-#include "../include/unordered_dense.h"
-#include "../include/rapidhash.h"
-#include "../include/xxhash.h"
+#include "../external/unordered_dense.h"
+#include "../external/rapidhash.h"
+#include "../external/xxhash.h"
 #include "../include/intern.h"
 #include "../include/fact.h"
 #include "../include/factset.h"
@@ -27,6 +27,7 @@ using std::cout;
 using std::endl;
 using std::string;
 
+using namespace cre;
 
 
 

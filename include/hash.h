@@ -1,12 +1,12 @@
-#ifndef _CRE_HASH_H_
-#define _CRE_HASH_H_
+#pragma once
 
 #include <cstdint>
 #include <string>
 // #include <bit>
 #include <unordered_map>
-#include "../include/unordered_dense.h"
+#include "../external/unordered_dense.h"
 
+namespace cre {
 
 // NOTE: Do not import types.h here
 
@@ -108,5 +108,5 @@ template<class T>
 using HashSet = ankerl::unordered_dense::set<T, CREHash, std::equal_to<>>;
 
 
+} // NAMESPACE_END(cre)
 
-#endif /* _CRE_HASH_H_ */

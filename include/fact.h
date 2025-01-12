@@ -1,5 +1,4 @@
-#ifndef _CRE_FACT_H_
-#define _CRE_FACT_H_
+#pragma once
 
 #include <vector>
 #include <bit>
@@ -14,7 +13,7 @@
 #include "../include/intern.h"
 #include "../include/member.h"
 
-
+namespace cre {
 
 const uint8_t COPY_SHALLOW = 0;
 const uint8_t COPY_DEEP = 1;
@@ -706,6 +705,5 @@ ref<Fact> new_fact(FactType* type, const std::vector<ItemOrMbr>& items,
 //     // }
 // };
 
+} // NAMESPACE_END(cre)
 
-
-#endif /* _CRE_FACT_H_ */

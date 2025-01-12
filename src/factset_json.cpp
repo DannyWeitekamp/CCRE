@@ -15,6 +15,7 @@
 #include <iostream>
 #include <algorithm>
 
+
 //-----------------------------------------------------------------
 // : READ JSON to FactSet
 
@@ -28,6 +29,8 @@
 // struct RJSONValuePtr{
 
 // }
+
+namespace cre {
 
 struct FactSetFromJSON_impl{
 public:
@@ -632,6 +635,7 @@ std::string FactSet::to_json(
     return json_str;
 }
 
+} // NAMESPACE_END(cre)
 
 
 

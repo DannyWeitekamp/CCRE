@@ -1,6 +1,4 @@
-#ifndef _CRE_VECTORIZER_H_
-#define _CRE_VECTORIZER_H_
-
+#pragma once
 
 #include "../include/hash.h"
 #include "../include/alloc_buffer.h"
@@ -9,6 +7,7 @@
 #include "../include/incr_processor.h"
 #include "../include/member.h"
 
+namespace cre {
 
 // struct FactOffsetPtr {
 
@@ -80,5 +79,4 @@ struct Vectorizer : public IncrementalProcessor{
 	// void insert_onehot(Fact* fact);
 };
 
-
-#endif /*_CRE_VECTORIZER_H_ */
+} // NAMESPACE_END(cre)

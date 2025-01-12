@@ -17,13 +17,15 @@ Implementation of various hash utilities used in CRE. Hash functions
 #include <cmath>
 #include <limits>
 #include <string>
-#include "../include/rapidhash.h"
+#include "../external/rapidhash.h"
 #include "../include/hash.h"
 #include "../include/item.h"
 #include "../include/types.h"
 
 using std::cout;
 using std::endl;
+
+namespace cre {
 
 #ifdef __APPLE__
 #  include <libkern/OSByteOrder.h>
@@ -404,3 +406,5 @@ std::string bytes_to_base64(std::vector<uint8_t> bytes){
     }
     return std::string(out_str, n_char);
 }
+
+} // NAMESPACE_END(cre)

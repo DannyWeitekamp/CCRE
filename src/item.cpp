@@ -10,6 +10,7 @@
 #include <sstream>
 #include <functional>
 
+namespace cre {
 
 // extern "C" Item empty_item() {
 //     Item item;
@@ -157,7 +158,7 @@ Item::Item(Fact* x, uint8_t _is_ref) :
     // x->inc_ref();
 };
 
-Item::Item(ref<Fact> x, uint8_t _is_ref) : ::Item((Fact*) x, _is_ref)
+Item::Item(ref<Fact> x, uint8_t _is_ref) : Item((Fact*) x, _is_ref)
 {};
 
 
@@ -171,7 +172,7 @@ Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
     // x->inc_ref(); 
 };
 
-Item::Item(ref<Var> x) : ::Item((Var*) x)
+Item::Item(ref<Var> x) : Item((Var*) x)
 {};
 
 
@@ -185,7 +186,7 @@ Item::Item(Func* x) : val(std::bit_cast<uint64_t>(x)),
     // x->inc_ref(); 
 };
 
-Item::Item(ref<Func> x) : ::Item((Func*) x)
+Item::Item(ref<Func> x) : Item((Func*) x)
 {};
 
 
@@ -417,3 +418,5 @@ bool Item::operator==(const Item& other) const{
         this->t_id == other.t_id
     );
 }
+
+} // NAMESPACE_END(cre)

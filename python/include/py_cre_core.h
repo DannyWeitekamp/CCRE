@@ -24,6 +24,8 @@ using namespace nb::literals;
 using std::cout;
 using std::endl;
 
+using namespace cre;
+
 // Defined in py_cre_core.cpp
 Item Item_from_py(nb::handle py_obj);
 nb::object Item_to_py(Item item);

@@ -21,7 +21,11 @@
 #endif
 // #include "counter.h"
 
-struct CRE_Obj;
+// namespace cre {
+
+// struct CRE_Obj;
+
+// } // NAMESPACE_END(cre)
 
 // NAMESPACE_BEGIN(nanobind)
 
@@ -139,9 +143,9 @@ public:
 
     /// Return a const pointer to the referenced object
     const T *get() const { return m_ptr; }
-
-
 };
+
+// } // NAMESPACE_END(cre)
 
 // #include <nanobind/nanobind.h>
 // Registar a type caster for ``ref<T>`` if nanobind was previously #included

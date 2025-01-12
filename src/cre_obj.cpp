@@ -6,6 +6,8 @@
 using std::cout;
 using std::endl;
 
+namespace cre {
+
 CRE_Obj::CRE_Obj(CRE_dtor_function _dtor):
 	dtor(_dtor), alloc_buffer(nullptr){
 	#ifndef CRE_NONATOMIC_REFCOUNT
@@ -96,4 +98,4 @@ int64_t CRE_Obj::get_refcount() noexcept{
 //    	_check_destroy(x);
 // }
 
-
+} // NAMESPACE_END(cre)

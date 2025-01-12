@@ -1,5 +1,4 @@
-#ifndef _ITEM_H_
-#define _ITEM_H_
+#pragma once
 
 #include <string>
 #include <cstdint>
@@ -8,6 +7,7 @@
 #include "../include/t_ids.h"
 #include "../include/ref.h"
 
+namespace cre {
 
 using std::cout;
 using std::endl;
@@ -190,11 +190,4 @@ Fact* item_get_fact(const Item& item);
 std::string item_to_string(const Item& item);
 std::string to_string(Item& item);
 
-
-
-
-
-
-
-
-#endif // _ITEM_H_
+} // NAMESPACE_END(cre)

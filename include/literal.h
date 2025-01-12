@@ -7,6 +7,7 @@
 #include "../include/ref.h"
 #include "../include/var.h"
 
+namespace cre {
 
 const uint8_t LIT_KIND_EQ = 1;
 const uint8_t LIT_KIND_FACT = 2 ;
@@ -24,4 +25,6 @@ struct Literal {//: public CRE_Obj{
 
 
 	// Literal()
-}
+};
+
+} // NAMESPACE_END(cre)

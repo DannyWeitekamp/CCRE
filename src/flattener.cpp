@@ -8,7 +8,7 @@
 #include <execution>
 #include <thread>
 
-
+namespace cre {
 
 // ------------------------------------------------------------
 // Constructor
@@ -423,3 +423,4 @@ size_t Flattener::_update_init(){
 }
 */
 
+} // NAMESPACE_END(cre)

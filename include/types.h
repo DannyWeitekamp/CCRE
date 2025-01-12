@@ -1,5 +1,4 @@
-#ifndef _CRE_TYPES_H_
-#define _CRE_TYPES_H_
+#pragma once
 
 #include "../include/t_ids.h"
 #include "../include/hash.h"
@@ -12,6 +11,8 @@
 #include <vector>
 #include <unordered_map>
 #include <sstream>
+
+namespace cre {
 
 // Forward declarations
 struct CRE_Context;
@@ -215,6 +216,4 @@ struct DefferedType : public CRE_Type {
     DefferedType(std::string_view _name);    
 };
 
-
-
-#endif /* _CRE_TYPES_H_ */
+} // NAMESPACE_END(cre)

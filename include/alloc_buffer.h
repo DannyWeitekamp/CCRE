@@ -6,6 +6,8 @@
 #include "cre_obj.h"
 // #include "alloc_buffer.h"
 
+namespace cre {
+
 //--------------------------------------------------------------
 // : AllocBuffer
 
@@ -28,5 +30,7 @@ struct AllocBuffer : public CRE_Obj {
     uint8_t* alloc_bytes(size_t n_bytes);
     uint8_t* free_back(size_t n_bytes);
 };
+
+}
 
 #endif /* _CRE_ALLOC_BUFFER_H_ */

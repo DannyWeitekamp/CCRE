@@ -1,10 +1,10 @@
-#ifndef _CRE_HELPERS_H_
-#define _CRE_HELPERS_H_
+#pragma once
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <random>
 
+namespace cre {
 
 #define rand_flt() (double(std::rand()) / RAND_MAX) 
 
@@ -39,4 +39,5 @@ std::ostream& operator<<(std::ostream& out, std::vector<T> vec){
 	return out << fmt::format("{}",vec);
 }
 
-#endif /* _CRE_HELPERS_H_ */
+} // NAMESPACE_END(cre)
+

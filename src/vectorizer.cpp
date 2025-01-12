@@ -6,6 +6,7 @@
 #include "../include/fact.h"
 #include "../include/factset.h"
 
+namespace cre {
 
 uint64_t CREHash::operator()(const UintPair& x) const {
 	return *((uint64_t*)&x);
@@ -214,3 +215,5 @@ ref<Fact> Vectorizer::invert(size_t slot, double value){
 	full_fact->set_unsafe(fact_head->length, Item(value));
 	return full_fact;
 }
+
+} // NAMESPACE_END(cre)

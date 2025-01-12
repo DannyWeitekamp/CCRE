@@ -23,6 +23,7 @@
 
 using std::cout;
 using std::endl;
+using namespace cre;
 
 
 int loop_fact_set(ref<FactSet> fs){
@@ -149,6 +150,8 @@ void test_json(){
 	cout << "-START2-" << endl;
 	cout << json_str << endl;
 	fs = FactSet::from_json(json_str);
+
+	
 	cout << endl << fs << endl;
 	cout << "-START3-" << endl;
 	fs = FactSet::from_json(json_str);

@@ -26,6 +26,7 @@
 
 using std::cout;
 using std::endl;
+using namespace cre;
 
 
 void test_errors(){

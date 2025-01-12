@@ -7,8 +7,11 @@
 #include "../include/ref.h"
 #include "../include/member.h"
 
+namespace cre {
+
 const uint16_t DEREF_KIND_ATTR = 1;
 const uint16_t DEREF_KIND_ITEM = 2 ;
+
 
 
 struct DerefInfo {
@@ -93,3 +96,5 @@ Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length);
 
 
 #define SIZEOF_VAR(n) (sizeof(Var)+(n)*sizeof(DerefInfo))
+
+} // NAMESPACE_END(cre)

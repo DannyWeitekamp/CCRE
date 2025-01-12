@@ -1,8 +1,9 @@
-#ifndef _MEMBER_H_
-#define _MEMBER_H_
+#pragma once
 
 #include "../include/item.h"
 #include "../include/hash.h"
+
+namespace cre {
 
 struct Member : public Item {
     uint64_t hash;
@@ -20,5 +21,4 @@ struct Member : public Item {
     }
 };
 
-
-#endif // _MEMBER_H_
+} // NAMESPACE_END(cre)

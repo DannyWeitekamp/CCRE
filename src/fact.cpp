@@ -12,7 +12,7 @@
 #include "../include/item.h"
 #include "../include/var.h"
 
-
+namespace cre {
 
 // Item* Fact::get(uint32_t a_id) const{
 //     Item* data_ptr = std::bit_cast<Item*>(
@@ -523,6 +523,8 @@ bool FactView::operator==(const FactView& other) const {
 	}
 	return true;
 }
+
+} // NAMESPACE_END(cre)
 
 
 

@@ -1,5 +1,4 @@
-#ifndef _CRE_CONTEXT_H_
-#define _CRE_CONTEXT_H_
+#pragma once 
 
 
 #include "../include/ref.h"
@@ -7,6 +6,7 @@
 #include "../include/hash.h"
 // #include "../include/intern.h"
 
+namespace cre {
 
 // using CRE_Type_ref = ref<CRE_Type>;
 
@@ -51,4 +51,4 @@ extern HashMap<std::string, std::unique_ptr<CRE_Context>> __all_CRE_contexts;
 extern CRE_Context* default_context;
 extern CRE_Context* current_context;
 
-#endif /* _CRE_CONTEXT_H_ */
+} // NAMESPACE_END(cre)

@@ -1,5 +1,8 @@
 #pragma once
 #include <cstdint>
+
+namespace cre {
+
 // Constant declarations
 const uint16_t T_ID_NULL = 0;
 const uint16_t T_ID_UNDEFINED = 1;
@@ -16,3 +19,5 @@ const uint16_t T_ID_LITERAL = 11;
 const uint16_t T_ID_CONDITIONS = 12;
 const uint16_t T_ID_RULE = 13;
 const uint16_t T_ID_EMPTY_BLOCK = 14; // Remove this
+
+} // NAMESPACE_END(cre)

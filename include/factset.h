@@ -16,6 +16,8 @@
 #include "ref.h"
 // #include "var.h"
 
+namespace cre {
+
 using std::cout;
 using std::endl;
 
@@ -691,5 +693,7 @@ struct FactChange {
     uint16_t kind;
     // Item item;
 }; 
+
+} // NAMESPACE_END(cre)
 
 #endif /* _CRE_FactSet_H_ */ 

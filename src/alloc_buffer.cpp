@@ -5,6 +5,8 @@
 #include "../include/cre_obj.h"
 #include "../include/alloc_buffer.h"
 
+namespace cre {
+
 //--------------------------------------------------------------
 // : AllocBuffer
 
@@ -106,3 +108,5 @@ uint8_t* AllocBuffer::free_back(size_t n_bytes){
 // 	// memcpy(this->head, fact, fact_n_bytes);
 // 	this->head += fact_n_bytes
 // }
+
+} // NAMESPACE_END(cre)

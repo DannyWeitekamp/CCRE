@@ -22,6 +22,7 @@
 using std::cout;
 using std::endl;
 
+namespace cre {
 
 
 //--------------------------------------------------------------
@@ -222,15 +223,15 @@ FactSet::FactSet(size_t n_facts) :
 // }
 
 uint32_t FactSet::declare(Fact* fact){
-	return ::declare(this, fact);
+	return cre::declare(this, fact);
 }
 
 void FactSet::retract(uint32_t f_id){
-	return ::retract_f_id(this, f_id);
+	return cre::retract_f_id(this, f_id);
 }
 
 void FactSet::retract(Fact* fact){
-	return ::retract(this, fact);	
+	return cre::retract(this, fact);	
 }
 
 std::ostream& operator<<(std::ostream& out, FactSet* fs){
@@ -311,7 +312,7 @@ FactSetBuilder::FactSetBuilder(size_t size, size_t buffer_size) :
 	
 // }	
 
-
+} // NAMESPACE_END(cre)
 
 
 

@@ -1,8 +1,9 @@
-#ifndef _CRE_INCR_PROCESSOR_H_
-#define _CRE_INCR_PROCESSOR_H_
+#pragma once
 
 #include "../include/cre_obj.h"
 #include "../include/ref.h"
+
+namespace cre {
 
 // Maybe template
 struct IncrementalProcessor : public CRE_Obj {
@@ -12,4 +13,4 @@ struct IncrementalProcessor : public CRE_Obj {
 	IncrementalProcessor(FactSet* _input);
 };
 
-#endif /* _CRE_INCR_PROCESSOR_H_ */
+} // NAMESPACE_END(cre)

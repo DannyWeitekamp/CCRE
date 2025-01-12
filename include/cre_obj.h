@@ -1,9 +1,9 @@
-#ifndef _CRE_OBJ_H_
-#define _CRE_OBJ_H_
-
+#pragma once
 
 #include <atomic> 
 #include "../include/ref.h"
+
+namespace cre {
 
 // Forward Declarations
 class CRE_Obj;
@@ -123,6 +123,6 @@ const uint8_t LOW_VERBOSITY = 1;
 const uint8_t DEFAULT_VERBOSITY = 2;
 const uint8_t HIGH_VERBOSITY = 3;
 
+} // NAMESPACE_END(cre)
 
 
-#endif /* _CRE_OBJ_H_ */

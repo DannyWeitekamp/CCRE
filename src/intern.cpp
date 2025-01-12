@@ -1,5 +1,8 @@
 #include "../include/intern.h"
-// #include "../include/unordered_dense.h"
+
+namespace cre {
+
+// #include "../external/unordered_dense.h"
 
 // string s_id_to_string(uint64_t s_id){
 // 	auto key_val = bit_cast<pair<string,InternStr*>*>(s_id);
@@ -90,3 +93,5 @@ std::ostream& operator<<(std::ostream& out, InternStr fs){
 	// return out << std::string_view(fs.data, fs.length);
 	return out << std::string_view(fs);
 }
+
+} // NAMESPACE_END(cre)

@@ -8,14 +8,15 @@
 #include <bitset>
 #include <cstdint>
 #include <cstring>
-
 #include "test_macros.h"
+#include "../include/var.h"
+#include "../include/fact.h"
 
 using std::cout;
 using std::endl;
+using namespace cre;
 
-#include "../include/var.h"
-#include "../include/fact.h"
+
 
 void test_var(){
 	FactType* DudeType = define_fact("Dude", 

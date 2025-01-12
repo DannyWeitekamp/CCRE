@@ -11,6 +11,7 @@
 
 using std::cout;
 using std::endl;
+namespace cre {
 
 
 void CRE_Type_dtor(const CRE_Obj* ptr){
@@ -170,7 +171,7 @@ void FactType::ensure_finalized(){
 }
 
 uint64_t MemberSpec::get_flag(uint64_t flag){
-    return ::get_builtin_flag(&this->flags.builtin_flags, flag);
+    return cre::get_builtin_flag(&this->flags.builtin_flags, flag);
 }
 
 
@@ -556,3 +557,5 @@ bool FlagGroup::has_flags(const FlagGroup& other){
     }
     return true;
 }
+
+} // NAMESPACE_END(cre)

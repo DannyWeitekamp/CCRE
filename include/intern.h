@@ -1,5 +1,4 @@
-#ifndef _CRE_INTERN_H_
-#define _CRE_INTERN_H_
+#pragma once
 
 #include <string>
 #include <iostream>
@@ -17,10 +16,13 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+
+// #include "../external/unordered_dense.h"
+
 #include "../include/hash.h"
-#include "../include/unordered_dense.h"
 #include "../include/context.h"
 
+namespace cre {
 
 using std::cout;
 using std::endl;
@@ -135,7 +137,6 @@ inline InternStr intern(const std::string_view& sv){
 // 	key_val->second += 1;	
 // }
 
+} // NAMESPACE_END(cre)
 
 
-
-#endif /* _CRE_INTERN_H_ */

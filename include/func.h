@@ -10,7 +10,7 @@
 #include "../include/item.h"
 #include "../include/member.h"
 
-
+namespace cre {
 
 // Forward Declarations 
 struct Func;
@@ -378,6 +378,6 @@ void stack_call(uint8_t* ret, uint16_t* arg_offsets){
 	StackCallFunc<Func>{}(ret, arg_offsets);
 }
 
-
 // ------------------------------------------------------
 
+} // NAMESPACE_END(cre)
