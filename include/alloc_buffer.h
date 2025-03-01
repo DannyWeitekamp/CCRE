@@ -31,6 +31,6 @@ struct AllocBuffer : public CRE_Obj {
     uint8_t* free_back(size_t n_bytes);
 };
 
-}
+} // NAMESPACE_END(cre)
 
 #endif /* _CRE_ALLOC_BUFFER_H_ */

@@ -20,6 +20,8 @@ const uint8_t COPY_DEEP = 1;
 const uint8_t COPY_DEEP_REFS = 2;
 
 
+
+
 // Externally Defined Forward Declares
 struct FactSet;
 struct AllocBuffer;
@@ -415,7 +417,11 @@ struct FactView {
 // ------------------------------------------------------------
 // : SIZEOF_FACT(n)
 
-constexpr bool FACT_ALIGN_IS_POW2 = (alignof(Fact) & (alignof(Fact) - 1)) == 0;
+const uint64_t FACT_ALIGN = alignof(Fact);
+// const uint64_t FACT_ALIGN = 64;
+
+
+constexpr bool FACT_ALIGN_IS_POW2 = (FACT_ALIGN & (FACT_ALIGN - 1)) == 0;
 #define _SIZEOF_FACT(n) (sizeof(Fact)+(n)*sizeof(Member))
 
 // Because facts are regularly allocated with buffers and have an atomic
@@ -423,17 +429,17 @@ constexpr bool FACT_ALIGN_IS_POW2 = (alignof(Fact) & (alignof(Fact) - 1)) == 0;
 //  ((Fact*) x) + SIZEOF_FACT(x->size()) is always an aligned address so 
 //  that we keep facts in contigous memory that wasn't allocated with 'new'
 #if FACT_ALIGN_IS_POW2 == true
-  #define ALIGN_PADDING(n_bytes) ((alignof(Fact) - (n_bytes & (alignof(Fact)-1))) & (alignof(Fact)-1))
+  #define ALIGN_PADDING(n_bytes) ((FACT_ALIGN - (n_bytes & (FACT_ALIGN-1))) & (FACT_ALIGN-1))
 #else
-  #define ALIGN_PADDING(n_bytes) ((alignof(Fact) - (n_bytes % (alignof(Fact)))) % (alignof(Fact)))
+  #define ALIGN_PADDING(n_bytes) ((FACT_ALIGN - (n_bytes % (FACT_ALIGN))) % (FACT_ALIGN))
 #endif
 
-constexpr bool FACT_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Fact)) | ALIGN_PADDING(sizeof(Member))) != 0;
+constexpr bool FACT_NEED_ALIGN_PAD = ((_SIZEOF_FACT(0) % FACT_ALIGN) | (sizeof(Member) % FACT_ALIGN)) != 0;
 
 #if FACT_NEED_ALIGN_PAD
-  #define SIZEOF_FACT(n) (_SIZEOF_FACT(n) + ALIGN_PADDING(_SIZEOF_FACT(n)))
+#define SIZEOF_FACT(n) (_SIZEOF_FACT(n) + ALIGN_PADDING(_SIZEOF_FACT(n)))
 #else
-  #define SIZEOF_FACT(n) _SIZEOF_FACT(n)
+#define SIZEOF_FACT(n) _SIZEOF_FACT(n)
 #endif
 
 

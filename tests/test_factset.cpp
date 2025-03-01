@@ -162,12 +162,24 @@ void test_json(){
 
 
 int main() {
+	cout << "ALIGN=" << FACT_ALIGN << ", NEED PAD:" << FACT_NEED_ALIGN_PAD << endl;
+	cout << _SIZEOF_FACT(0) << "," << SIZEOF_FACT(0) << "," << ALIGN_PADDING(_SIZEOF_FACT(0)) << endl;
+	cout << _SIZEOF_FACT(1) << "," << SIZEOF_FACT(1) << "," << ALIGN_PADDING(_SIZEOF_FACT(1)) << endl;
+	cout << _SIZEOF_FACT(2) << "," << SIZEOF_FACT(2) << "," << ALIGN_PADDING(_SIZEOF_FACT(2)) << endl;
+	cout << _SIZEOF_FACT(3) << "," << SIZEOF_FACT(3) << "," << ALIGN_PADDING(_SIZEOF_FACT(3)) << endl;
+	cout << _SIZEOF_FACT(4) << "," << SIZEOF_FACT(4) << "," << ALIGN_PADDING(_SIZEOF_FACT(4)) << endl;
+	cout << _SIZEOF_FACT(5) << "," << SIZEOF_FACT(5) << "," << ALIGN_PADDING(_SIZEOF_FACT(5)) << endl;
+	cout << _SIZEOF_FACT(6) << "," << SIZEOF_FACT(6) << "," << ALIGN_PADDING(_SIZEOF_FACT(6)) << endl;
 	
 	// cout << "HELLO" << endl;
 	// cout << "CRE_Context: " << cre_Fact->name << endl;
 	// cout << "CRE_Context: " << default_context->name << endl;
-	test_json();
+
+	// Note: Doing this test before the benchmark affects the outcome
+	//   since mallocing on a fresh process is simialr to the buffered allocs
+	test_json(); 
 	bench_build(1000,500);
+	
 	
 	cout << "AND ITS DONE" << endl;
 
