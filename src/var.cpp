@@ -17,12 +17,12 @@ void Var_dtor(const CRE_Obj* x){
 		var->base->dec_ref();
 	}
 
-	if(x->alloc_buffer == nullptr){
+	if(x->control_block->alloc_buffer == nullptr){
     	free((void*) x);
 	}else{
 		// NOTE: We need to do this because cannot
 		//  write alloc_buffer as a ref<AllocBuffer> 
-		x->alloc_buffer->dec_ref();
+		x->control_block->alloc_buffer->dec_ref();
 	}
 }
 
@@ -32,7 +32,7 @@ Var::Var(const Item& _alias,
  		DerefInfo* _deref_infos,
  		size_t _length) : 
 
-		CRE_Obj(&Var_dtor),
+		// CRE_Obj(&Var_dtor),
 		base(nullptr), 
 		base_type(_type), head_type(_type),
 		alias(_alias),
@@ -44,6 +44,7 @@ Var::Var(const Item& _alias,
 	// if(_type == nullptr){
 	// 	throw std::invalid_argument("Cannot initialize Var from NULL type.");
 	// }
+	this->init_control_block(&Var_dtor);
 
 	deref_infos = ((DerefInfo*) (( (char*) this) + sizeof(Var)) );
 
@@ -114,7 +115,7 @@ ref<Var> new_var(
     var = new (var) Var(_alias, _type, _deref_infos, _length);
 
     if(!did_malloc){
-    	var->alloc_buffer = alloc_buffer;
+    	var->control_block->alloc_buffer = alloc_buffer;
     	alloc_buffer->inc_ref();
     }
     
@@ -166,7 +167,7 @@ ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* al
 	nv = new (nv) Var(alias, base_type, nullptr, new_len);
 
 	if(!did_malloc){
-		nv->alloc_buffer = alloc_buffer;
+		nv->control_block->alloc_buffer = alloc_buffer;
 		alloc_buffer->inc_ref();
 	}
 

@@ -27,9 +27,13 @@ CRE_Type::CRE_Type(
            uint8_t _builtin,
            int32_t _type_index, 
            CRE_Context* context) : 
-    CRE_Obj(&CRE_Type_dtor), name(std::string(_name)), t_id(_t_id),
+    name(std::string(_name)), t_id(_t_id),
     byte_width(_byte_width), sub_types(_sub_types), builtin(_builtin),
     context(context), type_index(_type_index) {
+
+    // CRE_Obj(&CRE_Type_dtor)
+    this->init_control_block(&CRE_Type_dtor);
+
 
     if(builtin){
         this->kind = TYPE_KIND_BUILTIN;
@@ -187,7 +191,8 @@ FactType::FactType(std::string_view _name,
            CRE_Context* _context)
     : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, 0, _context), 
       members(_members), flags(_flags) {
-    dtor = &FactType_dtor; 
+
+    control_block->dtor = &FactType_dtor; 
     finalized = false;
     kind = TYPE_KIND_FACT;
 

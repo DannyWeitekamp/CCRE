@@ -8,22 +8,61 @@ using std::endl;
 
 namespace cre {
 
-CRE_Obj::CRE_Obj(CRE_dtor_function _dtor):
-	dtor(_dtor), alloc_buffer(nullptr){
-	#ifndef CRE_NONATOMIC_REFCOUNT
-		atomic_init(&this->ref_count, 0);
-		// this->ref_count.store(1, std::memory_order_relaxed);
-	#else
-		this->ref_count = 0;
-	#endif
-	// this->ref_count = 1;
-	// this->dtor = _dtor;
-	// this->alloc_buffer = (AllocBuffer*) nullptr;
+
+ControlBlock::ControlBlock(CRE_Obj* _obj_ptr, CRE_dtor_function _dtor) : 
+	obj_ptr(_obj_ptr), dtor(_dtor)
+{}
+
+ControlBlock* ControlBlockPool::alloc_block(){
+	ControlBlock* block_begin = reinterpret_cast<ControlBlock*>(malloc(block_size));
+	ControlBlock* chunk = block_begin;
+	for (int i = 0; i < chunks_per_block - 1; ++i) {
+	    chunk->next = 
+	        reinterpret_cast<ControlBlock*>(reinterpret_cast<char *>(chunk) + sizeof(ControlBlock));
+	    chunk = chunk->next;
+  	}
+  	chunk->next = nullptr;
+  	return block_begin;
 }
+
+ControlBlock* ControlBlockPool::alloc(){
+	if (alloc_ptr == nullptr) {
+    	alloc_ptr = alloc_block();
+  	}
+  	ControlBlock* free_chunck = alloc_ptr;
+  	alloc_ptr = alloc_ptr->next;
+  	return free_chunck;
+}
+
+void ControlBlockPool::dealloc(ControlBlock* ptr){
+	reinterpret_cast<ControlBlock*>(ptr)->next = alloc_ptr;
+	alloc_ptr = reinterpret_cast<ControlBlock*>(ptr);
+}
+
+
+// CRE_Obj::init(CRE_dtor_function _dtor){
+
+// 	this->control_block = new ControlBlock(this, _dtor);
+// 	// (ControlBlock*) malloc(sizeof(this->control_block));
+
+// 	#ifndef CRE_NONATOMIC_REFCOUNT
+// 		atomic_init(&this->ref_count, 0);
+// 		// this->ref_count.store(1, std::memory_order_relaxed);
+// 	#else
+// 		this->ref_count = 0;
+// 	#endif
+
+
+// 	// this->ref_count = 1;
+// 	// this->dtor = _dtor;
+// 	// this->alloc_buffer = (AllocBuffer*) nullptr;
+// }
 
 int64_t CRE_Obj::get_refcount() noexcept{
 	return ref_count;
 }
+
+
 
 // void CRE_Obj::operator delete(void* p){
 // 	CRE_Obj* x = (CRE_Obj*) p;

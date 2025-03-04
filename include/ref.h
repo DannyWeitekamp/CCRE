@@ -172,12 +172,12 @@ template <typename T> struct type_caster<ref<T>> {
     static handle from_cpp(const ref<T> &value, rv_policy policy,
                            cleanup_list *cleanup) noexcept {
         // if constexpr (std::is_base_of_v<intrusive_base, T>)
-        const T* val = value.get();
+        const T* cpp_obj = value.get();
         if (policy != rv_policy::copy && policy != rv_policy::move && value.get()){
-            if (PyObject* obj = (PyObject*) value->proxy_obj){
+            if (PyObject* obj = (PyObject*) value->control_block->proxy_obj){
                 return handle(obj).inc_ref();
             }else{
-                val->inc_ref();
+                cpp_obj->inc_ref();
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
@@ -188,7 +188,7 @@ template <typename T> struct type_caster<ref<T>> {
         // auto _is = inst_state(py_out);
         // std::cout << "-- " << cast<std::string>(str(py_out)) << " STATE: ready=" <<  _is.first << ", destruct=" <<  _is.second << std::endl;
         // std::cout << "STATE: " << _is.first << ", " << _is.second << std::endl;
-        val->proxy_obj = (void*) py_out.ptr();
+        cpp_obj->control_block->proxy_obj = (void*) py_out.ptr();
         return py_out;
     }
 };

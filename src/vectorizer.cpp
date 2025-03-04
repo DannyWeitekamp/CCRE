@@ -26,7 +26,8 @@ Vectorizer::Vectorizer(uint64_t max_heads, bool _one_hot_nominals, bool _encode_
 	flt_slot_map.reserve(max_heads);
 	inv_nom_slot_map.reserve(max_heads);
 	inv_flt_slot_map.reserve(max_heads);
-	dtor = &Vectorizer_dtor;
+
+	this->init_control_block(&Vectorizer_dtor);
 }
 
 // ------------------------------------------------------------

@@ -254,12 +254,27 @@ void test_slice(){
 	
 }
 
+void test_weakref(){
+	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
+	IS_TRUE(Jeff->get("cat") == snowball);
+
+	snowball = NULL;
+	Bobby = NULL;
+
+
+	auto Jeffs_cat = Jeff->get("cat").as_fact();
+	cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;
+
+	cout << "END"<< endl;
+}
+
 
 int main(){
     // test_errors();
     // test_flags();
     // test_iterate_fact();
     // test_hash();
-    test_copy();
+    // test_copy();
+    test_weakref();
     return 0;
 }

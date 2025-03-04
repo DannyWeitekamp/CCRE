@@ -65,7 +65,7 @@ Flattener::Flattener(
 	verb_ind(_triple_order == TRIPLE_ORDER_SVO ? 1 : 0)
 	{
 	// cout << "CONSTRUCT:" << _input->get_refcount() << endl;
-	dtor = &Flattener_dtor;
+	this->init_control_block(&Flattener_dtor);
 }
 
 Flattener::Flattener(FactSet* _input,

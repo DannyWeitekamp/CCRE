@@ -26,7 +26,7 @@ void cre_obj_dealloc(PyObject *self){
     // }
     // When the Python proxy object is collected remove 
     //   the C++ object's reference to it so it isn't reused
-    cpp_self->proxy_obj = nullptr;
+    cpp_self->control_block->proxy_obj = nullptr;
     if(((nb::detail::nb_inst*) self)->unused == 17){
     	// nb::print("~Borrowed Died~: " + nb::cast<std::string>(nb::str(self_handle)) + "refs=" + std::to_string(cpp_self->get_refcount()));
     	// cout << "~Borrowed Died~:" << cpp_self->get_refcount() << endl;    

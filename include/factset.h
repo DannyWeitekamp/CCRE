@@ -232,8 +232,8 @@ public:
         ref<Fact> fact = new (fact_addr) Fact(type, length);
 
         if(!did_malloc){
-            fact->alloc_buffer = alloc_buffer;
-            fact->alloc_buffer->inc_ref();
+            fact->control_block->alloc_buffer = alloc_buffer;
+            fact->control_block->alloc_buffer->inc_ref();
         }
 
         // fact->hash = ;

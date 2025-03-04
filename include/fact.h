@@ -50,15 +50,16 @@ public:
 
   //  -- Methods --
   // Fact(void* type);
-  Fact(FactType* _type, uint32_t _length) :
-    CRE_Obj(&Fact_dtor),
+  Fact(FactType* _type, uint32_t _length) :   
     type(_type),
     parent(nullptr),
     f_id(-1),
     length(_type ? std::max(_length, uint32_t(_type->members.size())) : _length),
     hash(FNV_BASIS ^ (_length * FNV_PRIME)),
     immutable(false)
-{}
+{
+  this->init_control_block(&Fact_dtor);
+}
 
 
   // ~Fact(){}
@@ -501,7 +502,7 @@ inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0, AllocBuffer* buff
   ref<Fact> fact = new (fact_addr) Fact(type, length);
 
   if(!did_malloc){
-      fact->alloc_buffer = buffer;
+      fact->control_block->alloc_buffer = buffer;
       buffer->inc_ref();
   }
 

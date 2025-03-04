@@ -137,6 +137,8 @@ struct OriginData {
 };
 
 
+void Func_dtor(const CRE_Obj* x);
+
 struct Func : CRE_Obj{
 
 	CRE_Type* return_type;
@@ -207,7 +209,9 @@ struct Func : CRE_Obj{
     	n_root_args(n_args),
     	origin_data(_origin_data),
     	call_heads_addr(_cfunc_ptr)
-    {}
+    {
+    	this->init_control_block(&Func_dtor);
+    }
     // Func(const Func&) = default;
 
     std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);

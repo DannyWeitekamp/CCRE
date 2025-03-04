@@ -70,7 +70,7 @@ static void cre_obj_dealloc(PyObject *self){
     }
     // When the Python proxy object is collected remove 
     //   the C++ object's reference to it so it isn't reused
-    cpp_self->proxy_obj = nullptr;
+    cpp_self->control_block->proxy_obj = nullptr;
     cpp_self->dec_ref();
 }
 

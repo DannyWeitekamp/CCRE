@@ -40,6 +40,7 @@ std::string make_default_template(
 ref<Func> new_func(void* cfunc_ptr, size_t n_args,  OriginData* origin_data){
 	Func* func = _alloc_func(n_args);
 	ref<Func> nf = new (func) Func(cfunc_ptr, n_args, origin_data);
+	
 	return nf;
 }
 
@@ -123,7 +124,8 @@ FuncRef define_func(
 	}
 
 	ref<Func> func = new_func(cfunc_ptr, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
-	func->dtor = &Func_dtor;
+	// func->init_control_block(&Func_dtor);
+	// func->dtor = &Func_dtor;
 
 	origin_data->func = func.get();
 
@@ -137,7 +139,8 @@ FuncRef define_func(
 // copy()
 FuncRef Func::copy_shallow(){
 	ref<Func> nf = new_func(call_heads_addr, n_root_args, origin_data);
-	nf->dtor = &Func_dtor;
+
+	// nf->dtor = &Func_dtor;
 
 	nf->return_type = return_type;
 	nf->n_args = n_args;

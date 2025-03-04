@@ -6,6 +6,7 @@
 namespace cre {
 
 // Forward Declarations
+class ControlBlock;
 class CRE_Obj;
 class AllocBuffer;
 // extern "C" void CRE_incref(const CRE_Obj* x);
@@ -16,6 +17,69 @@ class AllocBuffer;
 
 // Alias CRE_dtor_function as pointer to void(void*)
 typedef void (*CRE_dtor_function)(const CRE_Obj* ptr);
+
+
+/* 
+    Similar to an std::shared_ptr control block but designed to  
+    complement the intrusive reference counting of a CRE_Obj while,
+    in most cases, not acting as the sole means by which the CRE_Obj
+    is accessed. Unlike a shared_ptr control block this class does 
+    not directly participate in reference counting until all of a 
+    CRE_Obj's strong reference count is set to zero. At this point
+    all of the weak references to the CRE_Obj are transfered to the 
+    ControlBlock. Also, ControlBlocks hold some extra data that is 
+    usually only relevant to a CRE_Obj at its creation and destruction.
+    In general this reduces a great deal of cache pressure for subroutines
+    that load from lots of CRE_Obj instances. ControlBlocks are almost 
+    always pool allocated with ControlBlockPool.
+*/
+struct ControlBlock {
+
+    ControlBlock* next; 
+    CRE_Obj* obj_ptr;
+
+    #ifndef CRE_NONATOMIC_REFCOUNT
+        // mutable std::atomic_uint32_t  ref_count;// = {0};
+        std::atomic_int64_t  wref_count;// = {0};
+    #else
+        // mutable uint32_t  ref_count = 0;
+        int64_t  wref_count = 0;
+    #endif
+
+    // When using nanobind proxy_object is a PyObject*
+    void*               proxy_obj = nullptr; 
+    CRE_dtor_function   dtor;
+    // ref<AllocBuffer>        alloc_buffer = nullptr;
+
+    // NOTE: Cannot Use ref<AllocBuffer> becuase would 
+    //   reference incomplete type AllocBuffer
+    AllocBuffer*        alloc_buffer = nullptr;
+
+
+
+    ControlBlock(CRE_Obj* obj_ptr, CRE_dtor_function _dtor);
+
+    friend class CRE_Obj;
+};
+
+
+class ControlBlockPool {
+private:
+    size_t block_size;
+    size_t chunks_per_block;
+    ControlBlock* alloc_ptr = nullptr;
+    
+public:
+    ControlBlockPool(size_t n_);
+    ControlBlock* alloc();
+    void          dealloc(ControlBlock* ptr);
+
+private:
+    ControlBlock* alloc_block();
+};
+
+
+// global_con
 
 
 class CRE_Obj {
@@ -30,26 +94,40 @@ private:
     uint16_t alloc_buff_ind
     void* proxy_obj
 */
+    
 
 // Refcount 
 #ifndef CRE_NONATOMIC_REFCOUNT
-    mutable std::atomic_int64_t  ref_count;// = {0};
+    mutable std::atomic_int32_t  ref_count;// = {0};
+    mutable std::atomic_int32_t  wref_count;// = {0};
 #else
-    mutable int64_t  ref_count = 0;
+    mutable uint32_t  ref_count = 0;
+    mutable uint32_t  wref_count = 0;
 #endif
 
+// #ifndef CRE_NONATOMIC_REFCOUNT
+//     mutable std::atomic_int64_t  ref_count;// = {0};
+// #else
+//     mutable int64_t  ref_count = 0;
+// #endif
+
 public :
+    mutable ControlBlock* control_block;
+
     // When using nanobind proxy_object is a PyObject*
-    mutable void*               proxy_obj = nullptr; 
-    CRE_dtor_function   dtor;
+    // mutable void*               proxy_obj = nullptr; 
+    // CRE_dtor_function   dtor;
     // ref<AllocBuffer>        alloc_buffer = nullptr;
 
     // NOTE: Cannot Use ref<AllocBuffer> becuase would 
     //   reference incomplete type AllocBuffer
-    AllocBuffer*        alloc_buffer = nullptr;
+    // AllocBuffer*        alloc_buffer = nullptr;
 
     // --- Methods ---
-    CRE_Obj(CRE_dtor_function dtor = nullptr);
+    inline void init_control_block(CRE_dtor_function _dtor){
+        this->control_block = new ControlBlock(this, _dtor);
+    }
+    // CRE_Obj(CRE_dtor_function dtor = nullptr);
     // CRE_Obj();
     // ~CRE_Obj(){};
     int64_t get_refcount() noexcept;
@@ -77,7 +155,8 @@ public :
         }
         if (ref_count <= 0) {
             // delete this;
-            this->dtor(this);
+
+            this->control_block->dtor(this);
             return true;
         }
         return false;

@@ -16,9 +16,8 @@ void AllocBuffer_dtor(const CRE_Obj* x){
 	delete self;
 }
 
-AllocBuffer::AllocBuffer(size_t n_bytes, bool _resizeable) :
-	CRE_Obj(&AllocBuffer_dtor)
-	{
+AllocBuffer::AllocBuffer(size_t n_bytes, bool _resizeable){
+	this->init_control_block(&AllocBuffer_dtor);
 	
 	// NOTE: Might play with explicit alignment requirements later
 	// cout << "Buffer size: " << n_bytes << " " << endl; 
