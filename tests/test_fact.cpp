@@ -15,9 +15,12 @@
 #include "../include/fact.h"
 #include "../include/factset.h"
 #include "../include/intern.h"
+
 // #include "../include/unicode.h"
 #include "../include/cre_obj.h"
 #include "../include/flattener.h"
+#include "../include/wref.h"
+#include "../include/pool_allocator.h"
 #include "test_macros.h"
 
 // #include <chrono>
@@ -254,18 +257,155 @@ void test_slice(){
 	
 }
 
+
+void test_pool_alloc(){
+	// Assumes sizeof(Block) == 64 (i.e. the header of a block)
+	uint64_t block_size = 64 + 8*(sizeof(void*)+sizeof(ControlBlock));
+
+	auto pool = PoolAllocator<ControlBlock>(block_size);
+	auto stats = pool.get_stats();
+
+	std::vector<ControlBlock*> blocks = {};
+	for(int i=0; i < 35; i++){
+		ControlBlock* block = pool.alloc();
+		blocks.push_back(block);
+	}
+
+	// All but 5 chunk should be used
+	stats = pool.get_stats();
+	IS_TRUE(stats.n_blocks == 5);
+	IS_TRUE(stats.allocated_chunks == 40);
+	IS_TRUE(stats.used_chunks == 35);
+	IS_TRUE(stats.free_chunks == 5);
+
+	for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+		ControlBlock* block = *it;
+		pool.dealloc(block);
+	}
+
+	// There should be just one active block w/ 8 free chunks
+	stats = pool.get_stats();
+	IS_TRUE(stats.n_blocks == 1);
+	IS_TRUE(stats.allocated_chunks == 8);
+	IS_TRUE(stats.used_chunks == 0);
+	IS_TRUE(stats.free_chunks == 8);
+	
+	// cout << "-----------------------" << endl;
+
+	std::vector<ControlBlock*> odd_blocks = {};
+	for(int i=0; i < 35; i++){
+		ControlBlock* block = pool.alloc();
+		if(i % 2){
+			odd_blocks.push_back(block);
+		}
+	}
+
+	// cout << "odd_blocks: " << odd_blocks.size() << endl;
+	for (auto it = odd_blocks.begin(); it != odd_blocks.end(); ++it) {
+		ControlBlock* block = *it;
+		pool.dealloc(block);
+	}
+	for(int i=0; i < 10; i++){
+		ControlBlock* block = pool.alloc();
+	}
+	
+	// Should be several active blocks
+	stats = pool.get_stats();
+	IS_TRUE(stats.n_blocks == 5);
+	IS_TRUE(stats.allocated_chunks == 40);
+	IS_TRUE(stats.used_chunks == 28);
+	IS_TRUE(stats.free_chunks == 12);
+}
+
+void bench_pool_alloc(){
+	
+	// std::vector<ControlBlock*> pool_allocs = {};
+	ControlBlock* bb = nullptr;
+	time_it_n("10000 Pool alloc: ", 
+		auto pool = PoolAllocator<ControlBlock>();
+		for(int i=0; i < 10000; i++){
+			ControlBlock* block = pool.alloc();
+			bb = block;
+			// pool_allocs.push_back(block);
+		}	
+	,300);
+
+	// std::vector<ControlBlock*> reg_mallocs = {};
+	
+	time_it_n("10000 malloc:     ", 
+		for(int i=0; i < 10000; i++){
+			ControlBlock* block = (ControlBlock*) malloc(sizeof(ControlBlock));
+			bb = block;
+			// reg_mallocs.push_back(block);
+		}
+	,300);	
+
+	// This prevents the compiler from not running malloc code
+	cout << uint64_t(bb) << endl;
+
+	// Make a few more so they can be freed
+	auto pool = PoolAllocator<ControlBlock>();
+	std::vector<ControlBlock*> pool_allocs = {};
+	for(int i=0; i < 10000; i++){
+		ControlBlock* block = pool.alloc();
+		pool_allocs.push_back(block);
+	}	
+
+	std::vector<ControlBlock*> reg_mallocs = {};
+	for(int i=0; i < 10000; i++){
+		ControlBlock* block = (ControlBlock*) malloc(sizeof(ControlBlock));
+		reg_mallocs.push_back(block);
+	}
+
+
+	time_it("10000 Pool dealloc:", 
+		for (auto it = pool_allocs.begin(); it != pool_allocs.end(); ++it) {
+			ControlBlock* block = *it;
+			pool.dealloc(block);
+		}	
+	);
+
+	time_it("10000 free:        ", 
+		for (auto it = reg_mallocs.begin(); it != reg_mallocs.end(); ++it) {
+			ControlBlock* block = *it;
+			free(block);
+		}	
+	);
+}
+
+
 void test_weakref(){
 	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
 	IS_TRUE(Jeff->get("cat") == snowball);
 
+	wref<Fact> snowball_wref = snowball;
+
+	cout << "W_REF: " << snowball_wref->get_wrefcount() << 
+	 		", S_REF: " << snowball_wref->get_refcount() << endl;
+
 	snowball = NULL;
 	Bobby = NULL;
 
+	cout << "W_REF: " << snowball_wref->get_wrefcount() << 
+	 		", S_REF: " << snowball_wref->get_refcount() << endl;
 
-	auto Jeffs_cat = Jeff->get("cat").as_fact();
-	cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;
+	Jeff = NULL;
 
-	cout << "END"<< endl;
+	if(snowball_wref == nullptr){
+		cout << "nullptr" << endl;
+	}
+
+	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
+	 		", S_REF: " << snowball_wref.get_refcount() << endl;
+
+	snowball_wref = nullptr;
+
+	cout << snowball_wref.get_wrefcount() << endl;
+
+	// auto Jeffs_cat = Jeff->get("cat").as_fact();
+	// cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;
+
+	// cout << "END"<< endl;
 }
 
 
@@ -275,6 +415,8 @@ int main(){
     // test_iterate_fact();
     // test_hash();
     // test_copy();
-    test_weakref();
+    test_pool_alloc();
+    bench_pool_alloc();
+    // test_weakref();
     return 0;
 }
