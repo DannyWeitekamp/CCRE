@@ -15,12 +15,9 @@
 #include "../include/fact.h"
 #include "../include/factset.h"
 #include "../include/intern.h"
-
 // #include "../include/unicode.h"
 #include "../include/cre_obj.h"
 #include "../include/flattener.h"
-#include "../include/wref.h"
-#include "../include/pool_allocator.h"
 #include "test_macros.h"
 
 // #include <chrono>
@@ -257,6 +254,7 @@ void test_slice(){
 	
 }
 
+<<<<<<< HEAD
 
 void test_pool_alloc(){
 	// Assumes sizeof(Block) == 64 (i.e. the header of a block)
@@ -370,38 +368,20 @@ void bench_pool_alloc(){
 }
 
 
+=======
+>>>>>>> parent of d99ad48a9 (added pool allocator)
 void test_weakref(){
 	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
 	IS_TRUE(Jeff->get("cat") == snowball);
 
-	wref<Fact> snowball_wref = snowball;
-
-	cout << "W_REF: " << snowball_wref->get_wrefcount() << 
-	 		", S_REF: " << snowball_wref->get_refcount() << endl;
-
 	snowball = NULL;
 	Bobby = NULL;
 
-	cout << "W_REF: " << snowball_wref->get_wrefcount() << 
-	 		", S_REF: " << snowball_wref->get_refcount() << endl;
 
-	Jeff = NULL;
+	auto Jeffs_cat = Jeff->get("cat").as_fact();
+	cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;
 
-	if(snowball_wref == nullptr){
-		cout << "nullptr" << endl;
-	}
-
-	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
-	 		", S_REF: " << snowball_wref.get_refcount() << endl;
-
-	snowball_wref = nullptr;
-
-	cout << snowball_wref.get_wrefcount() << endl;
-
-	// auto Jeffs_cat = Jeff->get("cat").as_fact();
-	// cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;
-
-	// cout << "END"<< endl;
+	cout << "END"<< endl;
 }
 
 
@@ -411,8 +391,12 @@ int main(){
     // test_iterate_fact();
     // test_hash();
     // test_copy();
+<<<<<<< HEAD
     // test_pool_alloc();
     bench_pool_alloc();
     // test_weakref();
+=======
+    test_weakref();
+>>>>>>> parent of d99ad48a9 (added pool allocator)
     return 0;
 }

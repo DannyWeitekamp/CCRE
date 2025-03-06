@@ -62,10 +62,6 @@ int64_t CRE_Obj::get_refcount() noexcept{
 	return ref_count;
 }
 
-int64_t CRE_Obj::get_wrefcount() noexcept{
-	return this->control_block->get_wrefcount();
-}
-
 
 
 // void CRE_Obj::operator delete(void* p){

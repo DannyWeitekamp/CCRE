@@ -5,9 +5,6 @@
 
 namespace cre {
 
-using std::cout;
-using std::endl;
-
 // Forward Declarations
 class ControlBlock;
 class CRE_Obj;
@@ -23,30 +20,30 @@ typedef void (*CRE_dtor_function)(const CRE_Obj* ptr);
 
 
 /* 
-    Similar to an std::shared_ptr control block yet designed to  
-    complement the intrusive reference counting of a CRE_Obj. In most cases, 
-    the ControlBlock remains mostly untouched. It is not the sole means by which
-    the CRE_Obj is accessed. Unlike a shared_ptr this class only participates in
-    weak reference counting, from wref instances. The lowest bit of wref_count is 1
-    until the CRE_Obj's strong reference count reaches zero. Also, ControlBlocks 
-    hold some extra data that is usually only relevant to a CRE_Obj at its 
-    creation and destruction. This offloads a great deal of cache
-    pressure for subroutines that access lots of CRE_Obj instances. 
-    ControlBlocks are almost always pool allocated with ControlBlockPool.    
+    Similar to an std::shared_ptr control block but designed to  
+    complement the intrusive reference counting of a CRE_Obj while,
+    in most cases, not acting as the sole means by which the CRE_Obj
+    is accessed. Unlike a shared_ptr control block this class does 
+    not directly participate in reference counting until all of a 
+    CRE_Obj's strong reference count is set to zero. At this point
+    all of the weak references to the CRE_Obj are transfered to the 
+    ControlBlock. Also, ControlBlocks hold some extra data that is 
+    usually only relevant to a CRE_Obj at its creation and destruction.
+    In general this reduces a great deal of cache pressure for subroutines
+    that load from lots of CRE_Obj instances. ControlBlocks are almost 
+    always pool allocated with ControlBlockPool.
 */
 struct ControlBlock {
 
     ControlBlock* next; 
     CRE_Obj* obj_ptr;
 
-    // The wref_count increments by 2 and the lowest bit is 1 when
-    //  the strong count is non-zero and 0 when it is zero.  
     #ifndef CRE_NONATOMIC_REFCOUNT
         // mutable std::atomic_uint32_t  ref_count;// = {0};
-        mutable std::atomic_int64_t  wref_count = {1};
+        std::atomic_int64_t  wref_count;// = {0};
     #else
         // mutable uint32_t  ref_count = 0;
-        mutable int64_t  wref_count = 1;
+        int64_t  wref_count = 0;
     #endif
 
     // When using nanobind proxy_object is a PyObject*
@@ -59,57 +56,10 @@ struct ControlBlock {
     AllocBuffer*        alloc_buffer = nullptr;
 
 
+
     ControlBlock(CRE_Obj* obj_ptr, CRE_dtor_function _dtor);
 
     friend class CRE_Obj;
-
-    inline bool _check_destroy() const noexcept{
-        if (wref_count < 0) [[unlikely]] {
-            cout << "Warning: weak ref_count underflow!" << endl;
-        }
-        if (wref_count <= 0) {
-            delete this;
-            return true;
-        }
-        return false;
-    }
-    inline void inc_wref() const noexcept{
-        #ifndef CRE_NONATOMIC_REFCOUNT
-            wref_count.fetch_add(2, std::memory_order_relaxed);
-        #else
-            wref_count += 2; 
-        #endif
-    }
-    inline void add_wref(size_t n) const noexcept{
-        #ifndef CRE_NONATOMIC_REFCOUNT
-            wref_count.fetch_add(n<<1, std::memory_order_relaxed);
-        #else
-            wref_count += n<<1; 
-        #endif
-    }
-    inline bool dec_wref() const noexcept{
-        #ifndef CRE_NONATOMIC_REFCOUNT
-            wref_count.fetch_sub(2, std::memory_order_relaxed);
-        #else
-            wref_count -= 2;
-        #endif
-
-        return _check_destroy();
-    }
-    inline bool sub_wref(size_t n) const noexcept{
-        // cout << "INCREF" << endl;
-        #ifndef CRE_NONATOMIC_REFCOUNT
-            wref_count.fetch_sub(n<<1, std::memory_order_relaxed);
-        #else
-            wref_count -= n<<1; 
-        #endif
-
-        return _check_destroy();
-    }
-
-    inline int64_t get_wrefcount() noexcept {
-        return wref_count >> 1;
-    }
 };
 
 
@@ -148,11 +98,11 @@ private:
 
 // Refcount 
 #ifndef CRE_NONATOMIC_REFCOUNT
-    mutable std::atomic_int64_t  ref_count;// = {0};
-    // mutable std::atomic_int32_t  wref_count;// = {0};
+    mutable std::atomic_int32_t  ref_count;// = {0};
+    mutable std::atomic_int32_t  wref_count;// = {0};
 #else
-    mutable uint64_t  ref_count = 0;
-    // mutable uint32_t  wref_count = 0;
+    mutable uint32_t  ref_count = 0;
+    mutable uint32_t  wref_count = 0;
 #endif
 
 // #ifndef CRE_NONATOMIC_REFCOUNT
@@ -181,7 +131,6 @@ public :
     // CRE_Obj();
     // ~CRE_Obj(){};
     int64_t get_refcount() noexcept;
-    int64_t get_wrefcount() noexcept;
 
     // Note: We could use virtual destructors, but it seems to slow
     //  down builing facts by about ~30%, probably because it makes
@@ -202,11 +151,11 @@ public :
     inline bool _check_destroy() const noexcept{
 
         if (ref_count < 0) [[unlikely]] {
-            std::cout << "Warning: ref_count underflow!" << std::endl;
+            std::cout << "Warning: refcounting underflow!" << std::endl;
         }
         if (ref_count <= 0) {
-            this->control_block->wref_count = this->control_block->wref_count & ~1;
-            // Call the CRE_Obj's destructor 
+            // delete this;
+
             this->control_block->dtor(this);
             return true;
         }
@@ -246,18 +195,6 @@ public :
         return _check_destroy();
     }
 
-    inline void inc_wref() const noexcept{
-        this->control_block->inc_wref();
-    }
-    inline void add_wref(size_t n) const noexcept{
-        this->control_block->add_wref(n);
-    }
-    inline void dec_wref() const noexcept{
-        this->control_block->dec_wref();
-    }
-    inline void sub_wref(size_t n) const noexcept{
-        this->control_block->sub_wref(n);
-    }
     // void operator delete(void * p);
 };
 
