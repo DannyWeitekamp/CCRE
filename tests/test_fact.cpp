@@ -260,7 +260,7 @@ void test_slice(){
 
 void test_pool_alloc(){
 	// Assumes sizeof(Block) == 64 (i.e. the header of a block)
-	uint64_t block_size = 64 + 8*(2*sizeof(void*)+sizeof(ControlBlock));
+	uint64_t block_size = 64 + 8*(sizeof(void*)+sizeof(ControlBlock));
 
 	auto pool = PoolAllocator<ControlBlock>(block_size);
 	auto stats = pool.get_stats();
@@ -273,7 +273,6 @@ void test_pool_alloc(){
 
 	// All but 5 chunk should be used
 	stats = pool.get_stats();
-	cout << stats << endl;
 	IS_TRUE(stats.n_blocks == 5);
 	IS_TRUE(stats.allocated_chunks == 40);
 	IS_TRUE(stats.used_chunks == 35);
@@ -320,21 +319,26 @@ void test_pool_alloc(){
 
 void bench_pool_alloc(){
 	
+	// std::vector<ControlBlock*> pool_allocs = {};
 	ControlBlock* bb = nullptr;
 	time_it_n("10000 Pool alloc: ", 
 		auto pool = PoolAllocator<ControlBlock>();
 		for(int i=0; i < 10000; i++){
 			ControlBlock* block = pool.alloc();
 			bb = block;
+			// pool_allocs.push_back(block);
 		}	
-	,500);
+	,300);
+
+	// std::vector<ControlBlock*> reg_mallocs = {};
 	
 	time_it_n("10000 malloc:     ", 
 		for(int i=0; i < 10000; i++){
 			ControlBlock* block = (ControlBlock*) malloc(sizeof(ControlBlock));
 			bb = block;
+			// reg_mallocs.push_back(block);
 		}
-	,500);	
+	,300);	
 
 	// This prevents the compiler from not running malloc code
 	cout << uint64_t(bb) << endl;
@@ -411,7 +415,7 @@ int main(){
     // test_iterate_fact();
     // test_hash();
     // test_copy();
-    // test_pool_alloc();
+    test_pool_alloc();
     bench_pool_alloc();
     // test_weakref();
     return 0;

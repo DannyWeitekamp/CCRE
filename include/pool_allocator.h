@@ -53,10 +53,7 @@ public:
 		void* start;
 		void* end;
 		void* write_head;
-		Chunk* next_free;
-		size_t free_count;
-		size_t pad[1]; // Just to keep things cache-line aligned
-		// std::vector<Chunk*> free_list = {};
+		std::vector<Chunk*> free_list = {};
 
 		// ... rest of data
 
@@ -65,15 +62,12 @@ public:
 			capacity(items_per_block), 
 			start((void*)((char *) this + sizeof(Block))),
 			end((void*)((char *) this + _end_offset)),
-			write_head((void*)((char *) this + sizeof(Block))),
-			next_free(nullptr),
-			free_count(0)
+			write_head((void*)((char *) this + sizeof(Block)))
 		{};
 	};
 
 	struct Chunk {
 		Block* block;
-		Chunk* next_free;
 		T data;
 	};
 
@@ -124,17 +118,14 @@ public:
     };
 
     T* alloc(){
-    	// auto& free_list = curr_block->next_free;
+    	auto& free_list = curr_block->free_list;
 
     	// If current block's free_list is not empty
     	//  grab the next chunk from its free_list
     	Chunk* __restrict chunk = nullptr;
-    	if(curr_block->free_count > 0){
-    		chunk = curr_block->next_free;
-    		curr_block->free_count -= 1;
-    		curr_block->next_free = chunk->next_free;
-    		chunk->next_free = nullptr;
-    		// free_list.pop_back();
+    	if(free_list.size() > 0){
+    		chunk = free_list.back();
+    		free_list.pop_back();
 
     		// cout << "reuse chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
 
@@ -142,7 +133,6 @@ public:
     	}else{
     		chunk = (Chunk*) curr_block->write_head;
     		chunk->block = curr_block;
-    		chunk->next_free = nullptr;
 
     		// cout << "write chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
 
@@ -150,7 +140,7 @@ public:
     		curr_block->write_head = ((char*) curr_block->write_head) + sizeof(Chunk);
     	}
 
-    	bool no_free = curr_block->free_count == 0;
+    	bool no_free = curr_block->free_list.size() == 0;
     	bool head_end = curr_block->write_head >= curr_block->end;
     	bool is_full = no_free & head_end;
 
@@ -171,24 +161,20 @@ public:
     };
 
     void dealloc(T* ptr){
-    	Chunk* chunk = (Chunk*) ((char*) ptr - (sizeof(Chunk) - sizeof(T)));
+    	Chunk* chunk = (Chunk*) ((char*) ptr - sizeof(void*));
     	Block* block = chunk->block;
 
-    	// cout << "dealloc chunk:" << chunk << " block: " << block << endl;
+    	// cout << "dealloc chunk:" << uint64_t(chunk) << " block: " << block << endl;
 
-    	bool no_free = block->free_count == 0;
+    	bool no_free = block->free_list.size() == 0;
     	bool head_end = block->write_head >= curr_block->end;
     	bool was_full = no_free & head_end;
 
-    	// Add block to free linked list
-    	chunk->next_free = block->next_free;
-    	block->next_free = chunk;
-    	block->free_count += 1;
-    	// block->free_list.push_back(chunk);
+    	block->free_list.push_back(chunk);
 
     	if(was_full){
     		vacant_block_list.push_back(block);
-    	}else if(block->free_count == block->capacity){
+    	}else if(block->free_list.size() == block->capacity){
     		// cout << "FREE BLOCK" << endl;
     		delete block;
     		// free(block);
@@ -204,12 +190,9 @@ public:
     	int64_t alloc_span = (uint64_t(b->end) - uint64_t(b->start));
     	int64_t write_span = (uint64_t(b->write_head) - uint64_t(b->start));
     	int64_t unwrittren_span = (uint64_t(b->end) - uint64_t(b->write_head));
-    	// int64_t n_free = b->free_list.size();
-    	int64_t n_free = b->free_count;
+    	int64_t n_free = b->free_list.size();
     	int64_t C = sizeof(Chunk);
 
-    	// cout << "sizeof(Block): " << sizeof(Block) << endl;
-    	// cout << "sizeof(Chunk): " << sizeof(Chunk) << endl;
     	// cout << "alloc_span: " << alloc_span << endl;
     	// cout << "write_span: " << write_span << endl;
     	// cout << "unwrittren_span: " << unwrittren_span << endl;
