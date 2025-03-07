@@ -315,62 +315,121 @@ void test_pool_alloc(){
 	IS_TRUE(stats.allocated_chunks == 40);
 	IS_TRUE(stats.used_chunks == 28);
 	IS_TRUE(stats.free_chunks == 12);
+
+	// ---------------------------------
+	// : Test alloc_batch
+
+	// cout << pool.get_stats() << endl;
+
+	auto batch = pool.alloc_batch(10);
+	for (auto it = batch.begin(); it != batch.end(); ++it) {
+		cout << uint64_t(&*it) << endl;;
+	}
+	// cout << pool.get_stats() << endl;
+
+	stats = pool.get_stats();
+	IS_TRUE(stats.n_blocks == 7);
+	IS_TRUE(stats.allocated_chunks == 56);
+	IS_TRUE(stats.used_chunks == 38);
+	IS_TRUE(stats.free_chunks == 18);
 }
 
 void bench_pool_alloc(){
 	
 	// std::vector<ControlBlock*> pool_allocs = {};
-	ControlBlock* bb = nullptr;
-	time_it_n("10000 Pool alloc: ", 
-		auto pool = PoolAllocator<ControlBlock>();
-		for(int i=0; i < 10000; i++){
-			ControlBlock* block = pool.alloc();
-			bb = block;
-			// pool_allocs.push_back(block);
-		}	
-	,300);
-
-	// std::vector<ControlBlock*> reg_mallocs = {};
 	
-	time_it_n("10000 malloc:     ", 
-		for(int i=0; i < 10000; i++){
+	const size_t N = 20000;
+	std::string N_str = std::to_string(N);
+
+
+	ControlBlock* bb = nullptr;
+	time_it_n(N_str + " malloc:     ", 
+		for(int i=0; i < N; i++){
 			ControlBlock* block = (ControlBlock*) malloc(sizeof(ControlBlock));
 			bb = block;
 			// reg_mallocs.push_back(block);
 		}
-	,300);	
+	,200);	
+	
+	time_it_n(N_str + " Pool alloc: ", 
+		auto pool = PoolAllocator<ControlBlock>();	
+		for(int i=0; i < N; i++){
+			ControlBlock* block = pool.alloc();
+			// bb = block;
+			// pool_allocs.push_back(block);
+		}	
+	,200);
+
+	time_it_n("10x" + N_str + " Batch alloc: ", 
+		auto pool = PoolAllocator<ControlBlock>();
+		for(int i=0; i < 10; i++){
+			auto batch = pool.alloc_batch(N/10);
+			for (auto it = batch.begin(); it != batch.end(); ++it) {
+				ControlBlock* block = &*it;
+				// bb = block;
+				// cout << uint64_t(&*it) << endl;;
+			}
+		}	
+	,200);
+
+	time_it_n(N_str + " Pool alloc_forward: ", 
+		auto pool = PoolAllocator<ControlBlock>();	
+		for(int i=0; i < N; i++){
+			ControlBlock* block = pool.alloc_forward();
+			// bb = block;
+			// pool_allocs.push_back(block);
+		}	
+	,200);
+
+	
+
+	
 
 	// This prevents the compiler from not running malloc code
 	cout << uint64_t(bb) << endl;
 
+	// std::vector<ControlBlock*> reg_mallocs = {};
+	
+	
+
+	
+
 	// Make a few more so they can be freed
 	auto pool = PoolAllocator<ControlBlock>();
 	std::vector<ControlBlock*> pool_allocs = {};
-	for(int i=0; i < 10000; i++){
+	for(int i=0; i < N; i++){
 		ControlBlock* block = pool.alloc();
 		pool_allocs.push_back(block);
 	}	
 
 	std::vector<ControlBlock*> reg_mallocs = {};
-	for(int i=0; i < 10000; i++){
+	for(int i=0; i < N; i++){
 		ControlBlock* block = (ControlBlock*) malloc(sizeof(ControlBlock));
 		reg_mallocs.push_back(block);
 	}
 
 
-	time_it("10000 Pool dealloc:", 
+	time_it(N_str + " Pool dealloc:", 
 		for (auto it = pool_allocs.begin(); it != pool_allocs.end(); ++it) {
 			ControlBlock* block = *it;
 			pool.dealloc(block);
 		}	
 	);
 
-	time_it("10000 free:        ", 
+	time_it(N_str + " free:        ", 
 		for (auto it = reg_mallocs.begin(); it != reg_mallocs.end(); ++it) {
 			ControlBlock* block = *it;
 			free(block);
 		}	
 	);
+
+
+	
+
+	// auto batch = pool.alloc_batch(10);
+	// for (auto it = batch.begin(); it != batch.end(); ++it) {
+	// 	cout << uint64_t(&*it) << endl;;
+	// }
 }
 
 

@@ -63,7 +63,15 @@ public:
 			start((void*)((char *) this + sizeof(Block))),
 			end((void*)((char *) this + _end_offset)),
 			write_head((void*)((char *) this + sizeof(Block)))
-		{};
+		{
+			free_list.reserve(items_per_block);			
+		};
+
+		inline bool is_full(){
+		    bool no_free = free_list.size() == 0;
+		    bool head_end = write_head >= end;
+		    return no_free & head_end;
+		}
 	};
 
 	struct Chunk {
@@ -137,15 +145,11 @@ public:
     		// cout << "write chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
 
     		// Advance the write head by one Chunk.
-    		curr_block->write_head = ((char*) curr_block->write_head) + sizeof(Chunk);
+    		curr_block->write_head = (void*) ((char*) curr_block->write_head) + sizeof(Chunk);
     	}
 
-    	bool no_free = curr_block->free_list.size() == 0;
-    	bool head_end = curr_block->write_head >= curr_block->end;
-    	bool is_full = no_free & head_end;
-
     	// If curr_block is full then ...
-		if(is_full){
+		if(curr_block->is_full()){
 			// Set a block with vacancy as the current block
 			if(vacant_block_list.size() > 0){
 				curr_block = vacant_block_list.back();
@@ -155,10 +159,29 @@ public:
 			}else{
 				curr_block = alloc_block();
 			}
-		}    		
+		}    	
 
     	return &(chunk->data);	
     };
+
+    void force_fresh_block(){
+    	vacant_block_list.push_back(curr_block);
+    	curr_block = alloc_block();
+    }
+
+    T* alloc_forward(){
+		Chunk* __restrict chunk = (Chunk*) curr_block->write_head;
+		chunk->block = curr_block;
+		// cout << "write chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
+
+		// Advance the write head by one Chunk.
+		curr_block->write_head = (void*) ((char*) curr_block->write_head) + sizeof(Chunk);
+
+		if(curr_block->write_head >= curr_block->end){
+			curr_block = alloc_block();
+		}    	
+		return &(chunk->data);	
+    }
 
     void dealloc(T* ptr){
     	Chunk* chunk = (Chunk*) ((char*) ptr - sizeof(void*));
@@ -166,9 +189,9 @@ public:
 
     	// cout << "dealloc chunk:" << uint64_t(chunk) << " block: " << block << endl;
 
-    	bool no_free = block->free_list.size() == 0;
-    	bool head_end = block->write_head >= curr_block->end;
-    	bool was_full = no_free & head_end;
+    	// bool no_free = block->free_list.size() == 0;
+    	// bool head_end = block->write_head >= block->end;
+    	bool was_full = block->is_full();
 
     	block->free_list.push_back(chunk);
 
@@ -186,7 +209,7 @@ public:
     	}
     };
 
-    void _accum_block(PoolStats& stats, Block* b){
+    void _accum_block_stats(PoolStats& stats, Block* b){
     	int64_t alloc_span = (uint64_t(b->end) - uint64_t(b->start));
     	int64_t write_span = (uint64_t(b->write_head) - uint64_t(b->start));
     	int64_t unwrittren_span = (uint64_t(b->end) - uint64_t(b->write_head));
@@ -215,9 +238,94 @@ public:
 
     	for (auto it = block_list.begin(); it != block_list.end(); ++it) {
 			Block* block = *it;
-			_accum_block(stats, block);
+			_accum_block_stats(stats, block);
 		}
 		return stats;
+    }
+
+    // -------------------------------------------
+    // : BatchIterator
+
+    class BatchIterator {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = T;
+        using pointer           = T*;
+        using reference         = T&;
+
+    private:
+        PoolAllocator<T>* pool;
+        int64_t remaining;
+        Block* curr_block;
+        Chunk* curr_chunk;
+        Chunk* end;
+
+    public:
+    	inline void _next_block(){
+    		curr_block = pool->alloc_block();
+        	curr_chunk = (Chunk*) curr_block->write_head;
+        	end = (Chunk*) curr_block->end;
+    	}
+
+        BatchIterator(PoolAllocator<T>* _pool, size_t n) :
+        	pool(_pool),
+        	remaining(n),
+        	curr_block(nullptr)
+        {
+        	if(n == 0){
+        		curr_chunk = nullptr;
+        	}else{
+        		_next_block();	
+        	}
+        	
+        }
+
+        ~BatchIterator(){
+        	if(curr_block && !curr_block->is_full()){
+        		pool->vacant_block_list.push_back(curr_block);
+        	}
+        }
+
+        reference operator*() const { return curr_chunk->data; }
+        pointer operator->() const { return &(curr_chunk->data); }
+        BatchIterator& operator++() {
+        	curr_chunk++;
+        	remaining--;
+        	curr_block->write_head = curr_chunk;
+
+        	if(remaining > 0){
+        		if(curr_chunk >= end){
+        			_next_block();
+        		}
+        	}else{
+        		curr_chunk = nullptr;
+        	}
+        	return *this;
+        }
+        bool operator!=(const BatchIterator& other) const { return curr_chunk != other.curr_chunk;}
+        bool operator==(const BatchIterator& other) const { return curr_chunk == other.curr_chunk;}
+    };
+
+    struct BatchSpec {
+    	PoolAllocator<T>* pool;
+    	size_t total;
+
+    	BatchSpec(PoolAllocator<T>* _pool, size_t n) : 
+    		pool(_pool), total(n) 
+    	{}
+
+		BatchIterator begin() {return BatchIterator(pool, total);}
+		BatchIterator end() {return BatchIterator(pool, 0);} 	
+    };
+
+    // Iterator begin() { return  BatchIterator(facts.begin(), facts.end());}
+    // Iterator end() { return  Iterator(facts.end(), facts.end());}
+
+
+public:
+    // Add this new method
+    BatchSpec alloc_batch(size_t n) {
+        return BatchSpec(this, n);
     }
 
 
