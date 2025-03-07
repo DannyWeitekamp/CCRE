@@ -2,6 +2,8 @@
 
 #include <atomic> 
 #include "../include/ref.h"
+// #include "../include/context.h"
+// #include "../include/control_block.h"
 
 namespace cre {
 
@@ -9,7 +11,7 @@ using std::cout;
 using std::endl;
 
 // Forward Declarations
-class ControlBlock;
+// class ControlBlock;
 class CRE_Obj;
 class AllocBuffer;
 // extern "C" void CRE_incref(const CRE_Obj* x);
@@ -113,20 +115,20 @@ struct ControlBlock {
 };
 
 
-class ControlBlockPool {
-private:
-    size_t block_size;
-    size_t chunks_per_block;
-    ControlBlock* alloc_ptr = nullptr;
+// class ControlBlockPool {
+// private:
+//     size_t block_size;
+//     size_t chunks_per_block;
+//     ControlBlock* alloc_ptr = nullptr;
     
-public:
-    ControlBlockPool(size_t n_);
-    ControlBlock* alloc();
-    void          dealloc(ControlBlock* ptr);
+// public:
+//     ControlBlockPool(size_t n_);
+//     ControlBlock* alloc();
+//     void          dealloc(ControlBlock* ptr);
 
-private:
-    ControlBlock* alloc_block();
-};
+// private:
+//     ControlBlock* alloc_block();
+// };
 
 
 // global_con
@@ -174,9 +176,7 @@ public :
     // AllocBuffer*        alloc_buffer = nullptr;
 
     // --- Methods ---
-    inline void init_control_block(CRE_dtor_function _dtor){
-        this->control_block = new ControlBlock(this, _dtor);
-    }
+    void init_control_block(CRE_dtor_function _dtor);
     // CRE_Obj(CRE_dtor_function dtor = nullptr);
     // CRE_Obj();
     // ~CRE_Obj(){};

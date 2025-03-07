@@ -1,5 +1,6 @@
-#ifndef _CRE_FactSet_H_
-#define _CRE_FactSet_H_
+// #ifndef _CRE_FactSet_H_
+// #define _CRE_FactSet_H_
+#pragma once 
 
 #include <string>
 #include <vector>
@@ -696,4 +697,4 @@ struct FactChange {
 
 } // NAMESPACE_END(cre)
 
-#endif /* _CRE_FactSet_H_ */ 
+// #endif /* _CRE_FactSet_H_ */ 

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 
 using std::cout;
@@ -6,7 +8,9 @@ using std::endl;
 
 // NOTE: Real page size might not be this, but it is on most systems
 //  and its a good enough default block size.
-const uint64_t PAGE_SIZE = 4096;//sysconf(_SC_PAGESIZE);
+const uint64_t DEFUALT_BLOCKSIZE = 4096;//sysconf(_SC_PAGESIZE);
+// const uint64_t DEFUALT_BLOCKSIZE = 32768;
+// const uint64_t DEFUALT_BLOCKSIZE = 8192;//sysconf(_SC_PAGESIZE);
 
 
 struct PoolStats {
@@ -29,17 +33,7 @@ struct PoolStats {
 	// {};
 };
 
-std::ostream& operator<<(std::ostream& out, const PoolStats& stats){
-	return out << "PoolAllocator Statistics (" << stats.n_blocks << " blocks)" << endl
-		// << "  n_blocks: " << stats.n_blocks << endl
-		<< "  allocated_chunks: " << stats.allocated_chunks << endl
-		<< "  used_chunks: " << stats.used_chunks << endl
-		<< "  free_chunks: " << stats.free_chunks << endl
-		<< "  allocated_bytes: " << stats.allocated_bytes << endl
-		<< "  used_bytes: " << stats.used_bytes << endl
-		<< "  free_bytes: " << stats.free_bytes << endl
-	;
-}
+std::ostream& operator<<(std::ostream& out, const PoolStats& stats);
 
 template<class T>
 class PoolAllocator {
@@ -53,7 +47,14 @@ public:
 		void* start;
 		void* end;
 		void* write_head;
-		std::vector<Chunk*> free_list = {};
+		Chunk** free_list_head;
+		Chunk** free_list_end;
+		// uint64_t free_list_size;
+		
+
+
+
+		// std::vector<Chunk*> free_list = {};
 
 		// ... rest of data
 
@@ -62,16 +63,47 @@ public:
 			capacity(items_per_block), 
 			start((void*)((char *) this + sizeof(Block))),
 			end((void*)((char *) this + _end_offset)),
-			write_head((void*)((char *) this + sizeof(Block)))
-		{
-			free_list.reserve(items_per_block);			
+			write_head((void*)((char *) this + sizeof(Block))),
+			free_list_head( (Chunk**) end ),
+			free_list_end ( (Chunk**)((char *) this + _end_offset + sizeof(Chunk*)*items_per_block) )
+		{	
+			// cout << "free_list_head: " << uint64_t(free_list_head) << endl;
+			// cout << "free_list_end:  " << uint64_t(free_list_end) << endl;
+			// cout << "free_list_size: " << free_list_size() << endl;
+			// free_list.reserve(items_per_block);			
 		};
 
 		inline bool is_full(){
-		    bool no_free = free_list.size() == 0;
+		    bool no_free = free_list_head == end;
 		    bool head_end = write_head >= end;
 		    return no_free & head_end;
 		}
+
+		Chunk* free_list_pop(){
+	    	Chunk* chunk = free_list_head[0];
+			--free_list_head; //(Chunk**)(((char*) free_list_head) - sizeof(Chunk*));
+			// free_list_size -= 1;
+			return chunk;
+	    }
+	    void free_list_push(Chunk* &chunk){
+			++free_list_head;// = (Chunk**)(((char*) free_list_head) + sizeof(Chunk*));
+			std::construct_at(free_list_head, std::move(chunk));
+			// free_list_head[0] = chunk;
+			// free_list_size += 1;
+	    }
+
+	    inline size_t free_list_size(){
+	    	// cout << uint64_t(free_list_head) << ", " << uint64_t(free_list_head) - uint64_t(end) << ", " << sizeof(Chunk*) << endl;
+	    	return (uint64_t(free_list_head) - uint64_t(end)) / sizeof(Chunk*);
+	    }
+
+	    inline bool any_free(){
+	    	return free_list_head != end;
+	    }
+
+	    inline bool all_free(){
+	    	return free_list_head == free_list_end;	
+	    }
 	};
 
 	struct Chunk {
@@ -91,25 +123,28 @@ private:
     Block* curr_block;
     // void* write_head;
 
-    Block* alloc_block(){
-    	void* data = (void*) malloc(block_size);//aligned_alloc(block_size, page_size);
-    	Block* new_block = new (data) Block(block_size, items_per_block, end_offset);
+    Block* alloc_block(size_t _block_size){
+    	void* data = (void*) malloc(_block_size);
+    	// void* data = (void*) aligned_alloc(block_size, DEFUALT_BLOCKSIZE);
+    	Block* new_block = new (data) Block(_block_size, items_per_block, end_offset);
     	block_list.push_back(new_block);    	
 
-    	// cout << "new_block:" << new_block << ", " << new_block->write_head << endl;
+    	// cout << "new_block:" << new_block << ", " << _block_size << endl;
     	return new_block;
     };
     
 public:
-    PoolAllocator(size_t _block_size=PAGE_SIZE) { 
+    PoolAllocator(size_t _block_size=DEFUALT_BLOCKSIZE) :
+    	block_size(_block_size)
+    { 
     	// block_size(sizeof(Block) + n*(sizeof(void*)+sizeof(T)) ),
     	// items_per_block(n) {
 
     	
-    	block_size = _block_size;//PAGE_SIZE*pages_per_block;
+    	// block_size = _block_size;//PAGE_SIZE*pages_per_block;
 
 
-    	items_per_block = int((block_size-sizeof(Block)) / sizeof(Chunk));
+    	items_per_block = int((block_size-sizeof(Block)) / (sizeof(Chunk*) + sizeof(Chunk)));
     	end_offset = sizeof(Block) + items_per_block*sizeof(Chunk);
 
     	// cout << "sizeof(Block): " << sizeof(Block) << endl;
@@ -122,18 +157,23 @@ public:
     	// cout << (block_size-sizeof(Block)) / sizeof(Chunk) << endl;
 
     	// A PoolAllocator has an empty block at instantiation
-    	curr_block = alloc_block();
+    	curr_block = alloc_block(block_size);
     };
 
+
+    
+
     T* alloc(){
-    	auto& free_list = curr_block->free_list;
+    	// auto& free_list = curr_block->free_list;
 
     	// If current block's free_list is not empty
     	//  grab the next chunk from its free_list
     	Chunk* __restrict chunk = nullptr;
-    	if(free_list.size() > 0){
-    		chunk = free_list.back();
-    		free_list.pop_back();
+    	if(curr_block->any_free()){
+    		chunk = curr_block->free_list_pop();
+
+    		// chunk = free_list.back();
+    		// free_list.pop_back();
 
     		// cout << "reuse chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
 
@@ -157,7 +197,7 @@ public:
 
 			// If there are no vacant blocks allocate a new one
 			}else{
-				curr_block = alloc_block();
+				curr_block = alloc_block(block_size);
 			}
 		}    	
 
@@ -166,7 +206,7 @@ public:
 
     void force_fresh_block(){
     	vacant_block_list.push_back(curr_block);
-    	curr_block = alloc_block();
+    	curr_block = alloc_block(block_size);
     }
 
     T* alloc_forward(){
@@ -178,26 +218,30 @@ public:
 		curr_block->write_head = (void*) ((char*) curr_block->write_head) + sizeof(Chunk);
 
 		if(curr_block->write_head >= curr_block->end){
-			curr_block = alloc_block();
+			curr_block = alloc_block(block_size);
 		}    	
 		return &(chunk->data);	
     }
+
 
     void dealloc(T* ptr){
     	Chunk* chunk = (Chunk*) ((char*) ptr - sizeof(void*));
     	Block* block = chunk->block;
 
     	// cout << "dealloc chunk:" << uint64_t(chunk) << " block: " << block << endl;
+    	// cout << "free_size:" << block->free_list_size() << endl;
 
     	// bool no_free = block->free_list.size() == 0;
     	// bool head_end = block->write_head >= block->end;
     	bool was_full = block->is_full();
 
-    	block->free_list.push_back(chunk);
+    	// block->free_list.push_back(chunk);
+    	block->free_list_push(chunk);
+    	
 
     	if(was_full){
     		vacant_block_list.push_back(block);
-    	}else if(block->free_list.size() == block->capacity){
+    	}else if(block->all_free()){
     		// cout << "FREE BLOCK" << endl;
     		delete block;
     		// free(block);
@@ -213,7 +257,7 @@ public:
     	int64_t alloc_span = (uint64_t(b->end) - uint64_t(b->start));
     	int64_t write_span = (uint64_t(b->write_head) - uint64_t(b->start));
     	int64_t unwrittren_span = (uint64_t(b->end) - uint64_t(b->write_head));
-    	int64_t n_free = b->free_list.size();
+    	int64_t n_free = b->free_list_size();
     	int64_t C = sizeof(Chunk);
 
     	// cout << "alloc_span: " << alloc_span << endl;
@@ -255,22 +299,26 @@ public:
 
     private:
         PoolAllocator<T>* pool;
-        int64_t remaining;
+        size_t remaining;
+        size_t block_size;
         Block* curr_block;
         Chunk* curr_chunk;
-        Chunk* end;
+        Chunk* block_end;
 
     public:
     	inline void _next_block(){
-    		curr_block = pool->alloc_block();
+    		// cout << "ALLOC BLOCK: " << block_size << endl;
+    		curr_block = pool->alloc_block(block_size);
         	curr_chunk = (Chunk*) curr_block->write_head;
-        	end = (Chunk*) curr_block->end;
+        	// curr_chunk->block = curr_block;
+        	block_end = (Chunk*) curr_block->end;
     	}
 
-        BatchIterator(PoolAllocator<T>* _pool, size_t n) :
+        BatchIterator(PoolAllocator<T>* _pool, size_t n, size_t _block_size) :
         	pool(_pool),
         	remaining(n),
-        	curr_block(nullptr)
+        	curr_block(nullptr),
+        	block_size(_block_size)
         {
         	if(n == 0){
         		curr_chunk = nullptr;
@@ -286,15 +334,16 @@ public:
         	}
         }
 
-        reference operator*() const { return curr_chunk->data; }
-        pointer operator->() const { return &(curr_chunk->data); }
+        reference operator*() const {curr_chunk->block = curr_block; return curr_chunk->data; }
+        pointer operator->() const {curr_chunk->block = curr_block; return &(curr_chunk->data); }
         BatchIterator& operator++() {
         	curr_chunk++;
         	remaining--;
         	curr_block->write_head = curr_chunk;
+        	// curr_chunk->block = curr_block;
 
         	if(remaining > 0){
-        		if(curr_chunk >= end){
+        		if(curr_chunk >= block_end){
         			_next_block();
         		}
         	}else{
@@ -309,13 +358,15 @@ public:
     struct BatchSpec {
     	PoolAllocator<T>* pool;
     	size_t total;
+    	size_t block_size;
 
-    	BatchSpec(PoolAllocator<T>* _pool, size_t n) : 
-    		pool(_pool), total(n) 
+    	BatchSpec(PoolAllocator<T>* _pool, size_t n, size_t _block_size) : 
+    		pool(_pool), total(n),
+    		block_size(_block_size)
     	{}
 
-		BatchIterator begin() {return BatchIterator(pool, total);}
-		BatchIterator end() {return BatchIterator(pool, 0);} 	
+		BatchIterator begin() {return BatchIterator(pool, total, block_size);}
+		BatchIterator end() {return BatchIterator(pool, 0, block_size);} 	
     };
 
     // Iterator begin() { return  BatchIterator(facts.begin(), facts.end());}
@@ -324,8 +375,14 @@ public:
 
 public:
     // Add this new method
-    BatchSpec alloc_batch(size_t n) {
-        return BatchSpec(this, n);
+    BatchSpec alloc_batch(size_t n, size_t _block_size=0) {
+    	if(_block_size == 0){
+    		_block_size = std::min(
+    			sizeof(Block) + n*(sizeof(Chunk)+sizeof(Chunk*)),
+    			DEFUALT_BLOCKSIZE*2
+    		);
+    	}
+        return BatchSpec(this, n, _block_size);
     }
 
 

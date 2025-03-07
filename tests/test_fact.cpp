@@ -260,7 +260,7 @@ void test_slice(){
 
 void test_pool_alloc(){
 	// Assumes sizeof(Block) == 64 (i.e. the header of a block)
-	uint64_t block_size = 64 + 8*(sizeof(void*)+sizeof(ControlBlock));
+	uint64_t block_size = 64 + 8*(2*sizeof(void*)+sizeof(ControlBlock));
 
 	auto pool = PoolAllocator<ControlBlock>(block_size);
 	auto stats = pool.get_stats();
@@ -273,6 +273,7 @@ void test_pool_alloc(){
 
 	// All but 5 chunk should be used
 	stats = pool.get_stats();
+	// cout << stats << endl;
 	IS_TRUE(stats.n_blocks == 5);
 	IS_TRUE(stats.allocated_chunks == 40);
 	IS_TRUE(stats.used_chunks == 35);
@@ -285,12 +286,13 @@ void test_pool_alloc(){
 
 	// There should be just one active block w/ 8 free chunks
 	stats = pool.get_stats();
+	// cout << stats << endl;
 	IS_TRUE(stats.n_blocks == 1);
 	IS_TRUE(stats.allocated_chunks == 8);
 	IS_TRUE(stats.used_chunks == 0);
 	IS_TRUE(stats.free_chunks == 8);
 	
-	// cout << "-----------------------" << endl;
+	cout << "-----------------------" << endl;
 
 	std::vector<ControlBlock*> odd_blocks = {};
 	for(int i=0; i < 35; i++){
@@ -319,6 +321,8 @@ void test_pool_alloc(){
 	// ---------------------------------
 	// : Test alloc_batch
 
+	cout << "-----------------------" << endl;
+
 	// cout << pool.get_stats() << endl;
 
 	auto batch = pool.alloc_batch(10);
@@ -346,6 +350,7 @@ void bench_pool_alloc(){
 	time_it_n(N_str + " malloc:     ", 
 		for(int i=0; i < N; i++){
 			ControlBlock* block = (ControlBlock*) malloc(sizeof(ControlBlock));
+			block->dtor = nullptr;
 			bb = block;
 			// reg_mallocs.push_back(block);
 		}
@@ -355,6 +360,7 @@ void bench_pool_alloc(){
 		auto pool = PoolAllocator<ControlBlock>();	
 		for(int i=0; i < N; i++){
 			ControlBlock* block = pool.alloc();
+			block->dtor = nullptr;
 			// bb = block;
 			// pool_allocs.push_back(block);
 		}	
@@ -362,10 +368,11 @@ void bench_pool_alloc(){
 
 	time_it_n("10x" + N_str + " Batch alloc: ", 
 		auto pool = PoolAllocator<ControlBlock>();
-		for(int i=0; i < 10; i++){
-			auto batch = pool.alloc_batch(N/10);
+		for(int i=0; i < N/1000; i++){
+			auto batch = pool.alloc_batch(1000);
 			for (auto it = batch.begin(); it != batch.end(); ++it) {
 				ControlBlock* block = &*it;
+				block->dtor = nullptr;
 				// bb = block;
 				// cout << uint64_t(&*it) << endl;;
 			}
@@ -376,6 +383,7 @@ void bench_pool_alloc(){
 		auto pool = PoolAllocator<ControlBlock>();	
 		for(int i=0; i < N; i++){
 			ControlBlock* block = pool.alloc_forward();
+			block->dtor = nullptr;
 			// bb = block;
 			// pool_allocs.push_back(block);
 		}	
@@ -423,8 +431,6 @@ void bench_pool_alloc(){
 		}	
 	);
 
-
-	
 
 	// auto batch = pool.alloc_batch(10);
 	// for (auto it = batch.begin(); it != batch.end(); ++it) {

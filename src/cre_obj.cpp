@@ -1,5 +1,7 @@
 #include <atomic>
 #include <iostream>
+
+#include "../include/context.h"
 #include "../include/cre_obj.h"
 
 
@@ -13,31 +15,31 @@ ControlBlock::ControlBlock(CRE_Obj* _obj_ptr, CRE_dtor_function _dtor) :
 	obj_ptr(_obj_ptr), dtor(_dtor)
 {}
 
-ControlBlock* ControlBlockPool::alloc_block(){
-	ControlBlock* block_begin = reinterpret_cast<ControlBlock*>(malloc(block_size));
-	ControlBlock* chunk = block_begin;
-	for (int i = 0; i < chunks_per_block - 1; ++i) {
-	    chunk->next = 
-	        reinterpret_cast<ControlBlock*>(reinterpret_cast<char *>(chunk) + sizeof(ControlBlock));
-	    chunk = chunk->next;
-  	}
-  	chunk->next = nullptr;
-  	return block_begin;
-}
+// ControlBlock* ControlBlockPool::alloc_block(){
+// 	ControlBlock* block_begin = reinterpret_cast<ControlBlock*>(malloc(block_size));
+// 	ControlBlock* chunk = block_begin;
+// 	for (int i = 0; i < chunks_per_block - 1; ++i) {
+// 	    chunk->next = 
+// 	        reinterpret_cast<ControlBlock*>(reinterpret_cast<char *>(chunk) + sizeof(ControlBlock));
+// 	    chunk = chunk->next;
+//   	}
+//   	chunk->next = nullptr;
+//   	return block_begin;
+// }
 
-ControlBlock* ControlBlockPool::alloc(){
-	if (alloc_ptr == nullptr) {
-    	alloc_ptr = alloc_block();
-  	}
-  	ControlBlock* free_chunck = alloc_ptr;
-  	alloc_ptr = alloc_ptr->next;
-  	return free_chunck;
-}
+// ControlBlock* ControlBlockPool::alloc(){
+// 	if (alloc_ptr == nullptr) {
+//     	alloc_ptr = alloc_block();
+//   	}
+//   	ControlBlock* free_chunck = alloc_ptr;
+//   	alloc_ptr = alloc_ptr->next;
+//   	return free_chunck;
+// }
 
-void ControlBlockPool::dealloc(ControlBlock* ptr){
-	reinterpret_cast<ControlBlock*>(ptr)->next = alloc_ptr;
-	alloc_ptr = reinterpret_cast<ControlBlock*>(ptr);
-}
+// void ControlBlockPool::dealloc(ControlBlock* ptr){
+// 	reinterpret_cast<ControlBlock*>(ptr)->next = alloc_ptr;
+// 	alloc_ptr = reinterpret_cast<ControlBlock*>(ptr);
+// }
 
 
 // CRE_Obj::init(CRE_dtor_function _dtor){
@@ -64,6 +66,13 @@ int64_t CRE_Obj::get_refcount() noexcept{
 
 int64_t CRE_Obj::get_wrefcount() noexcept{
 	return this->control_block->get_wrefcount();
+}
+
+
+void CRE_Obj::init_control_block(CRE_dtor_function _dtor){
+	// this->control_block = new ControlBlock(this, _dtor);
+    ControlBlock* data = global_cb_pool.alloc();
+    this->control_block = new (data) ControlBlock(this, _dtor);
 }
 
 

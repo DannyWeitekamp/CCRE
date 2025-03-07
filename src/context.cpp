@@ -6,6 +6,8 @@ using std::endl;
 
 namespace cre {
 
+PoolAllocator<ControlBlock> global_cb_pool = {};
+
 // CRE_Context::_add_type implementation
 size_t CRE_Context::_add_type(CRE_Type* t) {
     t->inc_ref();
@@ -153,5 +155,7 @@ CRE_Context* default_context = []()
     set_current_context("default");
     return get_context("default");
 }();
+
+
 
 } // NAMESPACE_END(cre)

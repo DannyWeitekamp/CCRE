@@ -4,14 +4,19 @@
 #include "../include/ref.h"
 #include "../include/types.h"
 #include "../include/hash.h"
+#include "../include/pool_allocator.h"
+// #include "../include/control_block.h"
 // #include "../include/intern.h"
 
 namespace cre {
+
+extern PoolAllocator<ControlBlock> global_cb_pool; 
 
 // using CRE_Type_ref = ref<CRE_Type>;
 
 // Forward Declare
 struct InternStr;
+// struct ControlBlock;
 
 // CRE_Context declaration
 struct CRE_Context {
@@ -25,6 +30,7 @@ struct CRE_Context {
     // Note, is a set of std::string_view instead of std::string
     //  because std::string will re-allocate data on copy
     HashSet<std::string_view> intern_set;
+
 
     CRE_Context(std::string _name);
     size_t _add_type(CRE_Type* t);
@@ -50,5 +56,7 @@ CRE_Context* set_current_context(std::string_view context);
 extern HashMap<std::string, std::unique_ptr<CRE_Context>> __all_CRE_contexts;
 extern CRE_Context* default_context;
 extern CRE_Context* current_context;
+
+
 
 } // NAMESPACE_END(cre)
