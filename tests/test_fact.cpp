@@ -31,6 +31,10 @@ using std::cout;
 using std::endl;
 using namespace cre;
 
+void test_item_size(){
+	IS_TRUE(sizeof(Item) == 16);
+}
+
 
 void test_errors(){
 	FactType* CatType = define_fact("Cat", 
@@ -475,6 +479,7 @@ void test_weakref(){
 
 
 int main(){
+	test_item_size();
     // test_errors();
     // test_flags();
     // test_iterate_fact();

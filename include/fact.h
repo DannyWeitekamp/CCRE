@@ -4,6 +4,7 @@
 #include <bit>
 #include <iostream>
 #include "../include/ref.h"
+#include "../include/wref.h"
 #include "../include/alloc_buffer.h"
 #include "../include/item.h"
 #include "../include/cre_obj.h"
@@ -33,6 +34,8 @@ void Fact_dtor(const CRE_Obj* x);
 struct Fact : public CRE_Obj {
 
 public: 
+  static constexpr uint16_t T_ID = T_ID_FACT;
+
   //  -- Members --
   FactType* type=nullptr;
   FactSet* 	parent=nullptr; 
@@ -73,9 +76,15 @@ public:
     if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
       InternStr intern_str(intern(val));
       member = Member(intern_str, intern_str.hash);
+
     }else{
       uint64_t hash = CREHash{}(val); 
-      member = Member(val, hash);
+      if constexpr (std::is_base_of_v<T, Fact>) {  
+        // Fact reference members are always weak
+        member = Member(wref<Fact>(val), hash);
+      }else{
+        member = Member(val, hash);
+      }
     }
     member.borrow();
     return member;
@@ -155,6 +164,27 @@ public:
 
     // Assign to the ind'th item
     data_ptr[ind] = member;
+  }
+
+  template<class T>
+  inline void set(const std::string_view& attr, const T& val) {
+    if(type == nullptr){
+      throw std::invalid_argument("Attribute name [\"" + std::string(attr) +
+          "\"] undefined for untyped Fact.");
+    }
+
+    int index = type->get_attr_index(attr);
+    if(index == -1){
+      throw std::invalid_argument("No attribute [\"" + std::string(attr) +
+          "\"] in Fact of type \"" + type->name + "\".");
+    }
+
+    set(index, val);
+
+    // Member* data_ptr = std::bit_cast<Member*>(
+    //     std::bit_cast<uint64_t>(this) + sizeof(Fact)
+    // );
+    // return data_ptr[index];
   }
 
   

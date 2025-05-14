@@ -40,13 +40,23 @@ nb::object py_fact_getitem(Fact* fact, int64_t index) {
 }
 
 nb::object py_fact_getattr(Fact* fact, std::string_view attr) {
-    // if(index < 0) index += fact->length;
-    // if(index < 0 || index >= fact->length){
-    //     throw std::invalid_argument("Index ["+ std::to_string(index) +
-    //         "] out of bounds for Fact with length=" + std::to_string(fact->length) + "."
-    //     );
-    // }
+    
     return Item_to_py(fact->get(attr));
+}
+
+void py_fact_setitem(Fact* fact, int64_t index, nb::handle py_val) {
+    if(index < 0) index += fact->length;
+    if(index < 0 || index >= fact->length){
+        throw std::invalid_argument("Index ["+ std::to_string(index) +
+            "] out of bounds for Fact with length=" + std::to_string(fact->length) + "."
+        );
+    }
+    fact->set(index, Item_from_py(py_val));
+}
+
+
+void py_fact_setattr(Fact* fact, std::string_view attr, nb::handle py_val) {
+    fact->set(attr, Item_from_py(py_val));
 }
 
 
@@ -90,9 +100,12 @@ void init_fact(nb::module_ & m){
     
     .def("__getitem__", &py_fact_getitem)
 
-    .def("__getitem__", &py_fact_getattr)
+    // .def("__getitem__", &py_fact_getattr)
 
     .def("__getattr__", &py_fact_getattr)
+
+    .def("__setitem__", &py_fact_setitem)
+    .def("__setattr__", &py_fact_setattr)
 
     .def("__iter__",  [](Fact* fact) {
             return nb::make_iterator(nb::type<Fact>(), "iterator",

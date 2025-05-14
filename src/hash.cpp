@@ -387,7 +387,7 @@ const char base64_alpha_num[64] = {
 
 std::string bytes_to_base64(std::vector<uint8_t> bytes){
     int n_char = std::ceil(bytes.size() * (8.0/6.0));
-    cout << "N CHAR" << n_char << endl;
+    // cout << "N CHAR" << n_char << endl;
     char out_str[n_char+1];
 
     for(size_t i=0; i < n_char; ++i){

@@ -23,6 +23,8 @@ struct DerefInfo {
 
 
 struct Var : public CRE_Obj{
+	static constexpr uint16_t T_ID = T_ID_VAR;
+
 	// -- Members --
 // The pointer of the Var instance before any attribute selection
 //   e.g. if '''v = Var(Type); v_b = v.B;''' then v_b.base = &v

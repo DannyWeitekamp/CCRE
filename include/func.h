@@ -140,6 +140,7 @@ struct OriginData {
 void Func_dtor(const CRE_Obj* x);
 
 struct Func : CRE_Obj{
+	static constexpr uint16_t T_ID = T_ID_FUNC;
 
 	CRE_Type* return_type;
 
@@ -217,6 +218,11 @@ struct Func : CRE_Obj{
     std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
 
     void set_arg(size_t i, const Item& val);
+
+    template<class T>
+	  void set_arg(size_t i, const T& val){
+	  	set_arg(i, Item(val));
+	  }
 
     // TODO: Could this be done by overloading item instead? 
     // template<typename T>

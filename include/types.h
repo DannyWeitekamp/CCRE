@@ -12,6 +12,11 @@
 #include <unordered_map>
 #include <sstream>
 
+
+using std::cout;
+using std::endl;
+using std::vector;
+
 namespace cre {
 
 // Forward declarations
@@ -24,8 +29,8 @@ struct Item;
 // : FlagGroup
 
 struct FlagGroup {
-    size_t builtin_flags;
-    size_t builtin_flags_mask;
+    uint64_t builtin_flags;
+    uint64_t builtin_flags_mask;
     HashMap<std::string, Item> custom_flags;
 
     FlagGroup(const HashMap<std::string, Item>& flags={});
@@ -35,7 +40,8 @@ struct FlagGroup {
 
     void assign_flag(std::string_view key, Item value);
     void assign(const HashMap<std::string, Item>& flags);
-    bool has_flags(const FlagGroup& other);
+    Item get_flag(std::string_view key) const;
+    bool has_flags(const FlagGroup& other) const;
     
     
     // template <class ... Ts>
@@ -44,7 +50,7 @@ struct FlagGroup {
     //   // Item items[sizeof...(Ts)];
     //   HashMap<std::string, Item> flags = {};
     //   flags.reserve(sizeof...(Ts));
-    //   // std::vector<Item> items = {};
+    //   // vector<Item> items = {};
     //   // items.reserve();
     //   // int i = 0;
     //   ([&]
@@ -80,7 +86,7 @@ const uint8_t TYPE_KIND_DEFFERED = 3;
 
 struct CRE_Type : CRE_Obj{
     std::string name;
-    std::vector<CRE_Type*> sub_types;
+    vector<CRE_Type*> sub_types;
     CRE_Context* context;
     int32_t type_index;
     uint16_t t_id;
@@ -93,7 +99,7 @@ struct CRE_Type : CRE_Obj{
     CRE_Type(std::string_view _name, 
         uint16_t _t_id,
         uint16_t byte_width,
-        std::vector<CRE_Type*> _sub_types = {},
+        vector<CRE_Type*> _sub_types = {},
         uint8_t _builtin = 0,
         int32_t type_index = 0,
         CRE_Context* context = nullptr
@@ -126,21 +132,21 @@ struct MemberSpec {
             const HashMap<std::string, Item>& _flags
     );
 
-    uint64_t get_flag(uint64_t flag);
+    uint64_t get_flag(uint64_t flag) const;
     // CRE_Type* get_type();
 };
 
 // Type declaration
 struct FactType : public CRE_Type{
-    std::vector<MemberSpec> members;
+    vector<MemberSpec> members;
     uint64_t builtin_flags;
     HashMap<std::string, Item> flags;
-    std::vector<Item> member_names_as_items;
+    vector<Item> member_names_as_items;
     uint8_t finalized;
 
     FactType(std::string_view _name, 
-         const std::vector<CRE_Type*>& _sub_types = {}, 
-         const std::vector<MemberSpec>& _members = {},
+         const vector<CRE_Type*>& _sub_types = {}, 
+         const vector<MemberSpec>& _members = {},
          const HashMap<std::string, Item>& flags = {},
          CRE_Context* context=nullptr
     );
@@ -161,7 +167,8 @@ std::ostream& operator<<(std::ostream& outs, const CRE_Type* type);
 
 
 void set_builtin_flag(uint64_t* flags, uint64_t flag_n, uint64_t val);
-uint64_t get_builtin_flag(uint64_t* flags, uint64_t flag_n);
+uint64_t get_builtin_flag(const uint64_t* flags, uint64_t flag_n);
+int get_unique_id_index(const vector<MemberSpec>& member_specs);
 int get_unique_id_index(FactType* type);
 
 HashMap<std::string, Item> parse_builtin_flags(
@@ -170,13 +177,13 @@ HashMap<std::string, Item> parse_builtin_flags(
     bool as_mask=false);
 
 CRE_Type* define_type(std::string_view name, 
-                  const std::vector<CRE_Type*>& sub_type={},
+                  const vector<CRE_Type*>& sub_type={},
                   uint16_t byte_width = 0,
                   CRE_Context* context = nullptr);
 
 FactType* define_fact(std::string_view name, 
-                  const std::vector<MemberSpec>& members,
-                  const std::vector<CRE_Type*>& sub_types={},
+                  const vector<MemberSpec>& members,
+                  const vector<CRE_Type*>& sub_types={},
                   const HashMap<std::string, Item>& flags={},
                   CRE_Context* context=nullptr 
                   ) ;
@@ -200,15 +207,15 @@ extern CRE_Type* cre_Literal;
 extern CRE_Type* cre_Conditions;
 extern CRE_Type* cre_Rule;
 
-extern std::vector<CRE_Type*> cre_builtins;
+extern vector<CRE_Type*> cre_builtins;
 
-std::vector<CRE_Type*> make_builtins();
+vector<CRE_Type*> make_builtins();
 // extern CRE_Context default_context;
 
 
 struct DefferedType : public CRE_Type {
     // std::string name;
-    // std::vector<CRE_Type*> sub_types;
+    // vector<CRE_Type*> sub_types;
     // uint16_t t_id;
     // uint16_t byte_width;
     // uint8_t builtin;

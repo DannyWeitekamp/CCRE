@@ -5,6 +5,8 @@
 // #include <bit>
 #include <unordered_map>
 #include "../external/unordered_dense.h"
+#include "../include/ref.h"
+#include "../include/wref.h"
 
 namespace cre {
 
@@ -92,6 +94,16 @@ struct CREHash {
 
     // Not Const
     uint64_t operator()(Var* x);
+
+    template <class T>
+    uint64_t operator()(ref<T> x){
+        return CREHash{}(x.get());
+    }
+
+    template <class T>
+    uint64_t operator()(wref<T> x){
+        return CREHash{}(x.get());
+    }
 
     // UintPair used in Vectorizer
     uint64_t operator()(const UintPair& x) const;

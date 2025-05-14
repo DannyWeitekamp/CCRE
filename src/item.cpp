@@ -110,20 +110,22 @@ Item::Item(const std::string_view& arg) {
     // std::string_view intern_str = tup.first;
     // uint64_t hash = tup.second;
     // cout << "AFTER INTERN" << endl;
-    const char* data = intern_str.data();
+    // const char* data = intern_str.data();
 
-    UnicodeItem item;
-    item.data = data;
+    // UnicodeItem item;
+    data = intern_str.data();
+    length = uint32_t(intern_str.length());
     // item.hash = intern_str.hash;
-    item.t_id = T_ID_STR;
-    item.is_ref = 1; // TODO
-    item.borrows = 0; // TODO
+    t_id = T_ID_STR;
+    meta_data = 0; // TODO
+    val_kind = VALUE; 
+    
     // TODO
     // item.kind = 1; 
     // item.is_ascii = 1; // TODO
-    item.length = intern_str.length();
+    
 
-    *this = std::bit_cast<Item>(item);
+    // *this = std::bit_cast<Item>(item);
 
     // cout << "ME: " << *this << ", " << uint64_t(data) << endl;
     // Item generic_item = std::bit_cast<Item>(item);
@@ -149,55 +151,80 @@ Item::Item(const char* data, size_t _length) {
 }
 
 
-// -- Fact -> Item ---
-Item::Item(Fact* x, uint8_t _is_ref) : 
-            val(std::bit_cast<uint64_t>(x)),
-      t_id(T_ID_FACT),
-      is_ref(_is_ref == 0xFF ? !x->immutable : _is_ref), borrows(1), pad(0)
-{
-    // x->inc_ref();
-};
+// // -- Fact -> Item ---
+// Item::Item(Fact* x) : 
+//       ptr((void *) x),
+//       t_id(T_ID_FACT),
+//       meta_data(0), 
+//       val_kind(RAW_POINTER),
+//       pad(0)
 
-Item::Item(ref<Fact> x, uint8_t _is_ref) : Item((Fact*) x, _is_ref)
-{};
-
-
-// -- Var -> Item ---
-Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
-                    t_id(T_ID_VAR), 
-                    is_ref(0), borrows(1), pad(0) 
-{
-// TODO: should figure out how to do this with move semantics
-//   to avoid pointless increfs
-    // x->inc_ref(); 
-};
-
-Item::Item(ref<Var> x) : Item((Var*) x)
-{};
+//       // is_ref(_is_ref == 0xFF ? !x->immutable : _is_ref), 
+       
+// {
+//     // x->inc_ref();
+// };
 
 
-// -- Func -> Item ---
-Item::Item(Func* x) : val(std::bit_cast<uint64_t>(x)),
-                    t_id(T_ID_FUNC), 
-                    is_ref(0), borrows(1), pad(0) 
-{
-// TODO: should figure out how to do this with move semantics
-//   to avoid pointless increfs
-    // x->inc_ref(); 
-};
+// Item::Item(ref<Fact> x) : 
+//       ptr((void *) x.get()),
+//       t_id(T_ID_FACT),
+//       meta_data(0), 
+//       val_kind(STRONG_PTR),
+//       pad(0)
+// {
+//     x->inc_ref();
+// };
 
-Item::Item(ref<Func> x) : Item((Func*) x)
-{};
+
+// Item::Item(wref<Fact> x) : 
+//       ptr((void *) x.get()),
+//       t_id(T_ID_FACT),
+//       meta_data(0), 
+//       val_kind(WEAK_PTR),
+//       pad(0)
+// {
+//     x->inc_ref();
+// };
+
+
+
+// // -- Var -> Item ---
+// Item::Item(Var* x) : val(std::bit_cast<uint64_t>(x)),
+//                     t_id(T_ID_VAR), 
+//                     is_ref(0), borrows(1), pad(0) 
+// {
+// // TODO: should figure out how to do this with move semantics
+// //   to avoid pointless increfs
+//     // x->inc_ref(); 
+// };
+
+// Item::Item(ref<Var> x) : Item((Var*) x)
+// {};
+
+
+// // -- Func -> Item ---
+// Item::Item(Func* x) : val(std::bit_cast<uint64_t>(x)),
+//                     t_id(T_ID_FUNC), 
+//                     is_ref(0), borrows(1), pad(0) 
+// {
+// // TODO: should figure out how to do this with move semantics
+// //   to avoid pointless increfs
+//     // x->inc_ref(); 
+// };
+
+// Item::Item(ref<Func> x) : Item((Func*) x)
+// {};
 
 
 void Item::borrow(){
-    if(!is_primitive() && borrows){
+    if(!is_primitive() && is_ref()){
      ((CRE_Obj*) val)->inc_ref();
     }
 }
 
 void Item::release(){
-    if(!is_primitive() && borrows){
+    if(!is_primitive() && is_ref()){
      ((CRE_Obj*) val)->dec_ref();
     }
 }
@@ -330,7 +357,7 @@ std::string item_to_string(const Item& item) {
                     ss << "self";
                 }
 
-                if(!item.is_ref && fact->immutable){
+                if(!item.is_ref() && fact->immutable){
                     ss << fact->to_string(2);
                 }else{
                     ss << "<fact f_id=" << fact->f_id << ">";    
@@ -386,7 +413,7 @@ uint64_t hash_item(const Item& x){
         case T_ID_FACT:
             {
                 Fact* fact = x.as_fact();
-                if(fact != nullptr && !x.is_ref){
+                if(fact != nullptr && !x.is_ref()){
                     hash = CREHash{}(fact); 
                 }else{
                     hash = 0;

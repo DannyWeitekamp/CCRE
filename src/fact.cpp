@@ -161,7 +161,7 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest,
 		if(copy_kind >= COPY_DEEP  && 
 			 item.t_id == T_ID_FACT && 
 			 item.val != 0 && 
-			 (!item.is_ref || copy_kind == COPY_DEEP_REFS) ){
+			 (!item.is_ref() || copy_kind == COPY_DEEP_REFS) ){
 			 // (item_fact = item.as_fact())->immutable){
 
 				Fact* item_fact = item.as_fact();
@@ -273,13 +273,13 @@ std::string Fact::get_unique_id(){
 	// std::stringstream ss;
 	// FactType* type = fact->type;
 	int unique_id_index = get_unique_id_index(type);
-	// cout << "unique_id_index: " << unique_id_index << uint64_t(type) << endl ;
+	// cout << "unique_id_index: " << type->name << " " << unique_id_index  << endl ;
 	if(unique_id_index != -1){
 		// cout << "unique_id_index: " << unique_id_index << endl ;
 		Item item = get(unique_id_index);
 		if(item.t_id == T_ID_STR){
-			UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
-			return std::string(uitem.data, uitem.length);
+			// UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
+			return std::string(item.data, item.length);
 		}else{
 			return item_to_string(item);
 		}	

@@ -200,6 +200,38 @@ def test_protected_mutability():
 def test_as_conditions():
     pass
 
+
+def test_members_are_weakrefs():
+
+    print("Q")
+
+     #-- Test Auto self-resolution --
+    Person = define_fact("Person", 
+        {"id" : str,
+         "friend" : "Person",
+         "mother" : "Person",
+        }
+    );
+
+    print("A")
+
+    bob = Person('bob')
+    mary = Person('mary', friend=bob)
+    may = Person('may', friend=bob)
+    bob.mother = mary
+    bob.friend = may
+
+    print("B")
+
+    print(bob, mary, may)
+    print(mary.get_refcount())
+
+    mary = None
+
+    print(bob)
+    print(bob.mother)
+
+
 @pytest.mark.benchmark(group="fact")
 def test_b_make_Cat_from_py_1000(benchmark):
     pass
@@ -215,11 +247,11 @@ def test_b_make_PyCat_1000(benchmark):
 
 if __name__ == "__main__":
     import faulthandler; faulthandler.enable()
-    test_define_fact()
-    test_define_fact_deffered()
-    test_fact_create()
-    test_fact_getitem()
-    test_fact_getattr()
+    # test_define_fact()
+    # test_define_fact_deffered()
+    # test_fact_create()
+    # test_fact_getitem()
+    # test_fact_getattr()
     
     # test_fact_eq()
     # test_fact_hash()
@@ -229,3 +261,5 @@ if __name__ == "__main__":
     # test_list_member()
     # test_protected_mutability()
     # test_as_conditions()
+    
+    test_members_are_weakrefs()
