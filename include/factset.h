@@ -429,7 +429,7 @@ struct ToFactSetTranslator {
             }    
         }
 
-        if(uid_item.t_id != 0){
+        if(uid_item.get_t_id() != 0){
             std::string_view uid = uid_item.as_string();
             if(key_id != uid){
                 auto [it, inserted] = fact_map.insert({uid, index});
@@ -497,7 +497,7 @@ struct ToFactSetTranslator {
     Item _resolve_possible_fact_ref(Item item, CRE_Type* mbr_type){
 
         int64_t index = -1;
-        if(item.t_id == T_ID_STR){
+        if(item.get_t_id() == T_ID_STR){
             std::string_view item_str = item.as_string();
 
             // Reference to another fact
@@ -542,7 +542,7 @@ struct ToFactSetTranslator {
                 
             }
             
-        }else if(item.t_id == T_ID_INT){
+        }else if(item.get_t_id() == T_ID_INT){
             if(mbr_type && mbr_type->t_id == T_ID_FACT){
                 index = item.as_int();
                 if(index < 0 || index >= fact_infos.size()){

@@ -76,9 +76,9 @@ Item Item_from_py(nb::handle py_obj){
 }
 
 nb::object Item_to_py(Item item){
-	uint16_t t_id = item.t_id;
+	uint16_t t_id = item.get_t_id();
 	switch(t_id) {
-        case T_ID_NULL:
+        case T_ID_NONE:
            	return nb::none();
         case T_ID_BOOL:
             return nb::cast(item.as_bool());

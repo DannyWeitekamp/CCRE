@@ -291,7 +291,7 @@ ref<FactSet>  _FactSet_from_doc(rapidjson::Document& d){
 			if(index == -1){
 				std::string type_str = type != nullptr ? std::string(type->name) : "NULL";
 				std::string error_msg = "Key '" + std::string(key) + "' is not an integer or named member of fact type '" + type_str + "'.";
-				throw std::runtime_error(error_msg);
+				throw std::invalid_argument(error_msg);
 			}
 
 			// Populate the item
@@ -444,7 +444,7 @@ struct FactSetJSONWriter {
 
     rapidjson::Value item_to_value(Item item){
 		rapidjson::Value item_val;
-		switch(item.t_id) {
+		switch(item.get_t_id()) {
 	        case T_ID_BOOL:
 	            item_val = rapidjson::Value(item.as_bool());
 	            break;

@@ -16,7 +16,7 @@ namespace cre {
 //     Item item;
 //     item.val = 0;
 //     item.hash = 0;
-//     item.t_id = 0;
+//     item.get_t_id() = 0;
 //     return item;
 // }
 
@@ -34,13 +34,13 @@ namespace cre {
 //     UnicodeItem item;
 //     item.data = data;
 //     item.hash = intern_str.hash;
-//     item.t_id = T_ID_STR;
+//     item.get_t_id() = T_ID_STR;
 //     item.kind = 1; // TODO
 //     item.is_ascii = 1; // TODO
 //     item.length = intern_str.length();
 
 //     Item generic_item = std::bit_cast<Item>(item);
-//     // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
+//     // cout << "STR_TO_ITEM: " << item.get_t_id() << ", " << generic_item.get_t_id() << endl;
 //     return generic_item;
 // }
 
@@ -62,9 +62,9 @@ namespace cre {
 //     Item item;
 //     item.val = static_cast<uint64_t>(arg);
 //     item.hash = CREHash{}(arg);
-//     item.t_id = T_ID_BOOL;
+//     item.get_t_id() = T_ID_BOOL;
 
-//     // cout << "BOOL TO ITEM: " << item.t_id << endl;
+//     // cout << "BOOL TO ITEM: " << item.get_t_id() << endl;
 //     return item;
 // }
 
@@ -72,9 +72,9 @@ namespace cre {
 //     Item item;
 //     item.val = std::bit_cast<uint64_t>(arg);
 //     item.hash = CREHash{}(arg);
-//     item.t_id = T_ID_INT;
+//     item.get_t_id() = T_ID_INT;
 
-//     // cout << "INT TO ITEM: " << item.t_id << endl;
+//     // cout << "INT TO ITEM: " << item.get_t_id() << endl;
 //     return item;
 // }
 
@@ -82,8 +82,8 @@ namespace cre {
 //     Item item;
 //     item.val = std::bit_cast<uint64_t>(arg);
 //     item.hash = CREHash{}(arg);
-//     item.t_id = T_ID_FLOAT;
-//     // cout << "FLOAT TO ITEM: " << item.t_id << endl;
+//     item.get_t_id() = T_ID_FLOAT;
+//     // cout << "FLOAT TO ITEM: " << item.get_t_id() << endl;
 //     return item;
 // }
 
@@ -91,8 +91,8 @@ namespace cre {
 //     Item item;
 //     item.val = std::bit_cast<uint64_t>(arg);
 //     item.hash = 0;
-//     item.t_id = T_ID_NULL;
-//     // cout << "FLOAT TO ITEM: " << item.t_id << endl;
+//     item.get_t_id() = T_ID_NULL;
+//     // cout << "FLOAT TO ITEM: " << item.get_t_id() << endl;
 //     return item;
 // }
 
@@ -129,7 +129,7 @@ Item::Item(const std::string_view& arg) {
 
     // cout << "ME: " << *this << ", " << uint64_t(data) << endl;
     // Item generic_item = std::bit_cast<Item>(item);
-    // cout << "STR_TO_ITEM: " << item.t_id << ", " << generic_item.t_id << endl;
+    // cout << "STR_TO_ITEM: " << item.get_t_id() << ", " << generic_item.get_t_id() << endl;
     // return generic_item;
 }
 
@@ -316,12 +316,15 @@ void Item::release(){
 
 
 std::string item_to_string(const Item& item) {
-    // std::cout << "TO STR: " << item.t_id << std::endl;
-    uint16_t t_id = item.t_id;
+    // std::cout << "TO STR: " << item.get_t_id() << std::endl;
+    uint16_t t_id = item.get_t_id();
     std::stringstream ss;
     switch(t_id) {
-        case T_ID_NULL:
-            ss << "null";
+        case T_ID_UNDEF:
+            ss << "Undef";
+            break;
+        case T_ID_NONE:
+            ss << "None";
             break;
         case T_ID_BOOL:
             ss << std::boolalpha << item.as_bool();
@@ -399,9 +402,13 @@ uint64_t hash_item(const Item& x){
     //     return x.hash;
     // }
 
-    uint16_t t_id = x.t_id;
+    uint16_t t_id = x.get_t_id();
     uint64_t hash; 
     switch(t_id) {
+        case T_ID_UNDEF:
+            hash = 0; break;
+        case T_ID_NONE:
+            hash = 0; break;
         case T_ID_BOOL:
             hash = CREHash{}(x.as_bool()); break;
         case T_ID_INT:
@@ -431,7 +438,7 @@ uint64_t hash_item(const Item& x){
             }
             break;
         default:
-            // cout << "Warning Default Hash, t_id=" << x.t_id << ", val=" << x.val << endl;
+            // cout << "Warning Default Hash, t_id=" << x.get_t_id() << ", val=" << x.val << endl;
             hash = uint64_t (0);
     }
 
@@ -442,7 +449,7 @@ uint64_t hash_item(const Item& x){
 bool Item::operator==(const Item& other) const{
     return (
         this->val == other.val && 
-        this->t_id == other.t_id
+        this->t_id == other.get_t_id()
     );
 }
 

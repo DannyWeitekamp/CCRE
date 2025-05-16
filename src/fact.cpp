@@ -42,7 +42,7 @@ void Fact_dtor(const CRE_Obj* x){
 		for(size_t i=0; i < fact->length; i++){
 			Item item = fact->get(i);
 
-			// cout << "~ITEM: " << "i=" << i << " " << item << ", t_id=" << item.t_id << ", borrows=" << uint64_t(item.borrows) << endl;
+			// cout << "~ITEM: " << "i=" << i << " " << item << ", t_id=" << item.get_t_id() << ", borrows=" << uint64_t(item.borrows) << endl;
 			// if(!item.is_primitive() && item.borrows){
 			// 	// CRE_Obj* item_obj = ;
 			// 	cout << "i=" << i << " ~ITEM REFS: " << ((CRE_Obj*) item.val)->get_refcount() << endl;
@@ -159,7 +159,7 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest,
 		Item item = src->get(i);
 	
 		if(copy_kind >= COPY_DEEP  && 
-			 item.t_id == T_ID_FACT && 
+			 item.get_t_id() == T_ID_FACT && 
 			 item.val != 0 && 
 			 (!item.is_ref() || copy_kind == COPY_DEEP_REFS) ){
 			 // (item_fact = item.as_fact())->immutable){
@@ -277,9 +277,9 @@ std::string Fact::get_unique_id(){
 	if(unique_id_index != -1){
 		// cout << "unique_id_index: " << unique_id_index << endl ;
 		Item item = get(unique_id_index);
-		if(item.t_id == T_ID_STR){
+		if(item.get_t_id() == T_ID_STR){
 			// UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
-			return std::string(item.data, item.length);
+			return std::string(item.data, item.get_length());
 		}else{
 			return item_to_string(item);
 		}	
@@ -309,22 +309,36 @@ std::string Fact::to_string(uint8_t verbosity){
 	size_t L = size();
 	// std::vector<std::string> mbr_strs = {};
 	// mbr_strs.reserve(L);
-	for(int i=0; i < L; i++){
-		if(type != nullptr && i < type->members.size()){
-			MemberSpec* mbr_spec = &type->members[i];
-			if(mbr_spec->get_flag(BIFLG_VERBOSITY) >= verbosity){
-				continue;
-			}
 
-			if(mbr_spec->name.length() > 0){
-				ss << mbr_spec->name << "=";
-			}
-		}
+	bool any_prev = false;
+	for(int i=0; i < L; i++){
+		bool mbr_has_type = type != nullptr && i < type->members.size();
+
 		Item item = get(i);
-		ss << item_to_string(item);
-		if(i != L-1){
-			ss << ", ";  
-		}    
+		if(!item.is_undef() || !mbr_has_type || verbosity >= 2){
+
+			if(any_prev){
+				ss << ", ";  
+			} 
+
+			// Member name= part
+			if(mbr_has_type){
+				MemberSpec* mbr_spec = &type->members[i];
+				if(mbr_spec->get_flag(BIFLG_VERBOSITY) >= verbosity){
+					continue;
+				}
+
+				if(mbr_spec->name.length() > 0){
+					ss << mbr_spec->name << "=";
+				}
+			}
+			
+			// Value Part
+			ss << item_to_string(item);
+			any_prev = true;
+			
+		}
+		
 	}
 	ss << ")";  
   
@@ -342,7 +356,7 @@ std::string Fact::to_string(uint8_t verbosity){
 
 
 // 		// item.~Item();
-// 		// if(item.t_id == T_ID_OBJ){
+// 		// if(item.get_t_id() == T_ID_OBJ){
 // 		// 	ObjItem* o_item = (ObjItem*) &item;
 // 		// 	((CRE_Obj*) o_item->data)->dec_ref();
 // 		// 	// CRE_decref((CRE_Obj*) o_item->data);	
@@ -389,7 +403,7 @@ Fact::Iterator end(const Fact* fact){return fact->end();}
 //     }else{
 //     	  item.hash = 0;
 //     }
-//     item.t_id = T_ID_FACT;
+//     item.get_t_id() = T_ID_FACT;
 //     // cout << "FACT TO ITEM:" << fact << endl;
 //     return item;
 // }
@@ -444,7 +458,8 @@ uint64_t _hash_fact_range(const Fact* x, int64_t start, int64_t end){
 
 
 uint64_t CREHash::operator()(Fact* x) {
-		return x->hash;
+	if(x == nullptr) return 0;
+	return x->hash;
 		// NOTE: Fact's `hash` field is always up to date so the logic below
 		//   is unecessary, and could cause issues, since 0 is a legitimate hash.
     // if(x->hash != 0){
@@ -468,8 +483,8 @@ uint64_t CREHash::operator()(const FactView& x) const{
 bool item_eq(const Item& ia, const Item& ib){
 	// cout << "ITEM A: " << ia << " ITEM B: " << ib << endl;
 	// cout << "HASH A: " << CREHash{}(ia) << " HASH B: " << CREHash{}(ib) << endl;
-	if(ia.t_id != ib.t_id) return false;
-	switch (ia.t_id) {
+	if(ia.get_t_id() != ib.get_t_id()) return false;
+	switch (ia.get_t_id()) {
 		case T_ID_FLOAT:
 			{
 				double da = ia.as_float();

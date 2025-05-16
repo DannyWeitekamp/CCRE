@@ -132,7 +132,7 @@ void Vectorizer::_map_fact(Fact* fact){
 	Member* last_mbr_ptr = nullptr;
 	if(fact->length > 1){
 		last_mbr_ptr = fact->get_ptr(fact->length-1);
-		if(last_mbr_ptr->t_id == T_ID_FLOAT){
+		if(last_mbr_ptr->get_t_id() == T_ID_FLOAT){
 			val_is_nominal = false;
 		}else{
 			nom_enc = this->_encode_mbr(*last_mbr_ptr);	

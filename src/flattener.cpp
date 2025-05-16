@@ -213,7 +213,7 @@ size_t Flattener::_fact_to_var_pairs(
 
 		// If 'value' is another fact then (varname.attr, other_varname)
 		Item obj_item = in_fact->get(mbr_ind);
-		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
+		if(obj_item.get_t_id() == T_ID_FACT && obj_item.val != 0){
 			Fact* obj_fact = obj_item.as_fact();
 			ref<Var> obj_var = fact_vars[obj_fact->f_id];
 
@@ -288,7 +288,7 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 		}
 
 		Item obj_item = in_fact->get(ind);
-		if(obj_item.t_id == T_ID_FACT && obj_item.val != 0){
+		if(obj_item.get_t_id() == T_ID_FACT && obj_item.val != 0){
 			Fact* obj_fact = obj_item.as_fact();
 			auto u_ind = get_unique_id_index(obj_fact->type);
 

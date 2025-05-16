@@ -422,7 +422,7 @@ std::ostream& operator<<(std::ostream& out, ref<Func> func){
 // 		cf->root_arg_infos[arg_ind].kind = ARGINFO_CONST;
 // 		cf->root_arg_infos[arg_ind].has_deref = 0;
 // 		cf->root_arg_infos[arg_ind].ptr = head_info.head_data_ptr;
-// 		cf->root_arg_infos[arg_ind].t_id = head_info.head_t_id;
+// 		cf->root_arg_infos[arg_ind].get_t_id() = head_info.head_t_id;
 // 	}
 	
 // }
@@ -448,16 +448,16 @@ void Func::set_arg(size_t i, const Item& val){
 	size_t start = this->head_ranges[i].start;
 	size_t end = this->head_ranges[i].end;
 
-	uint8_t kind = val.t_id == T_ID_VAR ? ARGINFO_VAR :
-				   val.t_id == T_ID_FUNC ? ARGINFO_FUNC :
+	uint8_t kind = val.get_t_id() == T_ID_VAR ? ARGINFO_VAR :
+				   val.get_t_id() == T_ID_FUNC ? ARGINFO_FUNC :
 				   ARGINFO_CONST;
 
-	cout << uint64_t(this) << "  set i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.t_id) << ", kind=" << uint64_t(kind) << endl;
+	cout << uint64_t(this) << "  set i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.get_t_id()) << ", kind=" << uint64_t(kind) << endl;
 
 	// if(!kind){
 	// 	throw std::invalid_argument(
 	// 	"Invalid value provided for Func::set_arg(), but got " + val.to_string() + 
-	// 	" with t_id=" + std::to_string(val.t_id) + ". Expected int, float, string, Var or Func.");	
+	// 	" with t_id=" + std::to_string(val.get_t_id()) + ". Expected int, float, string, Var or Func.");	
 	// }
 
 

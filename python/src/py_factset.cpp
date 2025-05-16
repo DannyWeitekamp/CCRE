@@ -100,7 +100,7 @@ Item _resolve_possible_ref(Item item,
 						   const std::vector<std::tuple<nb::handle, FactType*, size_t, size_t>>& fact_infos,
 						   const FactSetBuilder& builder 
 	){
-	if(item.t_id == T_ID_STR){
+	if(item.get_t_id() == T_ID_STR){
         std::string_view item_str = item.as_string();
 
         // Reference to another fact
@@ -137,10 +137,6 @@ Item _resolve_possible_ref(Item item,
     }
     return item;
 }
-
-
-
-
 
 
 

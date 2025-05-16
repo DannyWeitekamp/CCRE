@@ -101,7 +101,6 @@ struct CRE_Type : CRE_Obj{
         uint16_t byte_width,
         vector<CRE_Type*> _sub_types = {},
         uint8_t _builtin = 0,
-        int32_t type_index = 0,
         CRE_Context* context = nullptr
     );    
 
@@ -193,7 +192,8 @@ extern "C" size_t FactType_get_member_index(FactType* type, char* key);
 
  
 // Global variable declarations
-extern CRE_Type* cre_undefined;
+extern CRE_Type* cre_undef;
+extern CRE_Type* cre_none;
 extern CRE_Type* cre_bool;
 extern CRE_Type* cre_int;
 extern CRE_Type* cre_float;

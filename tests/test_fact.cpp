@@ -18,7 +18,6 @@
 
 // #include "../include/unicode.h"
 #include "../include/cre_obj.h"
-#include "../include/flattener.h"
 #include "../include/wref.h"
 #include "../include/pool_allocator.h"
 #include "test_macros.h"
@@ -217,10 +216,21 @@ auto nested_objects(){
 
 	ref<Fact> fudge = make_tuple("This", "is", "fudge");
 	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
-	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball, fudge, nullptr);
+	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball, fudge);
 	ref<Fact> double_fudge = make_tuple("double", fudge);
 	ref<Fact> Bobby = make_fact(CatOwner, "Bobby", snowball, double_fudge, Jeff);	
 	return std::make_tuple(fudge, snowball, Jeff, double_fudge, Bobby);
+}
+
+auto test_to_string(){
+	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
+
+	cout << fudge->to_string() << endl;
+	cout << snowball->to_string() << endl;
+	cout << Jeff->to_string() << endl;
+	cout << double_fudge->to_string() << endl;
+	cout << Bobby->to_string() << endl;
+
 }
 
 void test_copy(){
@@ -477,16 +487,69 @@ void test_weakref(){
 	// cout << "END"<< endl;
 }
 
+void bench_deref(){
+	FactType* Person = define_fact("Person", 
+	    {{"id", cre_str, {{"unique_id", Item(true)}} },
+	     {"buddy", new DefferedType("Person")}
+	 	}
+	);
 
-int main(){
-	test_item_size();
+	const int M = 1;	
+	const int N = 100;
+
+	vector<ref<Fact>> people = {};
+	Fact* buddy = nullptr;
+	for(int i=0; i < N; i++){
+		// cout << "i: " << i << endl;
+		ref<Fact> person = make_fact(Person, "person" + std::to_string(i), buddy);
+		people.push_back(person);
+
+		// cout << "REFCOUNT: " << person->get_refcount() << endl;
+
+		buddy = person;
+	}
+	time_it("Deref fast: ", 
+		for(int j=0; j < M; j++){
+			Fact* person = people[N-1];	
+			for(int i=0; i < N-1; i++){
+				person = person->get(1).as_fact();
+			}
+		}
+	);
+	
+	time_it("Deref slow: ", 
+		for(int j=0; j < M; j++){
+			Fact* person = people[N-1];	
+			for(int i=0; i < N-1; i++){
+				// cout << person->get("id") << endl;
+				person = person->get(1).as_fact_slow();
+			}
+		}
+	);
+
+	
+
+
+	
+
+
+	
+
+}
+
+
+
+int main() {
+	// test_item_size();
     // test_errors();
     // test_flags();
     // test_iterate_fact();
     // test_hash();
+    // test_to_string();
     // test_copy();
-    test_pool_alloc();
-    bench_pool_alloc();
+    // test_pool_alloc();
+    // bench_pool_alloc();
     // test_weakref();
+	bench_deref();
     return 0;
 }

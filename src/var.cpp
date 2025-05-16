@@ -55,7 +55,7 @@ Var::Var(const Item& _alias,
 		memcpy(deref_infos, _deref_infos, _length*sizeof(DerefInfo));
 	}
 
-	if(_alias.t_id != T_ID_STR && _alias.t_id != T_ID_INT){
+	if(_alias.get_t_id() != T_ID_STR && _alias.get_t_id() != T_ID_INT){
 		std::stringstream ss;
 		ss << "Var alias must be string or integer. Got: " << _alias << ".";
 		throw std::invalid_argument(ss.str());
@@ -276,9 +276,9 @@ std::string Var::to_string(){
 		}
 		type = fact_type->get_item_type(mbr_ind);	
 	}
-	if(alias.t_id == T_ID_STR){
+	if(alias.get_t_id() == T_ID_STR){
 		return fmt::format("{}{}", alias.as_string(), fmt::join(deref_strs, ""));	
-	}else if(alias.t_id == T_ID_INT){
+	}else if(alias.get_t_id() == T_ID_INT){
 		return fmt::format("F{}{}", alias.as_int(), fmt::join(deref_strs, ""));	
 	}
 	

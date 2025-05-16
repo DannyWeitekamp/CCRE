@@ -86,6 +86,9 @@ public:
         member = Member(val, hash);
       }
     }
+    if(!member.is_value()){
+      member.make_weak();  
+    }
     member.borrow();
     return member;
   }
@@ -94,14 +97,15 @@ public:
     if(this->type != nullptr && ind < this->type->members.size()){
       CRE_Type* mbr_type = this->type->members[ind].type;
 
-      // if(member.t_id == T_ID_NULL){
-      //   member.t_id = mbr_type->t_id;
+      // if(member.get_t_id() == T_ID_NULL){
+      //   member.get_t_id() = mbr_type->t_id;
       // }
-      if(item.t_id != T_ID_NULL && // Members can always be null
-         mbr_type->t_id != item.t_id &&
+      if(item.get_t_id() != T_ID_UNDEF && // Members can always be Undef
+         item.get_t_id() != T_ID_NONE && // Members can always be None
+         mbr_type->t_id != item.get_t_id() &&
          mbr_type->t_id != 0){
 
-        CRE_Type* type = current_context->types[item.t_id-1];
+        CRE_Type* type = current_context->types[item.get_t_id()-1];
         throw std::invalid_argument("Setting item[" + std::to_string(ind) + "] with type '" + mbr_type->name + "' to value " \
           + item_to_string(item) + " with type '" + type->name + "'");
       }
@@ -350,7 +354,7 @@ ref<Fact> make_fact(FactType* type, Ts && ... inputs){
   int i = 0;
   ([&]
     {
-        // cout << "!!" << Member(inputs) << " " << sizeof(Member) << " " << endl;
+        // cout << "!!" << Member(inputs).is_ref() << " " << endl;
         mbrs[i] = Member(inputs);
         ++i;
         
@@ -557,15 +561,17 @@ inline void _zfill_fact(Fact* fact, uint32_t start, uint32_t end){
   // cout << "ZFILL: " << start << ", " << end << endl;
   for(int ind = start; ind < end; ind++){
       data_ptr[ind] = Member();
+      // cout << data_ptr[ind].get_t_id() << endl;
 
-      if(type != nullptr && ind < type->members.size()){
-        CRE_Type* mbr_typ = (&type->members[ind])->type;
+      // NOTE: Code for filling in t_ids of fresh (but is unecessary)
+      // if(type != nullptr && ind < type->members.size()){
+      //   CRE_Type* mbr_typ = (&type->members[ind])->type;
         // cout << uint64_t(mbr_typ) << " FILL BACK" << std::to_string(ind) <<
         //      " T_ID: " << mbr_typ->t_id <<
         //      " Type: " << mbr_typ << " [" << 
         //                int(mbr_typ->kind) << "]" << endl;
-        data_ptr[ind].t_id = mbr_typ->t_id;
-      }
+        // data_ptr[ind].set_t_id(mbr_typ->t_id);
+      // }
   }
 }
 
@@ -590,8 +596,15 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
       //   this temporary.
       ItemOrMbr item = items[i];
 
+      
       fact->verify_member_type(i, item);
+
+      // cout << "i=" << i << " t_id=" << item.get_t_id(); 
+      // cout << "item=" << item << endl; 
+
       fact->set_unsafe(i, item);
+
+
 
       // if(!item.is_primitive() && item.borrows){
       //   ((CRE_Obj*) item.val)->inc_ref();

@@ -112,6 +112,10 @@ struct ControlBlock {
     inline int64_t get_wrefcount() noexcept {
         return wref_count >> 1;
     }
+
+    inline bool is_expired() noexcept {
+        return !(wref_count & 1);
+    }
 };
 
 

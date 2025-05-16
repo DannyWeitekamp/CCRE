@@ -26,11 +26,10 @@ CRE_Type::CRE_Type(
            uint16_t _byte_width,
            vector<CRE_Type*> _sub_types, 
            uint8_t _builtin,
-           int32_t _type_index, 
            CRE_Context* context) : 
     name(std::string(_name)), t_id(_t_id),
     byte_width(_byte_width), sub_types(_sub_types), builtin(_builtin),
-    context(context), type_index(_type_index) {
+    context(context), type_index(-1) {
 
     // CRE_Obj(&CRE_Type_dtor)
     this->init_control_block(&CRE_Type_dtor);
@@ -195,7 +194,7 @@ FactType::FactType(std::string_view _name,
            const vector<MemberSpec>& _members,
            const HashMap<std::string, Item>& _flags,
            CRE_Context* _context)
-    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, 0, _context), 
+    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, _context), 
       members(_members), flags(_flags) {
 
     control_block->dtor = &FactType_dtor; 
@@ -240,10 +239,10 @@ CRE_Type* define_type(std::string_view name,
     };
 
     // TODO: What is the T_ID of a user defined type
-    CRE_Type* t = new CRE_Type(name, 0, byte_width, sub_types, 0, 0, context);
+    CRE_Type* t = new CRE_Type(name, 0, byte_width, sub_types, 0, context);
     // cout << "DEFINE TYPE" << t->name << endl;
     uint16_t index = context->_add_type(t);
-    t->type_index = index;
+    // t->type_index = index;
 
     // return context->types[index];
     return t;
@@ -341,10 +340,12 @@ extern "C" size_t FactType_get_attr_index(FactType* type, char* key){
 
 
 // Global variable definitions
-CRE_Type* cre_undefined;// = new CRE_Type("undefined",{}, 1);
+CRE_Type* cre_undef;// = new CRE_Type("undefined",{}, 1);
+CRE_Type* cre_none;// = new CRE_Type("bool",{}, 1);
 CRE_Type* cre_bool;// = new CRE_Type("bool",{}, 1);
 CRE_Type* cre_int;// = new CRE_Type("int",{}, 1);
 CRE_Type* cre_float;// = new CRE_Type("float",{}, 1);
+CRE_Type* cre_ptr;// = new CRE_Type("float",{}, 1);
 CRE_Type* cre_str;// = new CRE_Type("str",{}, 1);
 CRE_Type* cre_obj;// = new CRE_Type("obj",{}, 1);
 CRE_Type* cre_Fact;// = new CRE_Type("Fact",{}, 1);
@@ -362,39 +363,45 @@ vector<CRE_Type*> make_builtins(){
     vector<CRE_Type*> cre_builtins;// = {};
 
     if(cre_builtins.size() == 0){
-        cre_undefined = new CRE_Type("undefined", T_ID_UNDEFINED,
-                                0, {}, 1, 0);
+        cre_undef = new CRE_Type("Undef", T_ID_UNDEF,
+                                0, {}, 1);
+        cre_none = new CRE_Type("None", T_ID_NONE,
+                                0, {}, 1);
         cre_bool = new CRE_Type("bool", T_ID_BOOL,
-                                sizeof(bool), {}, 1, 1);
+                                sizeof(bool), {}, 1);
         cre_int = new CRE_Type("int", T_ID_INT,      
-                                sizeof(int64_t), {}, 1, 2);
+                                sizeof(int64_t), {}, 1);
         cre_float = new CRE_Type("float", T_ID_FLOAT,
-                                sizeof(double), {}, 1, 3);
+                                sizeof(double), {}, 1);
+        cre_ptr = new CRE_Type("ptr", T_ID_PTR,
+                                sizeof(double), {}, 1);
         cre_str = new CRE_Type("str", T_ID_STR,      
-                                sizeof(std::string), {}, 1 ,4);
+                                sizeof(std::string), {}, 1);
         cre_obj = new CRE_Type("obj", T_ID_OBJ,      
-                                sizeof(double), {}, 1, 5);
+                                sizeof(double), {}, 1);
         cre_Fact = new CRE_Type("Fact", T_ID_FACT, 
-                                sizeof(void*), {}, 1, 6);
+                                sizeof(void*), {}, 1);
         cre_FactSet = new CRE_Type("FactSet", T_ID_FACTSET,
-                                sizeof(void*), {}, 1, 7);
+                                sizeof(void*), {}, 1);
         cre_Var = new CRE_Type("Var", T_ID_VAR,      
-                                sizeof(void*), {}, 1, 8);
+                                sizeof(void*), {}, 1);
         cre_Func = new CRE_Type("Func", T_ID_FUNC,   
-                                sizeof(void*), {}, 1, 9);
+                                sizeof(void*), {}, 1);
         cre_Literal = new CRE_Type("Literal", T_ID_LITERAL,
-                                sizeof(void*), {}, 1, 10);
+                                sizeof(void*), {}, 1);
         cre_Conditions = new CRE_Type("Conditions", T_ID_CONDITIONS,
-                                sizeof(void*), {}, 1, 11);
+                                sizeof(void*), {}, 1);
         cre_Rule = new CRE_Type("Rule", T_ID_RULE,
-                                sizeof(void*), {}, 1, 12);
+                                sizeof(void*), {}, 1);
 
         // cout << "INIT builtins";
         cre_builtins = {
-            cre_undefined,
+            cre_undef,
+            cre_none,
             cre_bool,
             cre_int,
             cre_float,
+            cre_ptr,
             cre_str,
             cre_obj,
             cre_Fact,
@@ -404,7 +411,9 @@ vector<CRE_Type*> make_builtins(){
             cre_Literal,
             cre_Conditions,
             cre_Rule,
-        };    
+        };
+
+
     }
     return cre_builtins;
 }
@@ -414,7 +423,7 @@ vector<CRE_Type*> make_builtins(){
 // }
 
 DefferedType::DefferedType(std::string_view _name) :
-    CRE_Type(_name, T_ID_UNDEFINED, 0, {}, 0, 0) {
+    CRE_Type(_name, T_ID_UNDEF, 0, {}, 0, 0) {
 
     kind = TYPE_KIND_DEFFERED;
 }
@@ -499,7 +508,7 @@ uint64_t get_builtin_flag(const uint64_t* flags, uint64_t flag_n) {
 //         int flag_id = get_builtin_flag_id(key);
 //         if(flag_id != -1){
 //             // All builtin flags are interger like 
-//             if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
+//             if(value.get_t_id() != T_ID_BOOL and value.get_t_id() != T_ID_INT){
 //                 throw std::runtime_error("Bad value type for builtin flag `" + key + "`.");
 //             } 
 //             uint64_t val; 
@@ -525,7 +534,7 @@ void FlagGroup::assign_flag(std::string_view key, Item value){
     // cout << "ASSIGN:" << key << endl; 
     if(flag_id != -1){
         // All builtin flags are interger like 
-        if(value.t_id != T_ID_BOOL and value.t_id != T_ID_INT){
+        if(value.get_t_id() != T_ID_BOOL and value.get_t_id() != T_ID_INT){
             throw std::runtime_error("Bad value type for builtin flag `" + std::string(key) + "`.");
         } 
         uint64_t val = value.as_int();
