@@ -220,7 +220,7 @@ Item::Item(const char* data, size_t _length) {
 void Item::borrow(){
     if(is_ref()){
         if(is_wref()){
-            ControlBlock* cb = get_ctrl_block();
+            ControlBlock* cb = (ControlBlock*) ptr;
             cb->inc_wref();
         }else{
             ((CRE_Obj*) val)->inc_ref();
@@ -231,7 +231,7 @@ void Item::borrow(){
 void Item::release(){
     if(is_ref()){
         if(is_wref()){
-            ControlBlock* cb = get_ctrl_block();
+            ControlBlock* cb = (ControlBlock*) ptr;
             cb->dec_wref();
         }else{
             ((CRE_Obj*) val)->dec_ref();

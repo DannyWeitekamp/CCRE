@@ -215,6 +215,8 @@ auto nested_objects(){
 	);
 
 	ref<Fact> fudge = make_tuple("This", "is", "fudge");
+	cout << "FUDGE TYPE: " << uint64_t(fudge->type) << endl;
+
 	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
 	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball, fudge);
 	ref<Fact> double_fudge = make_tuple("double", fudge);
@@ -226,6 +228,7 @@ auto test_to_string(){
 	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
 
 	cout << fudge->to_string() << endl;
+	cout << "FUDGE TYPE: " << uint64_t(fudge->type) << endl;
 	cout << snowball->to_string() << endl;
 	cout << Jeff->to_string() << endl;
 	cout << double_fudge->to_string() << endl;
@@ -510,15 +513,15 @@ void bench_deref(){
 	}
 	
 	
-	time_it("Deref slow: ", 
-		for(int j=0; j < M; j++){
-			Fact* person = people[N-1];	
-			for(int i=0; i < N-1; i++){
-				// cout << person->get("id") << endl;
-				person = person->get(1).as_fact_slow();
-			}
-		}
-	);
+	// time_it("Deref slow: ", 
+	// 	for(int j=0; j < M; j++){
+	// 		Fact* person = people[N-1];	
+	// 		for(int i=0; i < N-1; i++){
+	// 			// cout << person->get("id") << endl;
+	// 			person = person->get(1).as_fact_slow();
+	// 		}
+	// 	}
+	// );
 
 	time_it("Deref fast: ", 
 		for(int j=0; j < M; j++){
@@ -547,7 +550,7 @@ int main() {
     // test_flags();
     // test_iterate_fact();
     // test_hash();
-    // test_to_string();
+    test_to_string();
     // test_copy();
     // test_pool_alloc();
     // bench_pool_alloc();

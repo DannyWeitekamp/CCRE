@@ -277,6 +277,7 @@ std::string Fact::get_unique_id(){
 	if(unique_id_index != -1){
 		// cout << "unique_id_index: " << unique_id_index << endl ;
 		Item item = get(unique_id_index);
+
 		if(item.get_t_id() == T_ID_STR){
 			// UnicodeItem uitem = std::bit_cast<UnicodeItem>(item);
 			return std::string(item.data, item.get_length());
@@ -315,8 +316,9 @@ std::string Fact::to_string(uint8_t verbosity){
 		bool mbr_has_type = type != nullptr && i < type->members.size();
 
 		Item item = get(i);
+		cout << "HERE: " << item.is_wref() << uint64_t(item.as_fact()->type) << endl;
 
-		// cout << "mbr_has_type: " << mbr_has_type << ", Undef:" << item.is_undef() << endl;
+		// cout << i << " mbr_has_type: " << mbr_has_type << ", Undef:" << item.is_undef() << endl;
 
 		if(!mbr_has_type || 
 			 (mbr_has_type && !item.is_undef()) ||

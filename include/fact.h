@@ -543,6 +543,8 @@ inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0, AllocBuffer* buff
       buffer->inc_ref();
   }
 
+  cout << "MOO: " << uint64_t(fact.get()) << endl;
+
   return fact;
 }
 
