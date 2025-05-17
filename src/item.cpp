@@ -218,14 +218,24 @@ Item::Item(const char* data, size_t _length) {
 
 
 void Item::borrow(){
-    if(!is_primitive() && is_ref()){
-     ((CRE_Obj*) val)->inc_ref();
+    if(is_ref()){
+        if(is_wref()){
+            ControlBlock* cb = get_ctrl_block();
+            cb->inc_wref();
+        }else{
+            ((CRE_Obj*) val)->inc_ref();
+        }
     }
 }
 
 void Item::release(){
-    if(!is_primitive() && is_ref()){
-     ((CRE_Obj*) val)->dec_ref();
+    if(is_ref()){
+        if(is_wref()){
+            ControlBlock* cb = get_ctrl_block();
+            cb->dec_wref();
+        }else{
+            ((CRE_Obj*) val)->dec_ref();
+        }
     }
 }
 
@@ -340,11 +350,14 @@ std::string item_to_string(const Item& item) {
             break;
         case T_ID_FACT:
             {
-                Fact* fact = std::bit_cast<Fact*>(item.val);
-                if(fact == nullptr){
-                    ss << "null";
+                if(item.is_undef()){
+                    ss << "Undef";
                     break;
-                }else if(fact->type != nullptr){
+                }
+
+                Fact* fact = std::bit_cast<Fact*>(item.val);
+                
+                if(fact->type != nullptr){
                     std::string unq_id = fact->get_unique_id();
                     if(!unq_id.empty()){
                         ss << "@" << unq_id;
@@ -358,9 +371,10 @@ std::string item_to_string(const Item& item) {
                 if( uint64_t(&item) >= uint64_t(fact) + sizeof(Fact) && 
                     uint64_t(&item) < uint64_t(fact) + SIZEOF_FACT(fact->length)){
                     ss << "self";
+                    break;
                 }
 
-                if(!item.is_ref() && fact->immutable){
+                if(fact->immutable){
                     ss << fact->to_string(2);
                 }else{
                     ss << "<fact f_id=" << fact->f_id << ">";    

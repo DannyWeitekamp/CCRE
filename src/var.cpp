@@ -44,7 +44,7 @@ Var::Var(const Item& _alias,
 	// if(_type == nullptr){
 	// 	throw std::invalid_argument("Cannot initialize Var from NULL type.");
 	// }
-	this->init_control_block(&Var_dtor);
+	this->init_control_block(&Var_dtor, T_ID);
 
 	deref_infos = ((DerefInfo*) (( (char*) this) + sizeof(Var)) );
 

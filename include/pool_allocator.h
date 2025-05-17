@@ -150,8 +150,8 @@ public:
     	// cout << "sizeof(Block): " << sizeof(Block) << endl;
     	// void* aligned_ptr = aligned_alloc(page_size, page_size); 
 
-    	// cout << "block_size: " << block_size << endl;
-    	// cout << "chunk size: " << sizeof(Chunk) << endl;
+    	cout << "block_size: " << block_size << endl;
+    	cout << "chunk size: " << sizeof(Chunk) << endl;
     	// cout << "items_per_block: " << items_per_block << endl;
     	// cout << "end_offset: " << end_offset << endl;
     	// cout << (block_size-sizeof(Block)) / sizeof(Chunk) << endl;

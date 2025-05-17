@@ -32,6 +32,7 @@ struct FactChange;
 class FactSet : public CRE_Obj {
 
 public:
+    static constexpr uint16_t T_ID = T_ID_FACTSET;
 	// -- Members --
 	std::vector<ref<Fact>> facts;
 	std::vector<uint32_t> empty_f_ids;

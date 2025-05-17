@@ -205,7 +205,7 @@ FactSet::FactSet(size_t n_facts) :
 {
 	this->facts.reserve(n_facts);
 
-	this->init_control_block(&FactSet_dtor);
+	this->init_control_block(&FactSet_dtor, T_ID);
 	// control_block->dtor = &FactSet_dtor;
 	// this->facts = {};
 	// this->empty_f_ids = {};

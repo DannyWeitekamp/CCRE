@@ -315,22 +315,25 @@ std::string Fact::to_string(uint8_t verbosity){
 		bool mbr_has_type = type != nullptr && i < type->members.size();
 
 		Item item = get(i);
-		if(!item.is_undef() || !mbr_has_type || verbosity >= 2){
 
-			if(any_prev){
-				ss << ", ";  
-			} 
+		// cout << "mbr_has_type: " << mbr_has_type << ", Undef:" << item.is_undef() << endl;
 
-			// Member name= part
+		if(!mbr_has_type || 
+			 (mbr_has_type && !item.is_undef()) ||
+			 verbosity > DEFAULT_VERBOSITY){
+
+			// Member name part
 			if(mbr_has_type){
 				MemberSpec* mbr_spec = &type->members[i];
 				if(mbr_spec->get_flag(BIFLG_VERBOSITY) >= verbosity){
 					continue;
 				}
-
+				if(any_prev) ss << ", ";
 				if(mbr_spec->name.length() > 0){
 					ss << mbr_spec->name << "=";
 				}
+			}else{
+				if(any_prev) ss << ", ";
 			}
 			
 			// Value Part

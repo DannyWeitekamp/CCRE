@@ -31,7 +31,6 @@ std::string make_default_template(
 		"{}({})", name,
 		fmt::join(brackets, ", ")
 	);
-
 }
 
 

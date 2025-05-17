@@ -11,8 +11,8 @@ using std::endl;
 namespace cre {
 
 
-ControlBlock::ControlBlock(CRE_Obj* _obj_ptr, CRE_dtor_function _dtor) : 
-	obj_ptr(_obj_ptr), dtor(_dtor)
+ControlBlock::ControlBlock(CRE_Obj* _obj_ptr, CRE_dtor_function _dtor, uint16_t _t_id) : 
+	obj_ptr(_obj_ptr), dtor(_dtor), t_id(_t_id)
 {}
 
 // ControlBlock* ControlBlockPool::alloc_block(){
@@ -69,13 +69,13 @@ int64_t CRE_Obj::get_wrefcount() noexcept{
 }
 
 
-void CRE_Obj::init_control_block(CRE_dtor_function _dtor){
+void CRE_Obj::init_control_block(CRE_dtor_function _dtor, uint16_t t_id){
 	// this->control_block = new ControlBlock(this, _dtor);
 
 	
     ControlBlock* data = global_cb_pool.alloc();
     // cout << "INIT CONTROL BLOCK: " << uint64_t(data) << ", " << uint64_t(this) << endl;
-    this->control_block = new (data) ControlBlock(this, _dtor);
+    this->control_block = new (data) ControlBlock(this, _dtor, t_id);
 }
 
 

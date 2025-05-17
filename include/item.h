@@ -62,35 +62,48 @@ public:
     };
 
     // [Bytes 8-16]
-    // Either a control_block pointer or other data
+    // Either a ctrl_block pointer or other data
 private:
     union{
+        ControlBlock* ctrl_block;
 
-        ControlBlock* control_block;
+        // if constexpr (std::endian::native == std::endian::little) {
+        #if __BYTE_ORDER != __ORDER_BIG_ENDIAN__
         struct {
-            //[Bytes 8-12]
+            // [Bytes 8-9]
+            // Determines if value-like or a kind of reference 
+            // NOTE: This must be first since it is packed into 
+            //   the lowest bits of ctrl_block for wrefs
+            uint8_t val_kind;
+
+            // [Bytes 9-10]
+            // Extra info (type dependant)
+            uint8_t meta_data;
+
+        
+            // [Bytes 10-12]
+            // The type identifier of the Item
+            uint16_t t_id;
+
+            //[Bytes 12-16]
             // Length or padding (type dependant)
             union {
                 uint32_t length;
                 uint16_t pad[2];
             };
-
-        
-            // [Bytes 8-10]
-            // The type identifier of the Item
+        };
+        #else
+            // Invert Order on BIG_EDIAN systems
+            struct {           
+            union {
+                uint32_t length;
+                uint16_t pad[2];
+            };
             uint16_t t_id;
-
-            // [Bytes 10-11]
-            // Extra info (type dependant)
-            uint8_t meta_data; 
-
-            // [Bytes 11-12]
-            // Determines if is value-like or pointer like 
-            // NOTE: This must be last since it is packed
-            //   into the control_block pointer for weak 
-            //   references 
+            uint8_t meta_data;
             uint8_t val_kind;
         };
+        #endif
     };
 // }
 
@@ -128,35 +141,31 @@ public:
         return ptr != nullptr && (val_kind & 3) == WEAK_REF;   
     }
 
-
-
-    inline ControlBlock* get_control_block() const {
-        return (ControlBlock*) ((uint64_t(control_block)>>3)<<3);
+    inline ControlBlock* get_ctrl_block() const {
+        return (ControlBlock*) ((uint64_t(ctrl_block)>>3)<<3);
     }
 
 
     inline bool is_expired() const {
         if(is_wref()){
-            ControlBlock* ctrl_block = get_control_block();
-            // cout << "ctrl_block: " << int64_t(ctrl_block) << ", " << int64_t(control_block) << endl;
+            ControlBlock* ctrl_block = get_ctrl_block();
+            // cout << "ctrl_block: " << int64_t(ctrl_block) << ", " << int64_t(ctrl_block) << endl;
             return ctrl_block->is_expired();
         }
         return false;
     }
 
     inline uint16_t get_t_id() const {
-        if(is_ref()){
-            
-            // TODO: Should get from block or Obj
-            if(is_wref() && is_expired()){
-                return T_ID_UNDEF;            
-            }else{
-                return T_ID_FACT;
+        if(is_wref()){
+            // cout << "BOOP" << endl;
+            if(is_expired()){
+                return T_ID_UNDEF;
             }
-            
-        }else{
-            return t_id;   
+            ControlBlock* ctrl_block = get_ctrl_block();
+            // cout << "T_ID FROM CNTRL BLOCK:" << ctrl_block->t_id << endl;
+            return ctrl_block->t_id;
         }
+        return t_id;   
     }
 
     // inline uint16_t set_t_id(uint16_t _t_id) const {
@@ -264,7 +273,7 @@ public:
       t_id(T::T_ID),
       // meta_data(0), 
       // val_kind(WEAK_REF),
-      control_block((ControlBlock*) (uint64_t(x.get_cb()) | WEAK_REF) )
+      ctrl_block((ControlBlock*) (uint64_t(x.get_cb()) | WEAK_REF) )
     {
         // cout << "ITEM CTRL BLOCK" << x.get_cb() << endl;
         x->inc_ref(); 
@@ -319,7 +328,7 @@ public:
     }
 
     inline Fact* as_fact() const {
-        if(is_expired()){ [[unlikely]]
+        if(is_expired()) [[unlikely]] { 
             return nullptr;
         }
         return std::bit_cast<Fact*>(ptr);
@@ -328,8 +337,8 @@ public:
     // Keeping this purely for benchmarking to justify the 
     //   use of the bitpacking trickery in fast method
     inline Fact* as_fact_slow() const {
-        ControlBlock* cb = get_control_block();
-        if(cb->is_expired()){ [[unlikely]]
+        ControlBlock* cb = get_ctrl_block();
+        if(cb->is_expired()) [[unlikely]] { 
             return nullptr;
         }
         return std::bit_cast<Fact*>(cb->obj_ptr);
@@ -344,9 +353,9 @@ public:
     }
 
     inline void make_weak() {
-        // cout << "?MAKE WEAK " << uint64_t(ptr) << endl;
+        // cout << "?MAKE WEAK " << is_ref() << " " << !is_wref() << endl;
         if(is_ref() && !is_wref()){
-            // cout << "MAKE WEAK:" << endl;//<< uint64_t(cb) << endl;
+            // cout << "MAKE WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
             // val_kind = ((val_kind >> 3) << 3) ;
             ControlBlock* cb = ((CRE_Obj*) ptr)->control_block;
 
@@ -356,7 +365,17 @@ public:
                 release();
             }
 
-            control_block = (ControlBlock*) (uint64_t(cb) | WEAK_REF);;
+             // cout << "IS WEAK bef:" << is_wref() << ", " << (uint64_t(cb) & 3) << ", " <<
+                // int(val_kind) << ", " << (val_kind & 3) << ", " << (uint64_t(ctrl_block) & 3) << endl;
+
+            // cout << "addrs: " << uint64_t(&val_kind) << ", " << uint64_t(&ctrl_block) << endl;
+
+            ctrl_block = (ControlBlock*) (uint64_t(cb) | WEAK_REF);
+
+
+            // cout << "IS WEAK aft:" << is_wref() << ", " << (uint64_t(ctrl_block) & 3) << ", " <<
+                // int(val_kind) << ", " << (val_kind & 3) << ", " << (uint64_t(ctrl_block) & 3) << endl;
+            // cout << "AS WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
         }
     }
 

@@ -211,7 +211,7 @@ struct Func : CRE_Obj{
     	origin_data(_origin_data),
     	call_heads_addr(_cfunc_ptr)
     {
-    	this->init_control_block(&Func_dtor);
+    	this->init_control_block(&Func_dtor, T_ID);
     }
     // Func(const Func&) = default;
 

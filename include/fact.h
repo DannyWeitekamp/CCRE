@@ -61,7 +61,7 @@ public:
     hash(FNV_BASIS ^ (_length * FNV_PRIME)),
     immutable(false)
 {
-  this->init_control_block(&Fact_dtor);
+  this->init_control_block(&Fact_dtor, T_ID);
 }
 
 
@@ -86,6 +86,8 @@ public:
         member = Member(val, hash);
       }
     }
+
+    // cout << "MEMBER: " << member << "  VAL: " << val << endl; 
     if(!member.is_value()){
       member.make_weak();  
     }
@@ -354,7 +356,7 @@ ref<Fact> make_fact(FactType* type, Ts && ... inputs){
   int i = 0;
   ([&]
     {
-        // cout << "!!" << Member(inputs).is_ref() << " " << endl;
+        // cout << "!!" << inputs << " " << endl;
         mbrs[i] = Member(inputs);
         ++i;
         
@@ -371,6 +373,7 @@ ref<Fact> make_tuple(Ts && ... inputs){
   ([&]
     {
         // cout << "!!" << Member(inputs) << " " << sizeof(Member) << " " << endl;
+      // cout << "!!" << inputs << " " << endl;
         mbrs[i] = Member(inputs);
         ++i;
         

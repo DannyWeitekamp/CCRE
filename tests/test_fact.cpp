@@ -494,8 +494,8 @@ void bench_deref(){
 	 	}
 	);
 
-	const int M = 1;	
-	const int N = 100;
+	const int M = 200;	
+	const int N = 50000;
 
 	vector<ref<Fact>> people = {};
 	Fact* buddy = nullptr;
@@ -508,14 +508,7 @@ void bench_deref(){
 
 		buddy = person;
 	}
-	time_it("Deref fast: ", 
-		for(int j=0; j < M; j++){
-			Fact* person = people[N-1];	
-			for(int i=0; i < N-1; i++){
-				person = person->get(1).as_fact();
-			}
-		}
-	);
+	
 	
 	time_it("Deref slow: ", 
 		for(int j=0; j < M; j++){
@@ -523,6 +516,15 @@ void bench_deref(){
 			for(int i=0; i < N-1; i++){
 				// cout << person->get("id") << endl;
 				person = person->get(1).as_fact_slow();
+			}
+		}
+	);
+
+	time_it("Deref fast: ", 
+		for(int j=0; j < M; j++){
+			Fact* person = people[N-1];	
+			for(int i=0; i < N-1; i++){
+				person = person->get(1).as_fact();
 			}
 		}
 	);

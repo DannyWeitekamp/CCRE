@@ -38,7 +38,7 @@ typedef void (*CRE_dtor_function)(const CRE_Obj* ptr);
 */
 struct ControlBlock {
 
-    ControlBlock* next; 
+    // ControlBlock* next; 
     CRE_Obj* obj_ptr;
 
     // The wref_count increments by 2 and the lowest bit is 1 when
@@ -51,6 +51,10 @@ struct ControlBlock {
         mutable int64_t  wref_count = 1;
     #endif
 
+    uint16_t t_id;
+    uint16_t pad[3];
+
+
     // When using nanobind proxy_object is a PyObject*
     void*               proxy_obj = nullptr; 
     CRE_dtor_function   dtor;
@@ -61,7 +65,7 @@ struct ControlBlock {
     AllocBuffer*        alloc_buffer = nullptr;
 
 
-    ControlBlock(CRE_Obj* obj_ptr, CRE_dtor_function _dtor);
+    ControlBlock(CRE_Obj* obj_ptr, CRE_dtor_function _dtor, uint16_t t_id=0);
 
     friend class CRE_Obj;
 
@@ -180,7 +184,7 @@ public :
     // AllocBuffer*        alloc_buffer = nullptr;
 
     // --- Methods ---
-    void init_control_block(CRE_dtor_function _dtor);
+    void init_control_block(CRE_dtor_function _dtor, uint16_t _t_id=0);
     // CRE_Obj(CRE_dtor_function dtor = nullptr);
     // CRE_Obj();
     // ~CRE_Obj(){};
