@@ -315,8 +315,8 @@ std::string Fact::to_string(uint8_t verbosity){
 	for(int i=0; i < L; i++){
 		bool mbr_has_type = type != nullptr && i < type->members.size();
 
-		Item item = get(i);
-		cout << "HERE: " << item.is_wref() << uint64_t(item.as_fact()->type) << endl;
+		const Item& item = get(i);
+		// cout << "HERE: " << item.is_wref() << endl;// << uint64_t(item.as_fact()->type) << endl;
 
 		// cout << i << " mbr_has_type: " << mbr_has_type << ", Undef:" << item.is_undef() << endl;
 
@@ -444,7 +444,7 @@ uint64_t _hash_fact_range(const Fact* x, int64_t start, int64_t end){
  	hash = hash ^ (end-start)*FNV_PRIME;
 
   for(int64_t i=start; i < end; i++){
-      Member mbr = x->get(i);
+      const Member& mbr = x->get(i);
 
       // Cast int64_t so multiply wraps instead of trucating.
       hash ^= MBR_HASH(mbr.hash, i);//mbr.hash * (i+1) * FNV_PRIME;
@@ -525,8 +525,8 @@ bool Fact::operator==(const Fact& other) const {
 	if(length != other.length) return false;
 
 	for(size_t i=0; i < length; i++){
-		Item ia = this->get(i);
-		Item ib = other.get(i);
+		const Item& ia = this->get(i);
+		const Item& ib = other.get(i);
 		if(!item_eq(ia, ib)) return false;
 	}
 	return true;
@@ -537,8 +537,8 @@ bool FactView::operator==(const FactView& other) const {
 	const Fact* fact_a = (const Fact*) this->fact;
 	const Fact* fact_b = (const Fact*) other.fact;
 	for(size_t i=0; i < this->size(); i++){
-		Item ia = fact_a->get(this->start + i);
-		Item ib = fact_b->get(other.start + i);
+		const Item& ia = fact_a->get(this->start + i);
+		const Item& ib = fact_b->get(other.start + i);
 		if(!item_eq(ia, ib)) return false;
 	}
 	return true;

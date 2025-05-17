@@ -217,7 +217,7 @@ auto nested_objects(){
 	ref<Fact> fudge = make_tuple("This", "is", "fudge");
 	cout << "FUDGE TYPE: " << uint64_t(fudge->type) << endl;
 
-	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 3, false);
+	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 77, false);
 	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball, fudge);
 	ref<Fact> double_fudge = make_tuple("double", fudge);
 	ref<Fact> Bobby = make_fact(CatOwner, "Bobby", snowball, double_fudge, Jeff);	
@@ -227,11 +227,15 @@ auto nested_objects(){
 auto test_to_string(){
 	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
 
+	cout << "START PRINT 0" << endl;
 	cout << fudge->to_string() << endl;
-	cout << "FUDGE TYPE: " << uint64_t(fudge->type) << endl;
+	cout << "START PRINT 1" << endl;
 	cout << snowball->to_string() << endl;
+	cout << "START PRINT 2" << endl;
 	cout << Jeff->to_string() << endl;
+	cout << "START PRINT 3" << endl;
 	cout << double_fudge->to_string() << endl;
+	cout << "START PRINT 4" << endl;
 	cout << Bobby->to_string() << endl;
 
 }
@@ -555,6 +559,6 @@ int main() {
     // test_pool_alloc();
     // bench_pool_alloc();
     // test_weakref();
-	bench_deref();
+	// bench_deref();
     return 0;
 }

@@ -128,7 +128,7 @@ public:
     inline bool is_expired() const {
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
-            cout << "is_expired: " << uint64_t(cb) << endl;
+            // cout << "is_expired: " << uint64_t(cb) << endl;
             return cb->is_expired();
         }
         return false;
@@ -136,10 +136,12 @@ public:
 
     inline uint16_t get_t_id() const {
         if(is_wref()){
-            // cout << "BOOP" << endl;
-            if(is_expired()){
+            // cout << "get_t_id" << endl;
+            ControlBlock* cb = (ControlBlock*) ptr;
+            if(cb->is_expired()){
                 return T_ID_UNDEF;
             }
+            // cout << 
 
             // return t_id;
             // ControlBlock* cb = (ControlBlock*) ptr;//get_ctrl_block();
@@ -180,6 +182,17 @@ public:
     Item() : val(0), t_id(T_ID_UNDEF),
              meta_data(0), val_kind(VALUE), pad(0) 
     {};
+
+    Item(const Item& other) :
+             val(other.val), t_id(other.t_id),
+             meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
+    {
+        borrow();
+    };
+
+    Item& operator=(const Item&) = default;
+    Item& operator=(Item&&) = default;
+    Item(Item&&) = default;
 
     // Item(uint64_t _val, uint16_t _t_id, uint32_t length,  uint8_t meta_data, uint8_t)
 
@@ -279,8 +292,8 @@ public:
     // Item(Func* x);
     // Item(ref<Func> x);
 
-    void borrow();
-    void release();
+    void borrow() const;
+    void release() const;
 
 
     // ~Item();
@@ -320,13 +333,15 @@ public:
             if(cb->is_expired()) [[unlikely]] { 
                 return nullptr;
             }
+            
             return std::bit_cast<CRE_Obj*>(cb->obj_ptr);
         }
+        // cout << "EENDL" << endl;
         return std::bit_cast<CRE_Obj*>(ptr);
     }
 
     inline Fact* as_fact() const {
-        cout << "as fact: " << uint64_t(get_ptr()) << endl; 
+        // cout << "as fact: " << uint64_t(get_ptr()) << endl; 
         return std::bit_cast<Fact*>(get_ptr());
     }
 
@@ -348,19 +363,18 @@ public:
         return std::bit_cast<Func*>(get_ptr());
     }
 
-    inline void to_weak() {    
-        Item copy = *this;
-        if(is_ref() && !is_wref()){
-            ControlBlock* cb = ((CRE_Obj*) ptr)->control_block;
-            return Item(wref<ControlBlock*>(cb));
-        }else{
-            return Item(wref<CRE_Obj*>(ptr->obj_ptr));
-        }
+    // inline void to_weak() {    
+    //     Item copy = *this;
+    //     if(is_ref() && !is_wref()){
+    //         ControlBlock* cb = ((CRE_Obj*) ptr)->control_block;
+    //         return Item(wref<ControlBlock*>(cb));
+    //     }else{
+    //         return Item(wref<CRE_Obj*>(ptr->obj_ptr));
+    //     }
 
-        copy.val_kind = WEAK_REF
-        return 
-
-    }
+    //     copy.val_kind = WEAK_REF
+    //     return 
+    // }
 
     inline void make_weak() {
         // cout << "?MAKE WEAK " << is_ref() << " " << !is_wref() << endl;
@@ -369,7 +383,7 @@ public:
             // val_kind = ((val_kind >> 3) << 3) ;
             ControlBlock* cb = ((CRE_Obj*) ptr)->control_block;
 
-            cout << "MAKE WEAK:" << uint64_t(cb) << endl;
+            // cout << "MAKE WEAK:" << uint64_t(cb) << endl;
             cb->inc_wref();
             if(is_ref()){
                 release();

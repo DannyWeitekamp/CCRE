@@ -217,8 +217,9 @@ Item::Item(const char* data, size_t _length) {
 // {};
 
 
-void Item::borrow(){
+void Item::borrow() const{
     if(is_ref()){
+        cout << "BORROW" << endl;
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
             cb->inc_wref();
@@ -228,7 +229,7 @@ void Item::borrow(){
     }
 }
 
-void Item::release(){
+void Item::release() const{
     if(is_ref()){
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
@@ -355,7 +356,7 @@ std::string item_to_string(const Item& item) {
                     break;
                 }
 
-                Fact* fact = std::bit_cast<Fact*>(item.val);
+                Fact* fact = item.as_fact();
                 
                 if(fact->type != nullptr){
                     std::string unq_id = fact->get_unique_id();

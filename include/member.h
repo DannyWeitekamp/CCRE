@@ -19,6 +19,14 @@ struct Member : public Item {
             hash = CREHash{}(val); 
         }
     }
+
+    Member(const Member& other) :
+        Item(other), hash(other.hash)
+    {};
+
+    Member& operator=(const Member&) = default;
+    Member& operator=(Member&&) = default;
+    Member(Member&&) = default;
 };
 
 } // NAMESPACE_END(cre)

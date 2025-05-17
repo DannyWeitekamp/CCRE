@@ -73,7 +73,10 @@ public:
   inline Member borrow_val_as_member(const T& val){
     // Convert to Member, always intern strings, always hash on assignment;
     Member member;
-    if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
+    if constexpr (std::is_same_v<T, Member>) {
+      member = val;
+
+    }else if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
       InternStr intern_str(intern(val));
       member = Member(intern_str, intern_str.hash);
 
@@ -210,7 +213,7 @@ public:
   }
   */
 
-  inline Member get(uint32_t ind) const {
+  inline const Member& get(uint32_t ind) const {
     Member* data_ptr = std::bit_cast<Member*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)
     );
@@ -224,7 +227,7 @@ public:
     return &(data_ptr[ind]);
   }
 
-  inline Member get(const std::string_view& attr) const {
+  inline const Member& get(const std::string_view& attr) const {
     if(type == nullptr){
       throw std::invalid_argument("Attribute name [\"" + std::string(attr) +
           "\"] undefined for untyped Fact.");
@@ -241,6 +244,10 @@ public:
     );
     return data_ptr[index];
   }
+
+  // inline Member get(const std::string_view& attr) const {
+  //   return *get(attr);
+  // }
 
   // inline Item get(uint32_t ind) const {
   //   Item* data_ptr = std::bit_cast<Item*>(
@@ -543,7 +550,7 @@ inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0, AllocBuffer* buff
       buffer->inc_ref();
   }
 
-  cout << "MOO: " << uint64_t(fact.get()) << endl;
+  // cout << "MOO: " << uint64_t(fact.get()) << endl;
 
   return fact;
 }
