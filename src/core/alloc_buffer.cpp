@@ -2,8 +2,8 @@
 #include <stddef.h>
 #include <cstring>
 #include <iostream>
-#include "../include/cre_obj.h"
-#include "../include/alloc_buffer.h"
+#include "cre_obj.h"
+#include "alloc_buffer.h"
 
 namespace cre {
 

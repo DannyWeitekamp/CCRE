@@ -36,6 +36,8 @@ add_subdirectory(external/nanobind)
 add_subdirectory(external/nanobind/ext/robin_map)
 # add_subdirectory(external/rapidjson)
 
+include_directories(include)
+
 
 # Packages
 find_package(Python 3.8 COMPONENTS Interpreter ${DEV_MODULE} REQUIRED)
@@ -49,15 +51,25 @@ endif()
 # find_package(unordered_dense CONFIG REQUIRED)
 
 # Find all source files in the current directory
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB SRCS_CORE "src/core/*.cpp")
+file(GLOB SRCS_LOGICAL "src/logical/*.cpp")
+file(GLOB SRCS_TRANSFORM "src/transform/*.cpp")
 # file(GLOB PY_SOURCES "python/*.cpp")
 
 
 # Build an application library, 
 # (So we don't rebuild the source for each target)
-add_library(app_lib ${SOURCES})
-target_link_libraries(app_lib fmt::fmt)
-target_link_libraries(app_lib tsl::robin_map) # for nanobind
+add_library(core_lib ${SRCS_CORE})
+target_link_libraries(core_lib fmt::fmt)
+target_link_libraries(core_lib tsl::robin_map) # for nanobind
+
+add_library(logical_lib ${SRCS_LOGICAL})
+target_link_libraries(logical_lib fmt::fmt)
+target_link_libraries(logical_lib tsl::robin_map) # for nanobind
+
+add_library(transform_lib ${SRCS_TRANSFORM})
+target_link_libraries(transform_lib fmt::fmt)
+target_link_libraries(transform_lib tsl::robin_map) # for nanobind
 
 #  -- main -- 
 # add_executable(main main.cpp)
@@ -72,52 +84,52 @@ enable_testing()
 
 #  -- test_hash -- 
 add_executable(test_hash tests/test_hash.cpp)
-target_link_libraries(test_hash PRIVATE app_lib)
+target_link_libraries(test_hash PRIVATE core_lib)
 add_test(
   NAME test_hash
   COMMAND $<TARGET_FILE:test_hash>
   )
 
 add_executable(test_fact tests/test_fact.cpp)
-target_link_libraries(test_fact PRIVATE app_lib)
+target_link_libraries(test_fact PRIVATE core_lib)
 add_test(
   NAME test_fact
   COMMAND $<TARGET_FILE:test_fact>
   )
   
 add_executable(test_factset tests/test_factset.cpp)
-target_link_libraries(test_factset PRIVATE app_lib)
+target_link_libraries(test_factset PRIVATE core_lib transform_lib)
 add_test(
   NAME test_factset
   COMMAND $<TARGET_FILE:test_factset>
   )
 
 add_executable(test_func tests/test_func.cpp)
-target_link_libraries(test_func PRIVATE app_lib)
+target_link_libraries(test_func PRIVATE core_lib logical_lib)
 add_test(
   NAME test_func
   COMMAND $<TARGET_FILE:test_func>
   )
 
 add_executable(test_logical tests/test_logical.cpp)
-target_link_libraries(test_logical PRIVATE app_lib)
+target_link_libraries(test_logical PRIVATE core_lib logical_lib)
 add_test(
   NAME test_logical
   COMMAND $<TARGET_FILE:test_logical>
   )
 
 add_executable(test_transform tests/test_transform.cpp)
-target_link_libraries(test_transform PRIVATE app_lib)
+target_link_libraries(test_transform PRIVATE core_lib transform_lib)
 add_test(
   NAME test_transform
   COMMAND $<TARGET_FILE:test_transform>
   )
 
 nanobind_add_module(dummy_ext python/ext/dummy_ext.cpp)
-target_link_libraries(dummy_ext PRIVATE app_lib)
+target_link_libraries(dummy_ext PRIVATE core_lib logical_lib transform_lib)
 
 nanobind_add_module(dummer_ext python/ext/dummer_ext.cpp)
-target_link_libraries(dummer_ext PRIVATE app_lib)
+target_link_libraries(dummer_ext PRIVATE core_lib logical_lib transform_lib)
 
 
 file(GLOB PY_SOURCES "python/src/*.cpp")
@@ -125,7 +137,7 @@ file(GLOB PY_SOURCES "python/src/*.cpp")
 # -------- Start Nanobind Module  ---------
 
 nanobind_add_module(cre STABLE_ABI python/ext/cre_py_ext.cpp ${PY_SOURCES})
-target_link_libraries(cre PRIVATE app_lib)
+target_link_libraries(cre PRIVATE core_lib logical_lib transform_lib)
 # target_compile_options(cre PRIVATE -g -O0)
 # target_compile_options(cre PRIVATE -g -O3)
 

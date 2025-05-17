@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
 
 using std::cout;
 using std::endl;
@@ -185,7 +186,7 @@ public:
     		// cout << "write chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
 
     		// Advance the write head by one Chunk.
-    		curr_block->write_head = (void*) ((char*) curr_block->write_head) + sizeof(Chunk);
+    		curr_block->write_head = (void*) (uint64_t(curr_block->write_head) + sizeof(Chunk));
     	}
 
     	// If curr_block is full then ...
