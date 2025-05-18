@@ -66,6 +66,9 @@ struct ControlBlock {
 
 
     ControlBlock(CRE_Obj* obj_ptr, CRE_dtor_function _dtor, uint16_t t_id=0);
+    ~ControlBlock(){
+        cout << "DESRTROY CB" << endl;
+    }
 
     friend class CRE_Obj;
 

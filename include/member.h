@@ -22,17 +22,18 @@ struct Member : public Item {
 
     Member(const Member& other) :
         Item(other), hash(other.hash)
-    {};
+    {cout << "I HOPE NOT THIS" << endl;};
 
     Member(const Member& other, uint8_t val_kind) :
         Item(other, val_kind), hash(other.hash)
-    {};
+    {cout << "I HOPE THIS" << endl;};
 
     Member& operator=(const Member&) = default;
     Member& operator=(Member&&) = default;
     Member(Member&&) = default;
 
     inline Member to_weak(){
+        cout << "AAAH" << this->get_wrefcount() << endl;
         return Member(*this, WEAK_REF);
     }
 

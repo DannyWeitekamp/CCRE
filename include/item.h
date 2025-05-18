@@ -185,6 +185,8 @@ public:
 
     void _force_strong() {
         if(is_wref() && !is_expired()){
+            ControlBlock* cb = (ControlBlock*) ptr;
+            ptr = (CRE_Obj*) cb->obj_ptr;
             val_kind = STRONG_REF;
         }
         borrow();
@@ -201,9 +203,10 @@ public:
     };
 
     Item(const Item& other, uint8_t val_kind) :
-         val(other.val), t_id(other.t_id),
+         ptr(other.ptr), t_id(other.t_id),
          meta_data(other.meta_data), val_kind(val_kind), length(other.length) 
     {
+        cout << "BEFORE BORROW" << other.get_wrefcount() << ", " << this->get_wrefcount() << endl;
         borrow();
     };
 

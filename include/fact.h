@@ -90,6 +90,8 @@ public:
       }
     }
 
+    // cout << "!MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << endl;
+
     cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
     if(member.is_sref()){
       cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << endl;
