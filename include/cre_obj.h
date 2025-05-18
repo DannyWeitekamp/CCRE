@@ -74,12 +74,14 @@ struct ControlBlock {
             cout << "Warning: weak ref_count underflow!" << endl;
         }
         if (wref_count <= 0) {
+            cout << "destroy CB" << endl;
             delete this;
             return true;
         }
         return false;
     }
     inline void inc_wref() const noexcept{
+        cout << "INCR W: " << wref_count << endl;
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_add(2, std::memory_order_relaxed);
         #else
@@ -87,6 +89,7 @@ struct ControlBlock {
         #endif
     }
     inline void add_wref(size_t n) const noexcept{
+        cout << "ADD W: " << wref_count << endl;
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_add(n<<1, std::memory_order_relaxed);
         #else
@@ -94,6 +97,8 @@ struct ControlBlock {
         #endif
     }
     inline bool dec_wref() const noexcept{
+        cout << "DECR W" << endl;
+
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_sub(2, std::memory_order_relaxed);
         #else
@@ -103,7 +108,7 @@ struct ControlBlock {
         return _check_destroy();
     }
     inline bool sub_wref(size_t n) const noexcept{
-        // cout << "INCREF" << endl;
+        cout << "SUB W: " << wref_count << endl;
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_sub(n<<1, std::memory_order_relaxed);
         #else

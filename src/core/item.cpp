@@ -219,12 +219,14 @@ Item::Item(const char* data, size_t _length) {
 
 void Item::borrow() const{
     if(is_ref()){
-        cout << "BORROW" << endl;
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
             cb->inc_wref();
+            // throw std::runtime_error("HEY!");
+            cout << this->to_string() << " t_id=" << t_id << " BORROW WEAK: " << cb->get_wrefcount() << endl;
         }else{
             ((CRE_Obj*) val)->inc_ref();
+            cout << this->to_string() << " t_id=" << t_id << " BORROW STRONG: " << ((CRE_Obj*) ptr)->get_refcount() << endl;
         }
     }
 }
@@ -327,8 +329,9 @@ void Item::release() const{
 
 
 std::string item_to_string(const Item& item) {
-    // std::cout << "TO STR: " << item.get_t_id() << std::endl;
+    
     uint16_t t_id = item.get_t_id();
+    // std::cout << "TO STR: " << t_id << std::endl;
     std::stringstream ss;
     switch(t_id) {
         case T_ID_UNDEF:
@@ -392,6 +395,8 @@ std::string item_to_string(const Item& item) {
             ss << "<item t_id=" << t_id << " val=" << item.val << ">";
             // " @" << std::bit_cast<uint64_t>(&item) << ">";     
     }  
+
+    // std::cout << "END TO STR: " << t_id << std::endl;
     return ss.str();
 }
 

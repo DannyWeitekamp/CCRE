@@ -90,11 +90,15 @@ public:
       }
     }
 
-    // cout << "MEMBER: " << member << "  VAL: " << val << endl; 
-    if(!member.is_value()){
-      member.make_weak();  
+    cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
+    if(member.is_sref()){
+      cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << endl;
+      // cout << "BEFORE" << endl;
+      member = member.to_weak();// make_weak();  
+
     }
-    member.borrow();
+    // cout << "  -  " << endl;
+    // member.borrow();
     return member;
   }
 
@@ -141,7 +145,7 @@ public:
     hash ^= MBR_HASH(member.hash, ind);
 
     // Assign to the ind'th item
-    data_ptr[ind] = member;
+    data_ptr[ind] = std::move(member);
   }
 
   // inline void set_unsafe(uint32_t ind, const Item& val){
@@ -363,8 +367,12 @@ ref<Fact> make_fact(FactType* type, Ts && ... inputs){
   int i = 0;
   ([&]
     {
-        // cout << "!!" << inputs << " " << endl;
+        
         mbrs[i] = Member(inputs);
+        if(mbrs[i].is_ref()){
+          cout << "!! " << inputs << " r:" << mbrs[i].get_refcount() << " w:" << mbrs[i].get_wrefcount()  << endl;  
+        }
+        
         ++i;
         
     } (), ...);

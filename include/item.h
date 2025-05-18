@@ -128,7 +128,7 @@ public:
     inline bool is_expired() const {
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
-            // cout << "is_expired: " << uint64_t(cb) << endl;
+            cout << "is_expired: " << uint64_t(cb) << endl;
             return cb->is_expired();
         }
         return false;
@@ -183,9 +183,26 @@ public:
              meta_data(0), val_kind(VALUE), pad(0) 
     {};
 
+    void _force_strong() {
+        if(is_wref() && !is_expired()){
+            val_kind = STRONG_REF;
+        }
+        borrow();
+    }
+
+  
+
     Item(const Item& other) :
-             val(other.val), t_id(other.t_id),
-             meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
+         val(other.val), t_id(other.t_id),
+         meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
+    {
+        // Force copies to be strong refs
+        _force_strong();
+    };
+
+    Item(const Item& other, uint8_t val_kind) :
+         val(other.val), t_id(other.t_id),
+         meta_data(other.meta_data), val_kind(val_kind), length(other.length) 
     {
         borrow();
     };
@@ -296,6 +313,7 @@ public:
     void release() const;
 
 
+
     // ~Item();
     // inline void destroy(){
     //     if(borrows){
@@ -340,6 +358,17 @@ public:
         return std::bit_cast<CRE_Obj*>(ptr);
     }
 
+    inline ControlBlock* get_cb() const{
+        if(is_wref()){
+            return (ControlBlock*) ptr;
+        }else{
+            if(ptr == nullptr) return nullptr;
+            return ((CRE_Obj*) ptr)->control_block;
+        }
+        // cout << "EENDL" << endl;
+        // return std::bit_cast<CRE_Obj*>(ptr);
+    }
+
     inline Fact* as_fact() const {
         // cout << "as fact: " << uint64_t(get_ptr()) << endl; 
         return std::bit_cast<Fact*>(get_ptr());
@@ -375,56 +404,91 @@ public:
     //     copy.val_kind = WEAK_REF
     //     return 
     // }
-
-    inline void make_weak() {
-        // cout << "?MAKE WEAK " << is_ref() << " " << !is_wref() << endl;
-        if(is_ref() && !is_wref()){
-            // cout << "MAKE WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
-            // val_kind = ((val_kind >> 3) << 3) ;
-            ControlBlock* cb = ((CRE_Obj*) ptr)->control_block;
-
-            // cout << "MAKE WEAK:" << uint64_t(cb) << endl;
-            cb->inc_wref();
-            if(is_ref()){
-                release();
-            }
-
-            ptr = (void*) cb;
-            val_kind = WEAK_REF;
-
-            // ctrl_block = (ControlBlock*) (uint64_t(cb) | WEAK_REF);
-
-
-            // cout << "IS WEAK aft:" << is_wref() << ", " << (uint64_t(ctrl_block) & 3) << ", " <<
-                // int(val_kind) << ", " << (val_kind & 3) << ", " << (uint64_t(ctrl_block) & 3) << endl;
-            // cout << "AS WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
-        }
+    inline Item to_weak(){
+        return Item(this, WEAK_REF);
     }
 
-    inline void make_strong() {
-        if(is_ref() && !is_sref()){
-            // cout << "MAKE WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
-            // val_kind = ((val_kind >> 3) << 3) ;
-            ControlBlock* cb = (ControlBlock*) ptr;
-            CRE_Obj* obj_ptr = cb->obj_ptr;
-
-            // cout << "MAKE WEAK:" << uint64_t(cb) << endl;
-            obj_ptr->inc_ref();
-            if(is_ref()){
-                release();
-            }
-
-            ptr = (void*) cb->obj_ptr;
-            val_kind = STRONG_REF;
-
-            // ctrl_block = (ControlBlock*) (uint64_t(cb) | WEAK_REF);
-
-
-            // cout << "IS WEAK aft:" << is_wref() << ", " << (uint64_t(ctrl_block) & 3) << ", " <<
-                // int(val_kind) << ", " << (val_kind & 3) << ", " << (uint64_t(ctrl_block) & 3) << endl;
-            // cout << "AS WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
-        }
+    inline Item to_strong(){
+        return Item(this, STRONG_REF);        
     }
+
+    inline Item to_raw_ptr(){
+        return Item(this, RAW_PTR);
+    }
+
+    size_t get_refcount() const {
+        if(is_value()){
+            throw std::runtime_error("Cannot get refcount Item does not represent CRE_Obj.");
+        }
+        CRE_Obj* obj = get_ptr();
+        if(!obj){
+            return 0;
+        }
+        return obj->get_refcount();
+    }
+
+    size_t get_wrefcount() const {
+        if(is_value()){
+            throw std::runtime_error("Cannot get wrefcount Item does not represent CRE_Obj.");
+        }
+        ControlBlock* cb = get_cb();
+        if(!cb){
+            return 0;
+        }
+        return cb->get_wrefcount();
+    }
+
+
+
+    // inline void make_weak() {
+    //     // cout << "?MAKE WEAK " << is_ref() << " " << !is_wref() << endl;
+    //     if(is_ref() && !is_wref()){
+    //         // cout << "MAKE WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
+    //         // val_kind = ((val_kind >> 3) << 3) ;
+    //         ControlBlock* cb = ((CRE_Obj*) ptr)->control_block;
+
+    //         // cout << "MAKE WEAK:" << uint64_t(cb) << endl;
+    //         cb->inc_wref();
+    //         if(is_ref()){
+    //             release();
+    //         }
+
+    //         ptr = (void*) cb;
+    //         val_kind = WEAK_REF;
+
+    //         // ctrl_block = (ControlBlock*) (uint64_t(cb) | WEAK_REF);
+
+
+    //         // cout << "IS WEAK aft:" << is_wref() << ", " << (uint64_t(ctrl_block) & 3) << ", " <<
+    //             // int(val_kind) << ", " << (val_kind & 3) << ", " << (uint64_t(ctrl_block) & 3) << endl;
+    //         // cout << "AS WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
+    //     }
+    // }
+
+    // inline void make_strong() {
+    //     if(is_ref() && !is_sref()){
+    //         // cout << "MAKE WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
+    //         // val_kind = ((val_kind >> 3) << 3) ;
+    //         ControlBlock* cb = (ControlBlock*) ptr;
+    //         CRE_Obj* obj_ptr = cb->obj_ptr;
+
+    //         // cout << "MAKE WEAK:" << uint64_t(cb) << endl;
+    //         obj_ptr->inc_ref();
+    //         if(is_ref()){
+    //             release();
+    //         }
+
+    //         ptr = (void*) cb->obj_ptr;
+    //         val_kind = STRONG_REF;
+
+    //         // ctrl_block = (ControlBlock*) (uint64_t(cb) | WEAK_REF);
+
+
+    //         // cout << "IS WEAK aft:" << is_wref() << ", " << (uint64_t(ctrl_block) & 3) << ", " <<
+    //             // int(val_kind) << ", " << (val_kind & 3) << ", " << (uint64_t(ctrl_block) & 3) << endl;
+    //         // cout << "AS WEAK:" << this->to_string() << endl;//<< uint64_t(cb) << endl;
+    //     }
+    // }
 
     std::string to_string() const;
         

@@ -24,9 +24,25 @@ struct Member : public Item {
         Item(other), hash(other.hash)
     {};
 
+    Member(const Member& other, uint8_t val_kind) :
+        Item(other, val_kind), hash(other.hash)
+    {};
+
     Member& operator=(const Member&) = default;
     Member& operator=(Member&&) = default;
     Member(Member&&) = default;
+
+    inline Member to_weak(){
+        return Member(*this, WEAK_REF);
+    }
+
+    inline Item to_strong(){
+        return Member(*this, STRONG_REF);        
+    }
+
+    inline Item to_raw_ptr(){
+        return Member(*this, RAW_PTR);
+    }
 };
 
 } // NAMESPACE_END(cre)
