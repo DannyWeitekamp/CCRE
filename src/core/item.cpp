@@ -225,7 +225,7 @@ void Item::borrow() const{
             // throw std::runtime_error("HEY!");
             cout << this->to_string() << " t_id=" << t_id << " BORROW WEAK: " << cb->get_wrefcount() << endl;
         }else{
-            ((CRE_Obj*) val)->inc_ref();
+            ((CRE_Obj*) ptr)->inc_ref();
             cout << this->to_string() << " t_id=" << t_id << " BORROW STRONG: " << ((CRE_Obj*) ptr)->get_refcount() << endl;
         }
     }

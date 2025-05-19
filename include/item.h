@@ -17,6 +17,8 @@ using std::endl;
 struct Fact;
 struct Var;
 struct Func;
+struct CRE_Obj;
+struct ControlBlock;
 
 // enum class ValueKind : uint8_t {
 const uint8_t VALUE =      uint8_t(0);
@@ -128,7 +130,7 @@ public:
     inline bool is_expired() const {
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
-            cout << "is_expired: " << uint64_t(cb) << endl;
+            // cout << "is_expired: " << uint64_t(cb) << endl;
             return cb->is_expired();
         }
         return false;
@@ -183,14 +185,14 @@ public:
              meta_data(0), val_kind(VALUE), pad(0) 
     {};
 
-    void _force_strong() {
-        if(is_wref() && !is_expired()){
-            ControlBlock* cb = (ControlBlock*) ptr;
-            ptr = (CRE_Obj*) cb->obj_ptr;
-            val_kind = STRONG_REF;
-        }
-        borrow();
-    }
+    // void _force_strong() {
+    //     if(is_wref() && !is_expired()){
+    //         ControlBlock* cb = (ControlBlock*) ptr;
+    //         ptr = (CRE_Obj*) cb->obj_ptr;
+    //         val_kind = STRONG_REF;
+    //     }
+    //     borrow();
+    // }
 
   
 
@@ -199,19 +201,56 @@ public:
          meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
     {
         // Force copies to be strong refs
-        _force_strong();
-    };
-
-    Item(const Item& other, uint8_t val_kind) :
-         ptr(other.ptr), t_id(other.t_id),
-         meta_data(other.meta_data), val_kind(val_kind), length(other.length) 
-    {
-        cout << "BEFORE BORROW" << other.get_wrefcount() << ", " << this->get_wrefcount() << endl;
+        // _force_strong();
         borrow();
     };
 
-    Item& operator=(const Item&) = default;
-    Item& operator=(Item&&) = default;
+    Item& operator=(Item&& other) {    
+        release();
+        val = other.val;
+        t_id = other.t_id;
+        meta_data = other.meta_data;
+        val_kind = other.val_kind;
+        length = other.length;
+
+        // Release from other
+        other.ptr = nullptr;
+        other.t_id = T_ID_UNDEF;
+        other.val_kind = VALUE;
+        return *this;
+    };
+
+    Item& operator=(const Item& other) {    
+        other.borrow();
+        release();
+        val = other.val;
+        t_id = other.t_id;
+        meta_data = other.meta_data;
+        val_kind = other.val_kind;
+        length = other.length;
+        return *this;
+    };
+
+    
+
+    Item(const Item& other, uint8_t val_kind) :
+         // ptr(other.ptr),
+          t_id(other.t_id),
+         meta_data(other.meta_data), val_kind(val_kind), length(other.length) 
+    {
+        CRE_Obj* other_ptr = other.get_ptr();
+        if(val_kind == WEAK_REF && other_ptr != nullptr){
+            ptr = other_ptr->control_block;
+        }else{
+            ptr = other_ptr;
+        }
+        // cout << "BEFORE BORROW" << other.get_wrefcount() << ", " << this->get_wrefcount() << endl;
+        borrow();
+    };
+
+    
+
+    // Item& operator=(Item&&) = default;
     Item(Item&&) = default;
 
     // Item(uint64_t _val, uint16_t _t_id, uint32_t length,  uint8_t meta_data, uint8_t)
@@ -247,22 +286,22 @@ public:
 
     Item(void* arg) : val(std::bit_cast<uint64_t>(arg)),
                     t_id(arg == nullptr ? T_ID_UNDEF : T_ID_PTR),
-                    meta_data(0), val_kind(VALUE), pad(0)
+                    meta_data(0), val_kind(RAW_PTR), pad(0)
     {};
 
 
     
-    explicit Item(Fact* x) : 
-      ptr((void *) x),
-      t_id(T_ID_FACT),
-      meta_data(0), 
-      val_kind(STRONG_REF),
-      pad(0)           
-    {
-        if(x != nullptr){
-            borrow();
-        }
-    }
+    // explicit Item(Fact* x) : 
+    //   ptr((void *) x),
+    //   t_id(T_ID_FACT),
+    //   meta_data(0), 
+    //   val_kind(RAW_PTR),
+    //   pad(0)           
+    // {
+    //     // if(x != nullptr){
+    //     //     borrow();
+    //     // }
+    // }
 
     template <class T>
     explicit Item(T* x) : 
@@ -274,8 +313,8 @@ public:
     {}
 
     template <class T>
-    explicit Item(ref<T> x) : 
-      ptr((void *) x),
+    explicit Item(const ref<T>& x) : 
+      ptr((void *) x.get()),
       t_id(T::T_ID),
       meta_data(0), 
       val_kind(STRONG_REF),
@@ -285,7 +324,7 @@ public:
     }
 
     template <class T>
-    explicit Item(wref<T> x) : 
+    explicit Item(const wref<T>& x) : 
       ptr((void *) x.get_cb()),
       t_id(T::T_ID),
       meta_data(0), 
@@ -314,6 +353,10 @@ public:
 
     void borrow() const;
     void release() const;
+
+    ~Item(){
+        release();
+    };
 
 
 
@@ -362,10 +405,14 @@ public:
     }
 
     inline ControlBlock* get_cb() const{
+        cout << "Q" << endl;
         if(is_wref()){
+            cout << "A" << endl;
             return (ControlBlock*) ptr;
         }else{
+            
             if(ptr == nullptr) return nullptr;
+            cout << "B: " << uint64_t(ptr) << endl;
             return ((CRE_Obj*) ptr)->control_block;
         }
         // cout << "EENDL" << endl;
@@ -435,6 +482,7 @@ public:
             throw std::runtime_error("Cannot get wrefcount Item does not represent CRE_Obj.");
         }
         ControlBlock* cb = get_cb();
+        cout << "YAHOO: " << uint64_t(cb) << endl;
         if(!cb){
             return 0;
         }

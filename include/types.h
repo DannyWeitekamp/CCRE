@@ -141,7 +141,9 @@ struct FactType : public CRE_Type{
     uint64_t builtin_flags;
     HashMap<std::string, Item> flags;
     vector<Item> member_names_as_items;
+    int16_t unique_id_index;
     uint8_t finalized;
+    // uint8_t pad[5];
 
     FactType(std::string_view _name, 
          const vector<CRE_Type*>& _sub_types = {}, 

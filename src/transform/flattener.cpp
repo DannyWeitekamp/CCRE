@@ -254,7 +254,7 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 	auto mbr_inds = this->get_member_inds(type);
 		
 	// Make Subject from unique_id or f_id
-	auto u_ind = get_unique_id_index(type);
+	auto u_ind = type->unique_id_index;//get_unique_id_index(type);
 	// cout << "U_IND: " << u_ind << endl;
 
 

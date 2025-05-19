@@ -466,14 +466,14 @@ void test_weakref(){
 
 	wref<Fact> snowball_wref = snowball;
 
-	cout << "W_REF: " << snowball_wref->get_wrefcount() << 
-	 		", S_REF: " << snowball_wref->get_refcount() << endl;
+	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
+	 		", S_REF: " << snowball_wref.get_wrefcount() << endl;
 
 	snowball = NULL;
 	Bobby = NULL;
 
-	cout << "W_REF: " << snowball_wref->get_wrefcount() << 
-	 		", S_REF: " << snowball_wref->get_refcount() << endl;
+	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
+	 		", S_REF: " << snowball_wref.get_refcount() << endl;
 
 	Jeff = NULL;
 
@@ -554,11 +554,11 @@ int main() {
     // test_flags();
     // test_iterate_fact();
     // test_hash();
-    test_to_string();
+    // test_to_string();
     // test_copy();
     // test_pool_alloc();
     // bench_pool_alloc();
-    // test_weakref();
+    test_weakref();
 	// bench_deref();
     return 0;
 }

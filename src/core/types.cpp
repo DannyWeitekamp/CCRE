@@ -33,6 +33,7 @@ CRE_Type::CRE_Type(
 
     // CRE_Obj(&CRE_Type_dtor)
     this->init_control_block(&CRE_Type_dtor);
+    this->control_block->unique_id = (char*) _name.data();
 
 
     if(builtin){
@@ -132,12 +133,12 @@ int get_unique_id_index(const vector<MemberSpec>& member_specs){
     return -1;
 }
 
-int get_unique_id_index(FactType* type){
-    if(type != nullptr){
-        return get_unique_id_index(type->members);
-    }
-    return -1;
-}
+// int get_unique_id_index(FactType* type){
+//     if(type != nullptr){
+//         return get_unique_id_index(type->members);
+//     }
+//     return -1;
+// }
 
 
 bool _try_finalized(FactType* _this, bool do_throw){
@@ -211,6 +212,8 @@ FactType::FactType(std::string_view _name,
         // cout << "INTERN STR:" << interned_mbr_name << endl;
         member_names_as_items.push_back(Item(interned_mbr_name));
     }
+
+    unique_id_index = get_unique_id_index(_members);
 }
 
 

@@ -21,8 +21,6 @@ const uint8_t COPY_DEEP = 1;
 const uint8_t COPY_DEEP_REFS = 2;
 
 
-
-
 // Externally Defined Forward Declares
 struct FactSet;
 struct AllocBuffer;
@@ -49,7 +47,11 @@ public:
   uint8_t immutable=0;
   uint8_t has_mutable=0;
 
-  uint8_t pad1[5]={0};
+  int16_t unique_id_index=-1;
+  uint8_t pad1[3]={0};
+
+
+  
 
   //  -- Methods --
   // Fact(void* type);
@@ -64,6 +66,8 @@ public:
   this->init_control_block(&Fact_dtor, T_ID);
 }
 
+  void ensure_unique_id();
+
 
   // ~Fact(){}
 
@@ -72,6 +76,7 @@ public:
   template<class T>
   inline Member borrow_val_as_member(const T& val){
     // Convert to Member, always intern strings, always hash on assignment;
+    // cout << "L81" << endl;
     Member member;
     if constexpr (std::is_same_v<T, Member>) {
       member = val;
@@ -82,25 +87,26 @@ public:
 
     }else{
       uint64_t hash = CREHash{}(val); 
-      if constexpr (std::is_base_of_v<T, Fact>) {  
-        // Fact reference members are always weak
-        member = Member(wref<Fact>(val), hash);
-      }else{
-        member = Member(val, hash);
-      }
+      // if constexpr (std::is_base_of_v<T, Fact>) {  
+      //   // Fact reference members are always weak
+      //   member = Member(wref<Fact>(val), hash);
+      // }else{
+      member = Member(val, hash);
+      // }
     }
+    // cout << "L99" << endl;
 
-    // cout << "!MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << endl;
 
-    cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
-    if(member.is_sref()){
-      cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << endl;
+    
+    if(member.is_sref() || member.is_raw_ptr()){
+      cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
+      cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << "VK: " << member.is_wref() << endl;
       // cout << "BEFORE" << endl;
       member = member.to_weak();// make_weak();  
 
     }
     // cout << "  -  " << endl;
-    // member.borrow();
+    member.borrow();
     return member;
   }
 
@@ -147,7 +153,8 @@ public:
     hash ^= MBR_HASH(member.hash, ind);
 
     // Assign to the ind'th item
-    data_ptr[ind] = std::move(member);
+    // member.borrow();
+    data_ptr[ind] = member;
   }
 
   // inline void set_unsafe(uint32_t ind, const Item& val){
@@ -177,6 +184,8 @@ public:
     // Add the XOR contribution of the member
     hash ^= MBR_HASH(member.hash, ind);
 
+    // Emplacement new with Undef member to make valgrind happy
+    new (data_ptr + ind) Member();
     // Assign to the ind'th item
     data_ptr[ind] = member;
   }
@@ -364,34 +373,56 @@ std::ostream& operator<<(std::ostream& out, ref<Fact> fact);
 
 
 template <class ... Ts>
-ref<Fact> make_fact(FactType* type, Ts && ... inputs){
-  Member mbrs[sizeof...(Ts)];
+ref<Fact> make_fact(FactType* type, const Ts& ... inputs){
+  cout << "--START MAKE FACT--" << endl;
+
+  Member mbrs[sizeof...(Ts)] = {Member()};
   int i = 0;
   ([&]
     {
+        // if constexpr(std::is_base_of_v<Ts, ref<Fact>> || std::is_base_of_v<Ts, wref<Fact>>){
+          // mbrs[i] = Member(inputs.get());
+        // }else{
+        // cout << "-START Member" << endl;
+
+        // Construct the Member directly in mbrs[i]
+        new (mbrs + i) Member(inputs);
+        // mbrs[i] = std::move();
+        // cout << "-" << endl;
+        // mbrs[i].borrow();
+        // mbrs[i].borrow();
+        // }
+        // cout << "-END Member" << endl;
+
+
+        // if(mbrs[i].is_ref()){
+        //   cout << "!! " << inputs << " r:" << mbrs[i].get_refcount() << " w:" << mbrs[i].get_wrefcount()  << endl;  
+        // }
         
-        mbrs[i] = Member(inputs);
-        if(mbrs[i].is_ref()){
-          cout << "!! " << inputs << " r:" << mbrs[i].get_refcount() << " w:" << mbrs[i].get_wrefcount()  << endl;  
-        }
         
         ++i;
         
     } (), ...);
+
+  // cout << "-START New FACT" << endl;
   ref<Fact> fact = new_fact(type, mbrs, i, false);
+  // cout << "-END New FACT" << endl;
+
+  // cout << "--END MAKE FACT--" << endl;
   
   return fact;
 }
 
 template <class ... Ts>
-ref<Fact> make_tuple(Ts && ... inputs){
-  Member mbrs[sizeof...(Ts)];
+ref<Fact> make_tuple(const Ts& ... inputs){
+  Member mbrs[sizeof...(Ts)] = {Member()};
   int i = 0;
   ([&]
     {
         // cout << "!!" << Member(inputs) << " " << sizeof(Member) << " " << endl;
       // cout << "!!" << inputs << " " << endl;
-        mbrs[i] = Member(inputs);
+        new (mbrs + i) Member(inputs);
+        // mbrs[i] = Member(inputs);
         ++i;
         
     } (), ...);
@@ -582,7 +613,9 @@ inline void _zfill_fact(Fact* fact, uint32_t start, uint32_t end){
   FactType* type = fact->type;
   // cout << "ZFILL: " << start << ", " << end << endl;
   for(int ind = start; ind < end; ind++){
-      data_ptr[ind] = Member();
+      // Fill with Undef Member using emplacement new 
+      //  instead of assignment (makes valgrind happy)
+      new (data_ptr +ind) Member();
       // cout << data_ptr[ind].get_t_id() << endl;
 
       // NOTE: Code for filling in t_ids of fresh (but is unecessary)
@@ -616,7 +649,7 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
 
       // Note/Verify TODO: copy elision optimization should prevent copying
       //   this temporary.
-      ItemOrMbr item = items[i];
+      const ItemOrMbr& item = items[i];
 
       
       fact->verify_member_type(i, item);
@@ -682,6 +715,7 @@ ref<Fact> new_fact(FactType* type, const ItemOrMbr* items, size_t n_items,
   ref<Fact> fact = alloc_fact(type, n_items, buffer);
   _fill_fact(fact, items, n_items);
   fact->immutable = immutable;
+  fact->ensure_unique_id();
   return fact;
 }
 

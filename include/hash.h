@@ -96,12 +96,12 @@ struct CREHash {
     uint64_t operator()(Var* x);
 
     template <class T>
-    uint64_t operator()(ref<T> x){
+    uint64_t operator()(const ref<T>& x){
         return CREHash{}(x.get());
     }
 
     template <class T>
-    uint64_t operator()(wref<T> x){
+    uint64_t operator()(const wref<T>& x){
         return CREHash{}(x.get());
     }
 

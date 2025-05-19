@@ -54,6 +54,12 @@ struct ControlBlock {
     uint16_t t_id;
     uint16_t pad[3];
 
+    // C-String of unique identifier for the CRE_Obj pointed to
+    //  we avoid std::string here since we really only need
+    //  this for printing purposes, and it should be valid
+    //  for interned strings and objects with normal lifecycles.
+    char* unique_id = "";
+
 
     // When using nanobind proxy_object is a PyObject*
     void*               proxy_obj = nullptr; 
@@ -66,9 +72,9 @@ struct ControlBlock {
 
 
     ControlBlock(CRE_Obj* obj_ptr, CRE_dtor_function _dtor, uint16_t t_id=0);
-    ~ControlBlock(){
-        cout << "DESRTROY CB" << endl;
-    }
+    ~ControlBlock();
+        // cout << "DESRTROY CB" << endl;
+    
 
     friend class CRE_Obj;
 
@@ -77,30 +83,36 @@ struct ControlBlock {
             cout << "Warning: weak ref_count underflow!" << endl;
         }
         if (wref_count <= 0) {
-            cout << "destroy CB" << endl;
-            delete this;
+            // cout << "destroy CB: " << uint64_t(this) << endl;
+            // delete this;
+            // global_cb_pool.dealloc(this);
+            this->~ControlBlock();
+            // ::operator delete((void*) this);
+
             return true;
         }
         return false;
     }
     inline void inc_wref() const noexcept{
-        cout << "INCR W: " << wref_count << endl;
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_add(2, std::memory_order_relaxed);
         #else
             wref_count += 2; 
         #endif
+
+        cout << "INCR W: " << wref_count << " " << uint64_t(this) <<  endl;
     }
     inline void add_wref(size_t n) const noexcept{
-        cout << "ADD W: " << wref_count << endl;
+        
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_add(n<<1, std::memory_order_relaxed);
         #else
             wref_count += n<<1; 
         #endif
+        cout << "ADD W: " << wref_count << " " << uint64_t(this) <<  endl;
     }
     inline bool dec_wref() const noexcept{
-        cout << "DECR W" << endl;
+        
 
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_sub(2, std::memory_order_relaxed);
@@ -108,15 +120,19 @@ struct ControlBlock {
             wref_count -= 2;
         #endif
 
+        cout << "DECR W: " << wref_count << " " << uint64_t(this) <<  endl;
+
         return _check_destroy();
     }
     inline bool sub_wref(size_t n) const noexcept{
-        cout << "SUB W: " << wref_count << endl;
+        
         #ifndef CRE_NONATOMIC_REFCOUNT
             wref_count.fetch_sub(n<<1, std::memory_order_relaxed);
         #else
             wref_count -= n<<1; 
         #endif
+
+        cout << "SUB W: " << wref_count << " " << uint64_t(this) <<  endl;
 
         return _check_destroy();
     }
@@ -221,6 +237,7 @@ public :
             std::cout << "Warning: ref_count underflow!" << std::endl;
         }
         if (ref_count <= 0) {
+            cout << "DESTROY S" << endl;
             this->control_block->wref_count = this->control_block->wref_count & ~1;
             // Call the CRE_Obj's destructor 
             this->control_block->dtor(this);
@@ -234,6 +251,7 @@ public :
         #else
             ref_count++; 
         #endif
+        cout << "INCR S: " << ref_count << " " << uint64_t(this) <<  endl;
     }
     inline void add_ref(size_t n) const noexcept{
         #ifndef CRE_NONATOMIC_REFCOUNT
@@ -248,6 +266,8 @@ public :
         #else
             ref_count--;
         #endif
+
+        cout << "DECR S: " << ref_count << " " << uint64_t(this) <<  endl;
 
         return _check_destroy();
     }

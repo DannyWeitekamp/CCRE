@@ -374,7 +374,7 @@ struct ToFactSetTranslator {
             
             if(type != nullptr){
                 length = std::max(length, size_t(type->members.size()));
-                uid_index = get_unique_id_index(type);
+                uid_index = type->unique_id_index;
                 if(uid_index != -1 && uid_index < length){
                     std::string_view unq_attr = type->members[uid_index].name;
                     auto unq_attr_getter = T::to_attr_getter_t(unq_attr);

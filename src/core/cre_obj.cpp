@@ -15,6 +15,11 @@ ControlBlock::ControlBlock(CRE_Obj* _obj_ptr, CRE_dtor_function _dtor, uint16_t 
 	obj_ptr(_obj_ptr), dtor(_dtor), t_id(_t_id)
 {}
 
+ControlBlock::~ControlBlock(){
+	cout << "destroy CB: " << uint64_t(this) << endl;
+	global_cb_pool.dealloc((ControlBlock*) this);
+}
+
 // ControlBlock* ControlBlockPool::alloc_block(){
 // 	ControlBlock* block_begin = reinterpret_cast<ControlBlock*>(malloc(block_size));
 // 	ControlBlock* chunk = block_begin;

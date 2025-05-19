@@ -34,13 +34,29 @@ namespace cre {
 // 	return ptr;
 // }
 
+void Fact::ensure_unique_id(){
+	if(type != nullptr){
+	  int16_t uid_ind = type->unique_id_index;
+	  if(uid_ind < length){
+	    unique_id_index = uid_ind;
+	  }
+	}
+
+	// NOTE: This is only safe because we always intern strings
+	if(unique_id_index != -1){
+		const Item& item = get(unique_id_index);
+		control_block->unique_id = (char*) item.data;//get_unique_id();	
+	}
+	
+}
+
 
 void Fact_dtor(const CRE_Obj* x){
 		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
 		// cout << "dtor " << uint64_t(x) << endl;
 		Fact* fact = (Fact*) x;
 		for(size_t i=0; i < fact->length; i++){
-			Item item = fact->get(i);
+			Item* item = fact->get_ptr(i);
 
 			// cout << "~ITEM: " << "i=" << i << " " << item << ", t_id=" << item.get_t_id() << ", borrows=" << uint64_t(item.borrows) << endl;
 			// if(!item.is_primitive() && item.borrows){
@@ -49,7 +65,7 @@ void Fact_dtor(const CRE_Obj* x){
 			// 	cout << item << endl;
 			// // 	item_obj->dec_ref();
 			// }
-			item.release();
+			// item.release();
 		}
 
 		if(x->control_block->alloc_buffer == nullptr){
@@ -192,6 +208,7 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest,
 	}
 
 	dest->immutable = src->immutable;
+	dest->ensure_unique_id();
 
 }
 
@@ -266,13 +283,14 @@ ref<Fact> Fact::copy(uint8_t copy_kind,
 	_fill_fact_slice_copy(this, new_fact, 0, this->length, copy_kind, buffer);
 	// new_fact->type = this->type;
 	// Fact* new_fact = this->slice_into(buffer, 0, this->length, deep_copy);
+	// ensure_unique_id();
 	return new_fact;
 }
 
 std::string Fact::get_unique_id(){
 	// std::stringstream ss;
 	// FactType* type = fact->type;
-	int unique_id_index = get_unique_id_index(type);
+	// int unique_id_index = unique_id_index;//get_unique_id_index(type);
 	// cout << "unique_id_index: " << type->name << " " << unique_id_index  << endl ;
 	if(unique_id_index != -1){
 		// cout << "unique_id_index: " << unique_id_index << endl ;
