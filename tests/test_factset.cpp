@@ -42,7 +42,7 @@ int loop_fact_set(ref<FactSet> fs){
 ref<FactSet> test_individual_build(size_t N){
 	ref<FactSet> fs = new FactSet();
 	// Item str_item = Item("A");
-	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
+	std::vector<Item> items = {0, "A", false};
 	for(int i=0; i < N; i++){
 		// std::vector<Item> items = {Item(i), str_item, Item(bool(i%2))};
 		ref<Fact> fact = new_fact(nullptr, items.data(), items.size());
@@ -55,7 +55,7 @@ ref<FactSet> test_unbuffered_build(size_t N){
 	FactSetBuilder fs_builder = FactSetBuilder(N, 0);
 	// cout << fs_builder->fact_set << endl;
 	// Item str_item = Item("A");
-	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
+	std::vector<Item> items = {0, "A", false};
 	for(int i=0; i < N; i++){
 		fs_builder.declare_new(nullptr, items.data(), items.size());
 		// cout << fact << endl;
@@ -68,7 +68,7 @@ ref<FactSet> test_buffered_build(size_t N){
 	FactSetBuilder fs_builder = FactSetBuilder(N, N*(SIZEOF_FACT(3)));
 	// cout << fs_builder->fact_set << endl;
 	// Item str_item = Item("A");
-	std::vector<Item> items = {Item(0), Item("A"), Item(false)};
+	std::vector<Item> items = {0, "A", false};
 	for(int i=0; i < N; i++){
 		fs_builder.declare_new(nullptr, items.data(), items.size());
 		// cout << fact << endl;

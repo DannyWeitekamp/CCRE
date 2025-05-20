@@ -102,7 +102,10 @@ namespace cre {
 //     val(0), hash(0), t_id(0), pad(0){
 // }
 
-Item::Item(const std::string_view& arg) {
+Item::Item(const std::string_view& arg) :
+    val(0), t_id(T_ID_UNDEF),
+    meta_data(0), val_kind(VALUE), pad(0) 
+ {
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
@@ -135,13 +138,17 @@ Item::Item(const std::string_view& arg) {
 
 
 
-Item::Item(const char* data, size_t _length) {
+Item::Item(const char* data, size_t _length) :
+    val(0), t_id(T_ID_UNDEF),
+    meta_data(0), val_kind(VALUE), pad(0) 
+{
     // cout << "CHAR str_to_item " << length << endl;
     if(_length == size_t(-1)){
         _length = std::strlen(data);
     }
     // cout << "CHAR str_to_item " << length << endl;
     std::string_view sv = std::string_view(data, _length);
+
     *this = Item(sv);
 
     // cout << "CHAR str_to_item " << length << endl;
