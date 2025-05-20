@@ -218,6 +218,7 @@ auto nested_objects(){
 	cout << "FUDGE TYPE: " << uint64_t(fudge->type) << endl;
 
 	ref<Fact> snowball = make_fact(CatType, "snowball", "white", 77, false);
+
 	ref<Fact> Jeff = make_fact(CatOwner, "Jeff", snowball, fudge);
 	ref<Fact> double_fudge = make_tuple("double", fudge);
 	ref<Fact> Bobby = make_fact(CatOwner, "Bobby", snowball, double_fudge, Jeff);	
@@ -462,31 +463,69 @@ void bench_pool_alloc(){
 
 void test_weakref(){
 	auto [fudge, snowball, Jeff, double_fudge, Bobby] = nested_objects();
+
+	// cout << Jeff->get("cat") << endl;
 	IS_TRUE(Jeff->get("cat") == snowball);
 
-	wref<Fact> snowball_wref = snowball;
+	IS_TRUE(snowball->get_wrefcount() == 2);
+	IS_TRUE(snowball->get_refcount()  == 1);
 
-	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
-	 		", S_REF: " << snowball_wref.get_wrefcount() << endl;
+
+	// cout << "W_REF: " << snowball->get_wrefcount() << 
+	//  		", S_REF: " << snowball->get_refcount() << endl;
+
+	wref<Fact> snowball_wref = snowball;
+	wref<Fact> Bobby_wref = Bobby;
+
+	IS_TRUE(snowball->get_wrefcount() == 3);
+	IS_TRUE(snowball->get_refcount()  == 1);
+
+
+
+	// cout << "W_REF: " << snowball_wref.get_wrefcount() << 
+	//  		", S_REF: " << snowball_wref.get_refcount() << endl;
+	
+	// cout << "BOBBY: " << Bobby->get_refcount() <<  endl;
 
 	snowball = NULL;
 	Bobby = NULL;
 
-	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
-	 		", S_REF: " << snowball_wref.get_refcount() << endl;
+	cout << Jeff->to_string() << endl;
+	IS_TRUE(Jeff->to_string().find("cat=expired[@snowball]") != std::string::npos);
+
+
+
+	IS_TRUE(snowball_wref.is_expired());
+	IS_TRUE(Bobby_wref.is_expired());
+
+	// cout << "BOBBY: " << Bobby_wref.get_refcount() <<  endl;	
+
+	// Should throw an error since snowball has expired
+	EXPECT_THROW(( snowball_wref->get_wrefcount() ));
+
+	IS_TRUE(snowball_wref.get_wrefcount() == 2);
+
+	// cout << "!W_REF: " << snowball_wref.get_wrefcount() << 
+	//  		", S_REF: " << snowball_wref.get_refcount() << endl;
 
 	Jeff = NULL;
 
-	if(snowball_wref == nullptr){
-		cout << "nullptr" << endl;
-	}
+	IS_TRUE(snowball_wref.get_wrefcount() == 1);
 
-	cout << "W_REF: " << snowball_wref.get_wrefcount() << 
-	 		", S_REF: " << snowball_wref.get_refcount() << endl;
+	// IS_TRUE(snowball_wref.is_expired());
+
+	// if(snowball_wref == nullptr){
+	// 	cout << "nullptr" << endl;
+	// }
+
+	// cout << "W_REF: " << snowball_wref.get_wrefcount() << 
+	//  		", S_REF: " << snowball_wref.get_refcount() << endl;
 
 	snowball_wref = nullptr;
 
-	cout << snowball_wref.get_wrefcount() << endl;
+	IS_TRUE(snowball_wref.get_wrefcount() == 0);
+
+	// cout << snowball_wref.get_wrefcount() << endl;
 
 	// auto Jeffs_cat = Jeff->get("cat").as_fact();
 	// cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;

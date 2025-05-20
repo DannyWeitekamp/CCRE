@@ -137,21 +137,22 @@ public:
     }
 
     inline uint16_t get_t_id() const {
-        if(is_wref()){
-            // cout << "get_t_id" << endl;
-            ControlBlock* cb = (ControlBlock*) ptr;
-            if(cb->is_expired()){
-                return T_ID_UNDEF;
-            }
-            // cout << 
-
-            // return t_id;
-            // ControlBlock* cb = (ControlBlock*) ptr;//get_ctrl_block();
-            // // cout << "T_ID FROM CNTRL BLOCK:" << ctrl_block->t_id << endl;
-            // return cb->t_id;
-        }
         return t_id;   
     }
+        // if(is_wref()){
+        //     // cout << "get_t_id" << endl;
+        //     ControlBlock* cb = (ControlBlock*) ptr;
+        //     if(cb->is_expired()){
+        //         return T_ID_UNDEF;
+        //     }
+        //     // cout << 
+
+        //     // return t_id;
+        //     // ControlBlock* cb = (ControlBlock*) ptr;//get_ctrl_block();
+        //     // // cout << "T_ID FROM CNTRL BLOCK:" << ctrl_block->t_id << endl;
+        //     // return cb->t_id;
+        // }
+        
 
     // inline uint16_t set_t_id(uint16_t _t_id) const {
     //     if(is_ref()){
@@ -170,12 +171,16 @@ public:
 
 
     template<class T>
-    bool operator==(const T& other) const {
+    bool operator==(const T& other) const {        
         Item other_item = Item(other);
-        return (
-            this->val == other_item.val && 
-            this->get_t_id() == other_item.get_t_id()
-        );
+        if(this->get_t_id() == other_item.get_t_id()){
+            if(!is_value()){
+                return this->get_ptr() == other_item.get_ptr();
+            }else{
+                return this->val == other_item.val;
+            }
+        }
+        return false;
     }
 
     
@@ -206,7 +211,7 @@ public:
     };
 
     Item& operator=(Item&& other) {    
-        release();
+        release();// Note: Valgrind Doesn't like this 
         val = other.val;
         t_id = other.t_id;
         meta_data = other.meta_data;
@@ -405,14 +410,11 @@ public:
     }
 
     inline ControlBlock* get_cb() const{
-        cout << "Q" << endl;
         if(is_wref()){
-            cout << "A" << endl;
             return (ControlBlock*) ptr;
         }else{
             
             if(ptr == nullptr) return nullptr;
-            cout << "B: " << uint64_t(ptr) << endl;
             return ((CRE_Obj*) ptr)->control_block;
         }
         // cout << "EENDL" << endl;
@@ -482,7 +484,6 @@ public:
             throw std::runtime_error("Cannot get wrefcount Item does not represent CRE_Obj.");
         }
         ControlBlock* cb = get_cb();
-        cout << "YAHOO: " << uint64_t(cb) << endl;
         if(!cb){
             return 0;
         }

@@ -21,6 +21,7 @@ namespace cre {
 
 using std::cout;
 using std::endl;
+using std::vector;
 
 
 // Forward Declaration
@@ -34,14 +35,14 @@ class FactSet : public CRE_Obj {
 public:
     static constexpr uint16_t T_ID = T_ID_FACTSET;
 	// -- Members --
-	std::vector<ref<Fact>> facts;
-	std::vector<uint32_t> empty_f_ids;
+	vector<ref<Fact>> facts;
+	vector<uint32_t> empty_f_ids;
 	uint64_t _size;
-    std::vector<FactChange> change_queue;
+    vector<FactChange> change_queue;
 
 	// -- Methods -- 
 	FactSet(size_t n_facts=0);
-	FactSet(std::vector<ref<Fact>> facts);
+	FactSet(vector<ref<Fact>> facts);
     // ~FactSet();
 
     inline size_t size() const {return _size;}
@@ -49,10 +50,11 @@ public:
 	uint32_t declare(Fact* fact);
 	void retract(uint32_t f_id);
 	void retract(Fact* fact);
-    std::vector<ref<Fact>> get_facts();
+    vector<ref<Fact>> get_facts();
+    ref<Fact> get(uint32_t f_id);
 
     // ref<Fact> declare_new(FactType* type, const Item* items, size_t n_items);
-    // ref<Fact> declare_new(FactType* type, const std::vector<Item>& items);
+    // ref<Fact> declare_new(FactType* type, const vector<Item>& items);
 
     std::string to_string(
         std::string_view format="FactSet{{\n  {}\n}}",
@@ -111,12 +113,12 @@ public:
         using reference         = ref<Fact>&;
 
     private:
-        std::vector<ref<Fact>>::iterator current;
-        std::vector<ref<Fact>>::iterator end;
+        vector<ref<Fact>>::iterator current;
+        vector<ref<Fact>>::iterator end;
 
     public:
-        Iterator(std::vector<ref<Fact>>::iterator s,
-                 std::vector<ref<Fact>>::iterator e){
+        Iterator(vector<ref<Fact>>::iterator s,
+                 vector<ref<Fact>>::iterator e){
             current = s;
             end = e;
         }
@@ -139,7 +141,7 @@ public:
     Iterator end() { return  Iterator(facts.end(), facts.end());}
 
 
-    std::vector<uint8_t> long_hash_bytes(size_t byte_width=24);
+    vector<uint8_t> long_hash_bytes(size_t byte_width=24);
     std::string long_hash_string(size_t byte_width=24);
 
 
@@ -268,7 +270,7 @@ public:
 
     template<std::derived_from<Item> ItemOrMbr>
     inline ref<Fact> new_fact(FactType* __restrict  type,
-                          const std::vector<ItemOrMbr>& items,
+                          const vector<ItemOrMbr>& items,
                           bool immutable=false){
         return new_fact(type, items.data(), items.size(), immutable);
     }
@@ -285,7 +287,7 @@ public:
 
     template<std::derived_from<Item> ItemOrMbr>
     inline ref<Fact> declare_new(FactType* __restrict  type,
-                          const std::vector<ItemOrMbr>& items,
+                          const vector<ItemOrMbr>& items,
                           bool immutable=false){
         return declare_new(type, items.data(), items.size(), immutable);
     }
@@ -311,7 +313,7 @@ struct ToFactSetTranslator {
     std::string_view type_attr;
     std::string_view ref_prefix;
     HashMap<std::string_view, size_t> fact_map;
-    std::vector<fact_info_t> fact_infos;
+    vector<fact_info_t> fact_infos;
     FactSetBuilder builder;
     attr_getter_t type_attr_ref;
 

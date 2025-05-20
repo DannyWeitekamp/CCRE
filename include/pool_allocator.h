@@ -244,8 +244,8 @@ public:
     		vacant_block_list.push_back(block);
     	}else if(block->all_free()){
     		// cout << "FREE BLOCK" << endl;
-    		delete block;
-    		// free(block);
+    		// delete block;
+    		free(block);
 
     		// Remove the block from the block_list and vacant_block_list
 			block_list.erase(std::remove(block_list.begin(), block_list.end(), block), block_list.end());

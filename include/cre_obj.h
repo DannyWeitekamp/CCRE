@@ -100,7 +100,7 @@ struct ControlBlock {
             wref_count += 2; 
         #endif
 
-        cout << "INCR W: " << wref_count << " " << uint64_t(this) <<  endl;
+        // cout << "INCR W: " << wref_count << " " << uint64_t(this) <<  endl;
     }
     inline void add_wref(size_t n) const noexcept{
         
@@ -109,7 +109,7 @@ struct ControlBlock {
         #else
             wref_count += n<<1; 
         #endif
-        cout << "ADD W: " << wref_count << " " << uint64_t(this) <<  endl;
+        // cout << "ADD W: " << wref_count << " " << uint64_t(this) <<  endl;
     }
     inline bool dec_wref() const noexcept{
         
@@ -120,7 +120,7 @@ struct ControlBlock {
             wref_count -= 2;
         #endif
 
-        cout << "DECR W: " << wref_count << " " << uint64_t(this) <<  endl;
+        // cout << "DECR W: " << wref_count << " " << uint64_t(this) <<  endl;
 
         return _check_destroy();
     }
@@ -132,13 +132,18 @@ struct ControlBlock {
             wref_count -= n<<1; 
         #endif
 
-        cout << "SUB W: " << wref_count << " " << uint64_t(this) <<  endl;
+        // cout << "SUB W: " << wref_count << " " << uint64_t(this) <<  endl;
 
         return _check_destroy();
     }
 
     inline int64_t get_wrefcount() noexcept {
         return wref_count >> 1;
+    }
+
+    inline bool expire() noexcept {    
+        wref_count = wref_count & ~1;
+        return _check_destroy();   
     }
 
     inline bool is_expired() noexcept {
@@ -238,10 +243,15 @@ public :
         }
         if (ref_count <= 0) {
             cout << "DESTROY S" << endl;
-            this->control_block->wref_count = this->control_block->wref_count & ~1;
-            // Call the CRE_Obj's destructor 
-            this->control_block->dtor(this);
-            return true;
+            
+            // this->control_block->wref_count = this->control_block->wref_count & ~1;
+            // Call the CRE_Obj's destructor
+            ControlBlock* cb = this->control_block;
+            if(cb->dtor){
+                cb->dtor(this);    
+            }
+
+            return cb->expire();
         }
         return false;
     }
@@ -251,7 +261,7 @@ public :
         #else
             ref_count++; 
         #endif
-        cout << "INCR S: " << ref_count << " " << uint64_t(this) <<  endl;
+        // cout << "INCR S: " << ref_count << " " << uint64_t(this) <<  endl;
     }
     inline void add_ref(size_t n) const noexcept{
         #ifndef CRE_NONATOMIC_REFCOUNT
@@ -267,7 +277,7 @@ public :
             ref_count--;
         #endif
 
-        cout << "DECR S: " << ref_count << " " << uint64_t(this) <<  endl;
+        // cout << "DECR S: " << ref_count << " " << uint64_t(this) <<  endl;
 
         return _check_destroy();
     }

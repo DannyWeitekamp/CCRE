@@ -117,11 +117,15 @@ public:
         m_ptr = nullptr;
     }
 
+    bool is_expired() const {
+        return m_ptr->is_expired();// !(m_ptr->wref_count & 1);
+    }
+
     inline T* _get_obj_ptr() const{
-        if(m_ptr && m_ptr->wref_count & 1){
+        if(m_ptr && !m_ptr->is_expired()){
             return (T*) m_ptr->obj_ptr;
         }else{
-            return nullptr;
+            throw std::runtime_error("Attempted to read expired wref.");
         }
     }
 

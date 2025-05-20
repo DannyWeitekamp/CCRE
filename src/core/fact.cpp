@@ -52,12 +52,15 @@ void Fact::ensure_unique_id(){
 
 
 void Fact_dtor(const CRE_Obj* x){
+		cout << "Fact_dtor: " << uint64_t(x) << endl;
 		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
 		// cout << "dtor " << uint64_t(x) << endl;
 		Fact* fact = (Fact*) x;
+
+		// cout << "FACT DTOR: " << fact << endl;
 		for(size_t i=0; i < fact->length; i++){
 			Item* item = fact->get_ptr(i);
-
+			item->release();
 			// cout << "~ITEM: " << "i=" << i << " " << item << ", t_id=" << item.get_t_id() << ", borrows=" << uint64_t(item.borrows) << endl;
 			// if(!item.is_primitive() && item.borrows){
 			// 	// CRE_Obj* item_obj = ;
@@ -65,7 +68,7 @@ void Fact_dtor(const CRE_Obj* x){
 			// 	cout << item << endl;
 			// // 	item_obj->dec_ref();
 			// }
-			// item.release();
+		
 		}
 
 		if(x->control_block->alloc_buffer == nullptr){

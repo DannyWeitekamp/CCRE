@@ -254,13 +254,13 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 	auto mbr_inds = this->get_member_inds(type);
 		
 	// Make Subject from unique_id or f_id
-	auto u_ind = type->unique_id_index;//get_unique_id_index(type);
+	auto u_ind = get_unique_id_index(type);
 	// cout << "U_IND: " << u_ind << endl;
 
 
 	Item subj_item = (u_ind == -1 ? 
 						Item(in_fact->f_id) :
-						in_fact->get(u_ind)
+						(Item) in_fact->get(u_ind)
 					);
 
 	// Make a new Fact 
@@ -284,7 +284,7 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 			 			type->member_names_as_items[ind]);
 			// cout << "FLAT PRED: " << type->member_names_as_items[ind] << uint64_t(type->member_names_as_items[ind].val) << endl;
 		}else{
-			out_fact->set(verb_ind /* 1 or 0 */, int(ind));
+			out_fact->set_unsafe(verb_ind /* 1 or 0 */, int(ind));
 		}
 
 		Item obj_item = in_fact->get(ind);
@@ -294,7 +294,7 @@ size_t Flattener::_fact_to_wme_triples(Fact* __restrict in_fact){
 
 			obj_item = (u_ind == -1 ? 
 						Item(obj_fact->f_id) :
-						obj_fact->get(u_ind)
+						(Item) obj_fact->get(u_ind)
 					);
 		}
 
@@ -331,7 +331,7 @@ std::vector<ref<Var>> Flattener::_make_fact_vars(FactSet* input){
 
 		Item subj_item = (u_ind == -1 ? 
 					Item(fact->f_id) :
-					fact->get(u_ind)
+					(Item) fact->get(u_ind)
 				);
 
 		CRE_Type* var_type = fact->type == nullptr ? cre_Fact : fact->type;

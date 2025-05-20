@@ -99,14 +99,14 @@ public:
 
     
     if(member.is_sref() || member.is_raw_ptr()){
-      cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
-      cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << "VK: " << member.is_wref() << endl;
+      // cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
+      // cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << "VK: " << member.is_wref() << endl;
       // cout << "BEFORE" << endl;
       member = member.to_weak();// make_weak();  
 
     }
     // cout << "  -  " << endl;
-    member.borrow();
+    // member.borrow();
     return member;
   }
 
@@ -374,7 +374,7 @@ std::ostream& operator<<(std::ostream& out, ref<Fact> fact);
 
 template <class ... Ts>
 ref<Fact> make_fact(FactType* type, const Ts& ... inputs){
-  cout << "--START MAKE FACT--" << endl;
+  // cout << "--START MAKE FACT--" << endl;
 
   Member mbrs[sizeof...(Ts)] = {Member()};
   int i = 0;

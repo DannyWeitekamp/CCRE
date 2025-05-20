@@ -130,6 +130,21 @@ std::vector<ref<Fact>> fs_get_facts(FactSet* fs){
     return facts;
 }
 
+ref<Fact> FactSet::get(uint32_t f_id){
+	if(f_id > facts.size()) [[unlikely]]{
+		throw std::out_of_range("f_id=" + std::to_string(f_id) + 
+				" out of range for Factset of size=" + std::to_string(facts.size()) + "."
+		);
+	}
+	ref<Fact> fact = facts[f_id];
+	if(fact == nullptr) [[unlikely]]{
+		throw std::out_of_range("FactSet is missing fact with f_id=" 
+				+ std::to_string(f_id) + "."
+		);	
+	}
+	return fact;
+}
+
 std::string FactSet::to_string(
 			std::string_view format,
 			std::string_view delim){
@@ -195,7 +210,7 @@ std::string FactSet::long_hash_string(size_t byte_width){
 // ---- Method Declarations ----
 
 void FactSet_dtor(const CRE_Obj* x){
-	// cout << "FactSet_dtor:" << uint64_t(x) << endl;
+	cout << "FactSet_dtor:" << uint64_t(x) << endl;
 	// cout << (FactType* ) x << endl; 
 	delete ((FactSet*) x);
 }

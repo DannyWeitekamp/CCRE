@@ -38,6 +38,7 @@ int loop_fact_set(ref<FactSet> fs){
     return x;
 }
 
+
 ref<FactSet> test_individual_build(size_t N){
 	ref<FactSet> fs = new FactSet();
 	// Item str_item = Item("A");
@@ -75,6 +76,47 @@ ref<FactSet> test_buffered_build(size_t N){
 	return fs_builder.fact_set;
 }
 
+
+void test_get(){
+	ref<FactSet> fs = test_buffered_build(10);
+
+	EXPECT_THROW(ref<Fact> fact = fs->get(100));
+	fs->retract(7);
+	EXPECT_THROW(ref<Fact> fact = fs->get(7));
+
+	cout << "Fact 0: " << fs->get(0) << endl;
+}
+
+void test_memleak(){
+	ref<FactSet> fs = test_buffered_build(1);
+	wref<FactSet> fs_wref = wref<FactSet>(fs);
+	ref<Fact> fact = fs->get(0);
+	wref<Fact> fact_wref = wref<Fact>(fact);
+
+	IS_TRUE(fs_wref.get_refcount() == 1);
+	IS_TRUE(fact.get_refcount() == 2);
+	// cout << "FS RC: " <<  << endl;
+	// cout << "F RC: " << fact.get_refcount() << endl;
+
+	fs = nullptr;
+
+	IS_TRUE(fs_wref.get_refcount() == 0);
+	IS_TRUE(fact.get_refcount() == 1);
+
+	// cout << "FS RC: " << fs_wref.get_refcount() << endl;
+	// cout << "F RC: " << fact.get_refcount() << endl;
+
+	fact = nullptr;
+
+	IS_TRUE(fact.get_refcount() == 0);
+	IS_TRUE(fact_wref.get_wrefcount() == 1);
+
+	// cout << "FS RC: " << fs_wref.get_refcount() << endl;
+	// cout << "F RC: " << fact_wref.get_refcount() << endl;
+	// cout << "F WRC: " << fact_wref.get_wrefcount() << endl;
+	fact_wref = nullptr;	
+}
+
 void test_build_from_json(){
 	std::string json_str;
 	ref<FactSet> fs;
@@ -95,9 +137,11 @@ void test_build_from_json(){
 	cout << "Written JSON str" << endl;
 	cout << json_str << endl;
 	// delete[] json_str;
-	
-	time_it_n("from_json_file", fs=FactSet::from_json_file("../data/big_untyped_state.json"), 50);
-	time_it_n("to_json", json_str = fs->to_json(), 50);
+	#if NDEBUG
+		cout << "NOT DEBUG!!" << endl;
+		time_it_n("from_json_file", fs=FactSet::from_json_file("../data/big_untyped_state.json"), 50);
+		time_it_n("to_json", json_str = fs->to_json(), 50);
+	#endif
 
 	fs = new FactSet();
 	ref<Fact> a = make_fact(nullptr, 0, "A", false);
@@ -177,11 +221,28 @@ int main() {
 
 	// Note: Doing this test before the benchmark affects the outcome
 	//   since mallocing on a fresh process is simialr to the buffered allocs
-	test_json(); 
-	bench_build(1000,500);
 	
 	
-	cout << "AND ITS DONE" << endl;
+	
+	cout << global_cb_pool.get_stats() << endl;
+		
+	#if NDEBUG
+		bench_build(1000,500);
+	#else
+		cout << "RUNNING DEBUG" << endl;	
+		bench_build(10,10);
+	#endif
+	// test_memleak();
+
+	cout << global_cb_pool.get_stats() << endl;
+
+	
+	// test_build_from_json();
+	// test_json(); 
+	// test_get();
+	// test_memleak();
+	
+
 
 
 

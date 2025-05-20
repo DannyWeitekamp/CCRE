@@ -143,6 +143,23 @@ public:
 
     /// Return a const pointer to the referenced object
     const T *get() const { return m_ptr; }
+
+    int64_t get_refcount() const {
+        if(m_ptr){
+            return m_ptr->get_refcount();
+        }else{
+            return 0;
+        }
+    }
+
+    int64_t get_wrefcount() const {
+        if(m_ptr){
+            return m_ptr->get_wrefcount();    
+        }else{
+            return 0;
+        }
+    }
+
 };
 
 // } // NAMESPACE_END(cre)

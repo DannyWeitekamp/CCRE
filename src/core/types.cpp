@@ -133,12 +133,12 @@ int get_unique_id_index(const vector<MemberSpec>& member_specs){
     return -1;
 }
 
-// int get_unique_id_index(FactType* type){
-//     if(type != nullptr){
-//         return get_unique_id_index(type->members);
-//     }
-//     return -1;
-// }
+int get_unique_id_index(FactType* type){
+    if(type != nullptr){
+        return type->unique_id_index;
+    }
+    return -1;
+}
 
 
 bool _try_finalized(FactType* _this, bool do_throw){

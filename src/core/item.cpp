@@ -217,21 +217,22 @@ Item::Item(const char* data, size_t _length) {
 // {};
 
 
-void Item::borrow() const{
+void Item::borrow() const {
     if(is_ref()){
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
             cb->inc_wref();
             // throw std::runtime_error("HEY!");
-            cout << this->to_string() << " t_id=" << t_id << " BORROW WEAK: " << cb->get_wrefcount() << endl;
+            // cout << this->to_string() << " t_id=" << t_id << " BORROW WEAK: " << cb->get_wrefcount() << endl;
         }else{
             ((CRE_Obj*) ptr)->inc_ref();
-            cout << this->to_string() << " t_id=" << t_id << " BORROW STRONG: " << ((CRE_Obj*) ptr)->get_refcount() << endl;
+            // cout << this->to_string() << " t_id=" << t_id << " BORROW STRONG: " << ((CRE_Obj*) ptr)->get_refcount() << endl;
         }
     }
 }
 
-void Item::release() const{
+void Item::release() const {
+    // cout << "RELEASE:" << is_ref() << ", " << is_wref() << endl;
     if(is_ref()){
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;
@@ -333,7 +334,11 @@ std::string item_to_string(const Item& item) {
     uint16_t t_id = item.get_t_id();
     // std::cout << "TO STR: " << t_id << std::endl;
     std::stringstream ss;
-    switch(t_id) {
+        
+    bool known_type = true;
+    if(item.is_value()){
+        switch(t_id) {
+
         case T_ID_UNDEF:
             ss << "Undef";
             break;
@@ -352,17 +357,29 @@ std::string item_to_string(const Item& item) {
         case T_ID_STR:
             ss << "'" << std::string(item.as_string()) << "'";
             break;
+        default:
+            known_type = false;
+        }
+    }else{
+        bool expired = item.is_expired();
+        if(expired){
+            ControlBlock* cb = item.get_cb();
+            if(cb->unique_id == ""){
+                ss << "expired[??]";   
+            }else{
+                ss << "expired[@" << cb->unique_id << "]";
+            }
+            return ss.str();
+        }
+        switch(t_id) {
+
         case T_ID_FACT:
             {
-                if(item.is_undef()){
-                    ss << "Undef";
-                    break;
-                }
-
                 Fact* fact = item.as_fact();
-                
+                        
                 if(fact->type != nullptr){
                     std::string unq_id = fact->get_unique_id();
+
                     if(!unq_id.empty()){
                         ss << "@" << unq_id;
                         break;
@@ -383,8 +400,8 @@ std::string item_to_string(const Item& item) {
                 }else{
                     ss << "<fact f_id=" << fact->f_id << ">";    
                 }
+                break;
             }
-            break;
         case T_ID_VAR:
             ss << item.as_var();
             break;
@@ -392,11 +409,13 @@ std::string item_to_string(const Item& item) {
             ss << item.as_func();
             break;
         default:
-            ss << "<item t_id=" << t_id << " val=" << item.val << ">";
-            // " @" << std::bit_cast<uint64_t>(&item) << ">";     
-    }  
+            known_type = false;
+            // " @" << std::bit_cast<uint64_t>(&item) << ">"; 
+    }}
+    if(!known_type){
+        ss << "<item t_id=" << t_id << " val=" << item.val << ">";
+    }
 
-    // std::cout << "END TO STR: " << t_id << std::endl;
     return ss.str();
 }
 
