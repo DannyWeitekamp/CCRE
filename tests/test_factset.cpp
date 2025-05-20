@@ -227,20 +227,22 @@ int main() {
 	cout << global_cb_pool.get_stats() << endl;
 		
 	#if NDEBUG
+		cout << "RUNNING RELEASE" << endl;
 		bench_build(1000,500);
 	#else
 		cout << "RUNNING DEBUG" << endl;	
-		bench_build(10,10);
+		bench_build(1000,5);
+		// bench_build(10,10);
 	#endif
 	// test_memleak();
 
 	cout << global_cb_pool.get_stats() << endl;
 
 	
-	// test_build_from_json();
-	// test_json(); 
-	// test_get();
-	// test_memleak();
+	test_build_from_json();
+	test_json(); 
+	test_get();
+	test_memleak();
 	
 
 

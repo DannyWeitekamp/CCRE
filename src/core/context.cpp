@@ -105,7 +105,7 @@ std::string CRE_Context::to_string() {
 
 CRE_Context::~CRE_Context(){
     for(auto type : types){
-        cout << type->name << "(d):" << type->get_refcount() << endl; 
+        // cout << type->name << "(d):" << type->get_refcount() << endl; 
         type->dec_ref();
     }
     for(auto type : overwritten_types){

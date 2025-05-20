@@ -14,11 +14,11 @@ namespace cre {
 ControlBlock::ControlBlock(CRE_Obj* _obj_ptr, CRE_dtor_function _dtor, uint16_t _t_id) : 
 	obj_ptr(_obj_ptr), dtor(_dtor), t_id(_t_id)
 {
-	cout << "init CB: " << uint64_t(this) << endl;
+	// cout << "init CB: " << uint64_t(this) << endl;
 }
 
 ControlBlock::~ControlBlock(){
-	cout << "destroy CB: " << uint64_t(this) << endl;
+	// cout << "destroy CB: " << uint64_t(this) << endl;
 	global_cb_pool.dealloc((ControlBlock*) this);
 }
 

@@ -52,7 +52,7 @@ void Fact::ensure_unique_id(){
 
 
 void Fact_dtor(const CRE_Obj* x){
-		cout << "Fact_dtor: " << uint64_t(x) << endl;
+		// cout << "Fact_dtor: " << uint64_t(x) << endl;
 		// cout << "dtor f_id=" << ((Fact*) x)->f_id << ", " << uint64_t(((Fact*) x)->alloc_buffer) << endl;
 		// cout << "dtor " << uint64_t(x) << endl;
 		Fact* fact = (Fact*) x;

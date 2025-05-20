@@ -242,7 +242,7 @@ public :
             std::cout << "Warning: ref_count underflow!" << std::endl;
         }
         if (ref_count <= 0) {
-            cout << "DESTROY S" << endl;
+            // cout << "DESTROY S" << endl;
             
             // this->control_block->wref_count = this->control_block->wref_count & ~1;
             // Call the CRE_Obj's destructor

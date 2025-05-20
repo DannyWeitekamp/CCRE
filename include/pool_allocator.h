@@ -161,6 +161,12 @@ public:
     	curr_block = alloc_block(block_size);
     };
 
+    ~PoolAllocator(){
+    	if(curr_block != nullptr){
+    		free(curr_block);	
+    	}
+    }
+
 
     
 
@@ -242,7 +248,9 @@ public:
 
     	if(was_full){
     		vacant_block_list.push_back(block);
-    	}else if(block->all_free()){
+
+    	// Never free the current block 
+    	}else if(block->all_free() && block != curr_block){
     		// cout << "FREE BLOCK" << endl;
     		// delete block;
     		free(block);
@@ -318,8 +326,10 @@ public:
         BatchIterator(PoolAllocator<T>* _pool, size_t n, size_t _block_size) :
         	pool(_pool),
         	remaining(n),
+        	block_size(_block_size),
         	curr_block(nullptr),
-        	block_size(_block_size)
+        	curr_chunk(nullptr),
+        	block_end(nullptr)
         {
         	if(n == 0){
         		curr_chunk = nullptr;

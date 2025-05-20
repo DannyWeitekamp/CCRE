@@ -210,7 +210,7 @@ std::string FactSet::long_hash_string(size_t byte_width){
 // ---- Method Declarations ----
 
 void FactSet_dtor(const CRE_Obj* x){
-	cout << "FactSet_dtor:" << uint64_t(x) << endl;
+	// cout << "FactSet_dtor:" << uint64_t(x) << endl;
 	// cout << (FactType* ) x << endl; 
 	delete ((FactSet*) x);
 }
