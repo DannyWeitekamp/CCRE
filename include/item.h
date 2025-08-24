@@ -14,10 +14,10 @@ namespace cre {
 using std::cout;
 using std::endl;
 // Forward Declarations
-struct Fact;
+class Fact;
 struct Var;
 struct Func;
-struct CRE_Obj;
+class CRE_Obj;
 struct ControlBlock;
 
 // enum class ValueKind : uint8_t {

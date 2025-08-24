@@ -371,7 +371,8 @@ std::string item_to_string(const Item& item) {
         bool expired = item.is_expired();
         if(expired){
             ControlBlock* cb = item.get_cb();
-            if(cb->unique_id == ""){
+
+            if(cb->unique_id == nullptr || cb->unique_id[0] == '\0'){
                 ss << "expired[??]";   
             }else{
                 ss << "expired[@" << cb->unique_id << "]";

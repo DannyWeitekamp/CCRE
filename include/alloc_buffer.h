@@ -21,6 +21,8 @@ struct AllocBuffer : public CRE_Obj {
     bool resizeable;
     
     // --- Methods ---
+public :
+
     AllocBuffer(size_t n_bytes, bool resizeable=false);
     ~AllocBuffer();
     // void add_data(uint8_t* data, size_t size);

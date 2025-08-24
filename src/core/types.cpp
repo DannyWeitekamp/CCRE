@@ -583,11 +583,11 @@ FlagGroup::FlagGroup(const HashMap<std::string, Item>& flags){
     this->assign(flags);
 }
 
-FlagGroup::FlagGroup(const FlagGroup& flags) :
-    builtin_flags(flags.builtin_flags), 
-    builtin_flags_mask(flags.builtin_flags),
-    custom_flags(flags.custom_flags){
-}
+// FlagGroup::FlagGroup(const FlagGroup& flags) :
+//     builtin_flags(flags.builtin_flags), 
+//     builtin_flags_mask(flags.builtin_flags_mask),
+//     custom_flags(flags.custom_flags){
+// }
 
 // FlagGroup::FlagGroup(std::initializer_list<std::tuple<std::string, Item>> flags){
 //     for (auto& [key, value] : flags){

@@ -33,7 +33,7 @@ AllocBuffer::AllocBuffer(size_t n_bytes, bool _resizeable){
 	this->head = data;
 	this->end =  data+n_bytes;
 	this->size =  n_bytes;
-	this->resizeable = resizeable;
+	this->resizeable = _resizeable;
 	// this->size = size;
 };
 
@@ -84,7 +84,7 @@ uint8_t* AllocBuffer::alloc_bytes(size_t n_bytes){
 }
 
 uint8_t* AllocBuffer::free_back(size_t n_bytes){
-	throw std::runtime_error("not implemented");
+	throw std::runtime_error("not implemented. n_bytes=" + std::to_string(n_bytes));
 	return 0;
 }
 

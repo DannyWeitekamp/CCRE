@@ -44,6 +44,9 @@ struct Member : public Item {
     inline Item to_raw_ptr(){
         return Member(*this, RAW_PTR);
     }
+
+    
+    using Item::operator==; 
 };
 
 } // NAMESPACE_END(cre)

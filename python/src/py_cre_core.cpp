@@ -46,7 +46,7 @@ PyType_Slot cre_obj_slots[] = {
 
 
 class CREDummy : public CRE_Obj{
-    int a;
+    [[maybe_unused]] int a;
 };
 
 // ------------------------------------------------------------------

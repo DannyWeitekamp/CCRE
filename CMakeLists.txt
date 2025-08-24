@@ -7,20 +7,34 @@ project(cre VERSION 1.0)
 # Specify the CPP standard
 set(CMAKE_CXX_STANDARD 23)
 
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --gcc-install-dir='/usr/lib/gcc/x86_64-linux-gnu/11'")
+
+
 # Note: Nanobind thing
 set(DEV_MODULE Development.Module)
+
+# # Don't print each call to clang++ 
+# set(CMAKE_VERBOSE_MAKEFILE OFF)
+# set(_saved_CMAKE_MESSAGE_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL})
+# set(CMAKE_MESSAGE_LOG_LEVEL WARNING) # Suppress most messages
 
 
 # Add compiler warnings
 if(MSVC)
   add_compile_options(/W4)
 else()
-  add_compile_options(-Wall -Wextra -Wno-sign-compare -pedantic -fPIC)
+  add_compile_options(-Wall -Wextra 
+    -Wno-sign-compare     
+    -pedantic -fPIC)
 endif()
 
-# 
+# Remove various Warnings that don't care about 
 add_compile_options(-Wno-unused-variable
+                    -Wno-unused-command-line-argument
+                    -Wno-unused-but-set-variable
+                    -Wno-zero-length-array
                     -Wno-reorder
+                    -Wno-nested-anon-types
 )
 
 add_compile_options(-std=c++2a -lstdc++)
@@ -125,11 +139,11 @@ add_test(
   COMMAND $<TARGET_FILE:test_transform>
   )
 
-nanobind_add_module(dummy_ext python/ext/dummy_ext.cpp)
-target_link_libraries(dummy_ext PRIVATE core_lib logical_lib transform_lib)
+#nanobind_add_module(dummy_ext python/ext/dummy_ext.cpp)
+#target_link_libraries(dummy_ext PRIVATE core_lib logical_lib transform_lib)
 
-nanobind_add_module(dummer_ext python/ext/dummer_ext.cpp)
-target_link_libraries(dummer_ext PRIVATE core_lib logical_lib transform_lib)
+#nanobind_add_module(dummer_ext python/ext/dummer_ext.cpp)
+#target_link_libraries(dummer_ext PRIVATE core_lib logical_lib transform_lib)
 
 
 file(GLOB PY_SOURCES "python/src/*.cpp")
@@ -144,3 +158,5 @@ target_link_libraries(cre PRIVATE core_lib logical_lib transform_lib)
 # target_compile_options(cre PRIVATE $<$<CONFIG:Debug>:${CMAKE_CXX_FLAGS_DEBUG}> $<$<CONFIG:Release>:${CMAKE_CXX_FLAGS_RELEASE}>)
 
 install(TARGETS cre LIBRARY DESTINATION cre)
+
+# set(CMAKE_MESSAGE_LOG_LEVEL ${_saved_CMAKE_MESSAGE_LOG_LEVEL}) # Restore if needed

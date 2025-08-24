@@ -388,7 +388,9 @@ const char base64_alpha_num[64] = {
 std::string bytes_to_base64(std::vector<uint8_t> bytes){
     int n_char = std::ceil(bytes.size() * (8.0/6.0));
     // cout << "N CHAR" << n_char << endl;
-    char out_str[n_char+1];
+    std::string out_str;
+    out_str.reserve(n_char+1);
+    // char out_str[n_char+1];
 
     for(size_t i=0; i < n_char; ++i){
         int bit_ind = (i*6);
@@ -402,7 +404,8 @@ std::string bytes_to_base64(std::vector<uint8_t> bytes){
         char overflow_byte = bytes[upper_ind] & (255 >> (8-overflow));
         byte |= overflow_byte << lower_width;
 
-        out_str[i] = base64_alpha_num[byte];
+        // out_str[i] = base64_alpha_num[(uint) byte];
+        out_str.push_back(base64_alpha_num[(uint) byte]);
     }
     return std::string(out_str, n_char);
 }

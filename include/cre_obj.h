@@ -13,7 +13,7 @@ using std::endl;
 // Forward Declarations
 // class ControlBlock;
 class CRE_Obj;
-class AllocBuffer;
+struct AllocBuffer;
 // extern "C" void CRE_incref(const CRE_Obj* x);
 // extern "C" void CRE_addref(const CRE_Obj* x, size_t n);
 // extern "C" void CRE_decref(const CRE_Obj* x);
@@ -23,6 +23,7 @@ class AllocBuffer;
 // Alias CRE_dtor_function as pointer to void(void*)
 typedef void (*CRE_dtor_function)(const CRE_Obj* ptr);
 
+// const char* EMPTY_STR = "";
 
 /* 
     Similar to an std::shared_ptr control block yet designed to  
@@ -54,11 +55,12 @@ struct ControlBlock {
     uint16_t t_id;
     uint16_t pad[3];
 
+
     // C-String of unique identifier for the CRE_Obj pointed to
     //  we avoid std::string here since we really only need
     //  this for printing purposes, and it should be valid
     //  for interned strings and objects with normal lifecycles.
-    char* unique_id = "";
+    char* unique_id = nullptr;
 
 
     // When using nanobind proxy_object is a PyObject*

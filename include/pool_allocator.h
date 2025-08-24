@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <vector>
+#include <cstdint>
 
 using std::cout;
 using std::endl;
@@ -222,7 +223,7 @@ public:
 		// cout << "write chunk:" << chunk << " block: " << curr_block << " end: " << curr_block->end << endl;
 
 		// Advance the write head by one Chunk.
-		curr_block->write_head = (void*) ((char*) curr_block->write_head) + sizeof(Chunk);
+		curr_block->write_head = (void*) ( ((char*) curr_block->write_head) + sizeof(Chunk) );
 
 		if(curr_block->write_head >= curr_block->end){
 			curr_block = alloc_block(block_size);

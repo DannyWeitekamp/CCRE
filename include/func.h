@@ -41,7 +41,7 @@ const uint8_t REFKIND_STRUCTREF = 3;
 //  to a primative constant, Var, or other CREFunc.
 struct ArgInfo {
 	CRE_Type* type;
-	Item* ptr;
+	// Item* ptr;
 	uint16_t kind;
 	// uint16_t t_id;
 	// uint16_t byte_width;
@@ -52,9 +52,10 @@ struct ArgInfo {
 	
 
 
-	ArgInfo(CRE_Type* _type, Item* _ptr,
+	ArgInfo(CRE_Type* _type, //Item* _ptr,
 	 		uint16_t _kind, uint16_t _offset, bool _has_deref) :
-		type(_type), ptr(_ptr), kind(_kind), 
+		type(_type), //ptr(_ptr),
+		 kind(_kind), 
 		offset(_offset), has_deref(_has_deref)
 	{};
 };
@@ -178,64 +179,64 @@ struct Func : CRE_Obj{
 	void* call_heads_addr;
 
 	// The address for the root CREFunc's 'call_self' implementation.
-    // Calls call_heads on any values stored in 'h{i}' (i.e. 'head') slots.
-    void* call_self_addr;
+  // Calls call_heads on any values stored in 'h{i}' (i.e. 'head') slots.
+  void* call_self_addr;
 
-    // The address for the root CREFunc's 'resolve_heads_addr' implementation.
-    //  Dereferences any objects in 'a{i}' (i.e. 'arg') slots and writes them
-   	//  do each corresponding 'h{i}' (i.e. 'head') slot.
-    void* resolve_heads_addr;
+  // The address for the root CREFunc's 'resolve_heads_addr' implementation.
+  //  Dereferences any objects in 'a{i}' (i.e. 'arg') slots and writes them
+ 	//  to each corresponding 'h{i}' (i.e. 'head') slot.
+  void* resolve_heads_addr;
 
-    // True if the func has beed initialized
-    bool is_initialized;
+  // True if the func has beed initialized
+  bool is_initialized;
 
-    // True if this func is a ptr func
-    bool is_ptr_func;
+  // True if this func is a ptr func
+  bool is_ptr_func;
 
-    // The composition depth
-    uint16_t depth = 1;
+  // The composition depth
+  uint16_t depth = 1;
 
     
 
-    bool has_any_derefs;
+  bool has_any_derefs;
 
-    bool is_composed;
-
-
-    Func(void* _cfunc_ptr,
-    	 size_t n_args,
-    	 OriginData* _origin_data) :
-
-    	n_args(n_args),
-    	n_root_args(n_args),
-    	origin_data(_origin_data),
-    	call_heads_addr(_cfunc_ptr)
-    {
-    	this->init_control_block(&Func_dtor, T_ID);
-    }
-    // Func(const Func&) = default;
-
-    std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
-
-    void set_arg(size_t i, const Item& val);
-
-    template<class T>
-	  void set_arg(size_t i, const T& val){
-	  	set_arg(i, Item(val));
-	  }
-
-    // TODO: Could this be done by overloading item instead? 
-    // template<typename T>
-    // void set_arg(size_t i, const ref<T> val){
-		// 	set_arg(val.get());
-		// }
+  bool is_composed;
 
 
-    // void set_const_arg(size_t i, const Item& val);
-    // void set_var_arg(size_t i, Var* val);
-    // void set_func_arg(size_t i, Func* val);
+  Func(void* _cfunc_ptr,
+  	 size_t n_args,
+  	 OriginData* _origin_data) :
 
-    inline void set(uint32_t a_id, const Item& val){
+  	n_args(n_args),
+  	n_root_args(n_args),
+  	origin_data(_origin_data),
+  	call_heads_addr(_cfunc_ptr)
+  {
+  	this->init_control_block(&Func_dtor, T_ID);
+  }
+  // Func(const Func&) = default;
+
+  std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
+
+  void set_arg(size_t i, const Item& val);
+
+  template<class T>
+  void set_arg(size_t i, const T& val){
+  	set_arg(i, Item(val));
+  }
+
+  // TODO: Could this be done by overloading item instead? 
+  // template<typename T>
+  // void set_arg(size_t i, const ref<T> val){
+	// 	set_arg(val.get());
+	// }
+
+
+  // void set_const_arg(size_t i, const Item& val);
+  // void set_var_arg(size_t i, Var* val);
+  // void set_func_arg(size_t i, Func* val);
+
+  inline void set(uint32_t a_id, const Item& val){
 		Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
 		);
@@ -258,7 +259,7 @@ struct Func : CRE_Obj{
 };
 
 
-
+// An alias of ref<Func> which has call operator() defined
 struct FuncRef : ref<Func> {
 	template <class ... Ts>
 	inline FuncRef operator()(Ts && ... inputs){
@@ -317,15 +318,15 @@ constexpr bool FUNC_ALIGN_IS_POW2 = (alignof(Func) & (alignof(Func) - 1)) == 0;
 //  ((Func*) x) + SIZEOF_FUNC(x->size()) is always an aligned address so 
 //  that we keep Funcs in contigous memory that wasn't allocated with 'new'
 #if FUNC_ALIGN_IS_POW2 == true
-  #define ALIGN_PADDING(n_bytes) ((alignof(Func) - (n_bytes & (alignof(Func)-1))) & (alignof(Func)-1))
+  #define FUNC_ALIGN_PADDING(n_bytes) ((alignof(Func) - (n_bytes & (alignof(Func)-1))) & (alignof(Func)-1))
 #else
-  #define ALIGN_PADDING(n_bytes) ((alignof(Func) - (n_bytes % (alignof(Func)))) % (alignof(Func)))
+  #define FUNC_ALIGN_PADDING(n_bytes) ((alignof(Func) - (n_bytes % (alignof(Func)))) % (alignof(Func)))
 #endif
 
-constexpr bool FUNC_NEED_ALIGN_PAD = (ALIGN_PADDING(sizeof(Func)) | ALIGN_PADDING(sizeof(Member))) != 0;
+constexpr bool FUNC_NEED_ALIGN_PAD = (FUNC_ALIGN_PADDING(sizeof(Func)) | FUNC_ALIGN_PADDING(sizeof(Member))) != 0;
 
 #if FUNC_NEED_ALIGN_PAD
-  #define SIZEOF_FUNC(n) (_SIZEOF_FUNC(n) + ALIGN_PADDING(_SIZEOF_FUNC(n)))
+  #define SIZEOF_FUNC(n) (_SIZEOF_FUNC(n) + FUNC_ALIGN_PADDING(_SIZEOF_FUNC(n)))
 #else
   #define SIZEOF_FUNC(n) _SIZEOF_FUNC(n)
 #endif

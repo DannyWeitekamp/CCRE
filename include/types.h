@@ -21,9 +21,7 @@ namespace cre {
 
 // Forward declarations
 struct CRE_Context;
-struct Type;
 struct Item;
-// struct FlagGroup;
 
 // ------------------------------------------------------------
 // : FlagGroup
@@ -33,8 +31,10 @@ struct FlagGroup {
     uint64_t builtin_flags_mask;
     HashMap<std::string, Item> custom_flags;
 
+// public:
+
     FlagGroup(const HashMap<std::string, Item>& flags={});
-    FlagGroup(const FlagGroup& flags);
+    // FlagGroup(const FlagGroup& flags);
 
     // FlagGroup(std::initializer_list<std::tuple<std::string, Item>> flags);
 

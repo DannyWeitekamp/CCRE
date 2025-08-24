@@ -185,11 +185,11 @@ std::tuple<std::vector<uint64_t>*, std::vector<double>*>
 // TODO: should probably return a reference
 
 ref<Fact> Vectorizer::invert(size_t slot, size_t value){
-	bool is_not = false;
+	// bool is_not = false;
 
 	// If one-hot, map back to nom_slot + nom_enc
 	if(one_hot_nominals){
-		if(value == 0) is_not = true;
+		// if(value == 0) is_not = true;
 		auto& [nom_slot, nom_enc] = inv_one_hot_map.at(slot);
 		slot = nom_slot;
 		value = nom_enc;

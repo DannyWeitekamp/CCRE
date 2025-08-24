@@ -19,6 +19,7 @@ namespace cre {
 
 void Func_dtor(const CRE_Obj* x){
 	Func* func = (Func*) x;
+	cout << "FUNC DTOR: " << func << ", " << uint64_t(x) << endl;
 	delete func;
 }
 
@@ -71,7 +72,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 		// ArgInfo
 		// uint16_t t_id = arg_type->t_id;
 		root_arg_infos.emplace_back(
-			arg_type, func->get(i), ARGINFO_VAR, offset, false);
+			arg_type, ARGINFO_VAR, offset, false);
 		offset += arg_type->byte_width;
 
 		// Head Info
@@ -131,6 +132,8 @@ FuncRef define_func(
 	_init_arg_specs(func, arg_types);
 	func->return_type = ret_type;
 
+	cout << "DEFINE FUNC: " << uint64_t(func.get()) << endl;
+
 	return (FuncRef) func;
 }
 
@@ -159,10 +162,15 @@ FuncRef Func::copy_shallow(){
 			// nf->head_infos[i].head_data_ptr = ??;
 		}
 	}
-   
 
-	// cout << ":" << uint64_t(root_arg_infos.data()) << endl;
-	// cout << ":" << uint64_t(nf->root_arg_infos.data()) << endl;
+	for(size_t i=0; i < root_arg_infos.size(); ++i){
+		nf->set(i, *this->get(i));
+		// Item* mbr_ptr = nf->get(i);
+		// nf->root_arg_infos[i].ptr = mbr_ptr;
+	}
+
+	// cout << "-:" << uint64_t(this) << "," << uint64_t(root_arg_infos[0].ptr) << endl;
+	// cout << "+:" << uint64_t(nf.get()) << "," << uint64_t(nf->root_arg_infos[0].ptr) << endl;
 
 	nf->is_initialized = false;	
 	nf->is_ptr_func = is_ptr_func;	
@@ -178,7 +186,7 @@ FuncRef Func::copy_deep(){
 	ref<Func> cpy;
 	if(depth <= 1){
 		cpy = copy_shallow();
-		// cout << "SHALLOW COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
+		cout << "SHALLOW COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
 		return (FuncRef) cpy;
 	}
 
@@ -199,7 +207,7 @@ FuncRef Func::copy_deep(){
 		ArgInfo arg_info = cf->root_arg_infos[i];
 		if(arg_info.kind == ARGINFO_FUNC){
 			stack.push_back(stack_tuple(cf, i+1, func_copies));
-			cf = (Func*) arg_info.ptr->as_func();
+			cf = (Func*) cf->get(i)->as_func();
 			func_copies = new std::vector<ref<Func>>;
 			i =0;
 		}else{
@@ -215,13 +223,15 @@ FuncRef Func::copy_deep(){
 	    	for(size_t k=0; k < cpy->root_arg_infos.size(); ++k){
 	    		ArgInfo& inf = cpy->root_arg_infos[k];
 	    		if(inf.kind == ARGINFO_FUNC){
-	    			Func* sub_func = (*func_copies)[j];
-	    			cpy->set(k, sub_func);
-	    			inf.ptr = cpy->get(k); 
+	    			ref<Func> sub_func = (*func_copies)[j];
+	    			cout << "-REFCOUNT: " << sub_func->get_refcount() << endl;
+	    			cpy->set(k, Item(sub_func));
+	    			cout << "+REFCOUNT: " << sub_func->get_refcount() << endl;
+	    			// inf.ptr = cpy->get(k); 
 	    			j += 1;
-	    		}else{
-	    			cpy->set(k, *cf->get(k));
-	    		}
+	    		}//else{
+	    			// cpy->set(k, *cf->get(k));
+	    		// }
 	    	}
 
 	    	remap[cf] = cpy;
@@ -259,7 +269,7 @@ FuncRef Func::copy_deep(){
 	    }
     }
     
-    // cout << "DEEP COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
+    cout << "DEEP COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
     return (FuncRef) cpy;
 }
 
@@ -300,7 +310,7 @@ std::string Func::to_string(uint8_t verbosity){
 	bool keep_looping = true;	
 	while(keep_looping){
 		// cout << "S LOOP: " << stack.size() << ", " << i << endl;
-
+		// cout << "RARI:" << root_arg_infos.size() << endl; 
 		if(i < cf->root_arg_infos.size()){
 			auto& arg_info = cf->root_arg_infos[i];
 
@@ -314,15 +324,17 @@ std::string Func::to_string(uint8_t verbosity){
 				stack.emplace_back(stack_tuple(cf, i+1, arg_strs));
 
 				// cf = cf->get(i).as_func(); 
-				cf = (*arg_info.ptr).as_func();
+				cf = (*cf->get(i)).as_func();
 				// cout << "FUNC  :" << uint64_t(cf) << endl;
 				arg_strs = new fmt_args_t();
 				i =0;
 			}else{
 				// Terminal Case: Var/Const
 				if(arg_info.kind == ARGINFO_VAR){
+					// cout << "VAR:" << uint64_t(cf->get(i)) << endl;
+					Var* var =  (*cf->get(i)).as_var();
+					// Var* var = (*arg_info.ptr).as_var();
 					// cout << "VAR:" << uint64_t(arg_info.ptr) << endl;
-					Var* var = (*arg_info.ptr).as_var();
 					
 					if(use_derefs){
 						arg_strs->push_back(var->to_string());
@@ -334,7 +346,7 @@ std::string Func::to_string(uint8_t verbosity){
 					Item& item = *cf->get(i);
 					arg_strs->push_back(item.to_string());
 				}else{
-					throw std::runtime_error("Bad arginfo type.");
+					throw std::runtime_error("Bad root_arg_infos[" + std::to_string(i) + "].kind: " + std::to_string(arg_info.kind));
 				}
 				++i;
 			}
@@ -426,12 +438,12 @@ std::ostream& operator<<(std::ostream& out, ref<Func> func){
 	
 // }
 
-// Set a particular arugment as part of the dynamic composition of a
+// Set a particular argument as part of the dynamic composition of a
 //  Func. For instance, set_arg() might set a constant, Var, or Func
 //	as part of a composition. For instance if we have:
 //  add3(a,b,c) = a + b + c, and we do f = add3(1, Var('z', int), add3)
 //  this will make a copy of add3 and call: set_arg(0, 1), 
-//  set_arg(0, Var('z', int)), set_arg(0, add3), resulting in  
+//  set_arg(1, Var('z', int)), set_arg(2, add3), resulting in  
 //  f = 1 + z + (a + b+ c)
 
 void Func::set_arg(size_t i, const Item& val){
@@ -451,7 +463,7 @@ void Func::set_arg(size_t i, const Item& val){
 				   val.get_t_id() == T_ID_FUNC ? ARGINFO_FUNC :
 				   ARGINFO_CONST;
 
-	cout << uint64_t(this) << "  set i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.get_t_id()) << ", kind=" << uint64_t(kind) << endl;
+	cout << uint64_t(this) << "  set_arg() i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.get_t_id()) << ", kind=" << uint64_t(kind) << endl;
 
 	// if(!kind){
 	// 	throw std::invalid_argument(
@@ -472,7 +484,7 @@ void Func::set_arg(size_t i, const Item& val){
 		auto arg_ind = head_info.arg_ind;
 		head_info.kind = kind;
 
-		// cout << "  CF:" << cf << "; arg_ind=" << arg_ind << endl;
+		cout << "  CF:" << cf << "; arg_ind=" << arg_ind << endl;
 
 		
 
@@ -526,7 +538,7 @@ void Func::set_arg(size_t i, const Item& val){
 
 		cf->root_arg_infos[arg_ind].kind = kind;
 		cf->root_arg_infos[arg_ind].has_deref = has_deref;
-		cf->root_arg_infos[arg_ind].ptr = cf->get(arg_ind);
+		// cf->root_arg_infos[arg_ind].ptr = cf->get(arg_ind);
 		cf->root_arg_infos[arg_ind].type = head_info.head_type;
 	}
 	
@@ -729,6 +741,8 @@ std::string Func::bytecode_to_string() {
 // reinitialize()
 
 void Func::reinitialize(){
+	cout << "REINIT FUNC: " << uint64_t(this) << endl;
+
 
 	using base_heads_pair_t = std::tuple<void*,std::vector<HeadInfo>>;
 	if(this->is_initialized) return;
@@ -755,9 +769,9 @@ void Func::reinitialize(){
 		for(uint16_t j=hrng.start; j < hrng.end; ++j){
 
 			HeadInfo head_info = head_infos[j];
-			ArgInfo root_info = root_arg_infos[head_info.arg_ind];
+			// ArgInfo root_info = root_arg_infos[head_info.arg_ind];
 
-			cout << "KIND:" << uint64_t(head_info.kind) << endl;
+			// cout << "KIND:" << uint64_t(head_info.kind) << endl;
 			
 			switch(head_info.kind){
 				// For ARGINFO_VAR kinds insert base_ptr into the base_var_map
@@ -774,7 +788,7 @@ void Func::reinitialize(){
 					Var* var = head_info.var_ptr;
 					void* base_ptr = (void*) var->base;
 
-					cout << "VP:" << uint64_t(head_info.var_ptr) << endl;
+					// cout << "VP:" << uint64_t(head_info.var_ptr) << endl;
 
 					auto [it, inserted] = base_var_map.try_emplace(
 						base_ptr, n_vars);
@@ -912,7 +926,7 @@ void Func::reinitialize(){
 	// bc_head += sizeof_call_func(cf);
 
 
-		// Make new head_ranges (spans of HeadInfos for same base)
+    // Make new head_ranges (spans of HeadInfos for same base)
 	//   according to base_var_map. Count total to reserve head_infos.
 	size_t n_bases = base_var_map.size();
 	std::vector<HeadRange> new_head_ranges;
@@ -932,8 +946,8 @@ void Func::reinitialize(){
 		for(HeadInfo& base_head_info : base_head_infos){
 			HeadInfo hi = base_head_info;
 			hi.base_type = base_var->base_type;
-
-			new_head_infos.push_back(std::move(hi));
+			// cout << "hi " << hi.kind << endl;
+			new_head_infos.push_back(hi);
 		}
 	}
 

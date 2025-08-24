@@ -280,6 +280,8 @@ std::string Var::to_string(){
 		return fmt::format("{}{}", alias.as_string(), fmt::join(deref_strs, ""));	
 	}else if(alias.get_t_id() == T_ID_INT){
 		return fmt::format("F{}{}", alias.as_int(), fmt::join(deref_strs, ""));	
+	}else{
+		throw std::runtime_error("Var has unknown alias type t_id=" + std::to_string(alias.get_t_id()));
 	}
 	
 }

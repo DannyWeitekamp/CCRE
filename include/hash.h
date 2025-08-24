@@ -16,9 +16,9 @@ namespace cre {
 struct Item;
 struct Member;
 class Fact;
-class Var;
-class FactView;
-class UintPair;
+struct Var;
+struct FactView;
+struct UintPair;
 uint64_t hash_item(const Item& x);
 
 

@@ -27,37 +27,38 @@ typedef int64_t (*two_int_func_t)(int64_t a, int64_t b);
 two_int_func_t add_ptr = &add;
 
 void test_define(){
-	FuncRef add_f = define_func("add", (void*) &add, cre_int, {cre_int, cre_int});
-	cout << "add_f: " << add_f << endl;
-	cout << "add_f: " << add_f << endl;
-
-
 	ref<Var> A = new_var("A", cre_int);
 	ref<Var> B = new_var("B", cre_int);
 	ref<Var> C = new_var("C", cre_int);
 	ref<Var> D = new_var("D", cre_int);
 
-	// Set Const
-	FuncRef f_1_A = add_f(1, A);
-	
+	cout << "-----add_f------" << endl;
+	FuncRef add_f = define_func("add", (void*) &add, cre_int, {cre_int, cre_int});
 	cout << "add_f: " << add_f << endl;
+	cout << add_f->bytecode_to_string() << endl;
+
+	// Set Const
+	cout << "-----f_1_A------" << endl;
+	FuncRef f_1_A = add_f(1, A);
 	cout << "f_1_A: " << f_1_A << endl;
+	cout << f_1_A->bytecode_to_string() << endl;
 
-	// cout << f_1_A->bytecode_to_string() << endl;
-
-	cout << "----------------" << endl;
+	cout << "-----f_1_A_B------" << endl;
 	// Compose Func
 	FuncRef f_1_A_B = add_f(f_1_A, B);
 	cout << "f_1_A_B:" << f_1_A_B << endl;
-	// cout << f_1_A_B->bytecode_to_string() << endl;
+	cout << f_1_A_B->bytecode_to_string() << endl;
 
-	cout << "----------------" << endl;
-	// FuncRef big = f_1_A_B(f_1_A, 9);
-	// cout << "f_1_A_B copy:" << f_1_A_B->copy_deep() << endl;
+	cout << "-----f_1_A_B-copy----" << endl;
+	FuncRef cpy = f_1_A_B->copy_deep();//f_1_A_B(f_1_A, 9);
+	cout << "f_1_A_B copy:" << cpy << endl;
 
+
+	cout << "-----big--------" << endl;
 	// Deep Compose Func
 	FuncRef big = f_1_A_B(9, f_1_A);
 	cout << "big:" << big << endl;
+	cout << big->bytecode_to_string() << endl;
 
 
 	// Deep Compose Repeat Vars
@@ -254,10 +255,10 @@ int64_t run_stack_call(){
 
 
 int main(){
-	// test_define();
-	test_compose_derefs();
-
-	return 0;
+	test_define();
+	// test_compose_derefs();
+// 
+	// return 0;
 
 	auto func = (*add_items_ptr);
 

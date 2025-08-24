@@ -31,7 +31,7 @@ struct CRE_Context {
     //  because std::string will re-allocate data on copy
     HashSet<std::string_view> intern_set;
 
-
+public: 
     CRE_Context(std::string _name);
     size_t _add_type(CRE_Type* t);
     CRE_Type* _get_type(const std::string_view& name) noexcept;

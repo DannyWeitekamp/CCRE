@@ -22,14 +22,14 @@ const uint8_t COPY_DEEP_REFS = 2;
 
 
 // Externally Defined Forward Declares
-struct FactSet;
+class FactSet;
 struct AllocBuffer;
 // extern CRE_Context* current_context;
 
 void Fact_dtor(const CRE_Obj* x);
 
 
-struct Fact : public CRE_Obj {
+class Fact : public CRE_Obj {
 
 public: 
   static constexpr uint16_t T_ID = T_ID_FACT;
@@ -689,7 +689,7 @@ inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
    */
 inline ref<Fact> empty_fact(FactType* type, uint32_t length=0,
                             AllocBuffer* buffer=nullptr){
-    ref<Fact> fact = alloc_fact(type, length);
+    ref<Fact> fact = alloc_fact(type, length, buffer);
     _zfill_fact(fact, 0, fact->length);
     fact->hash = CREHash{}(fact);
     return fact;
@@ -722,7 +722,7 @@ ref<Fact> new_fact(FactType* type, const ItemOrMbr* items, size_t n_items,
 template<std::derived_from<Item> ItemOrMbr>
 ref<Fact> new_fact(FactType* type, const std::vector<ItemOrMbr>& items,
                     bool immutable=false, AllocBuffer* buffer=nullptr){
-  return new_fact(type, items.data(), items.size(), buffer);
+  return new_fact(type, items.data(), items.size(), immutable, buffer);
 }
 
 

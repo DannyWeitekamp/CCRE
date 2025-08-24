@@ -76,14 +76,13 @@ Flattener::Flattener(FactSet* _input,
 {}
 
 
-
 Flattener::Flattener(FactSet* _input,
 			const HashMap<std::string, Item>& target_flags,
 			bool _use_vars,
 			bool _add_exist_stubs,
 		 	uint8_t _triple_order
 	 	  
-) : Flattener(_input, _format_flags(target_flags), _add_exist_stubs, _triple_order)
+) : Flattener(_input, _format_flags(target_flags), _use_vars, _add_exist_stubs, _triple_order)
 {}
 
 Flattener::Flattener(FactSet* _input,
@@ -92,7 +91,7 @@ Flattener::Flattener(FactSet* _input,
 	  	bool _add_exist_stubs,
  	  	uint8_t _triple_order
  	  
-) : Flattener(_input, _format_flags(target_flags), _add_exist_stubs, _triple_order)
+) : Flattener(_input, _format_flags(target_flags), _use_vars, _add_exist_stubs, _triple_order)
 {}
 
 

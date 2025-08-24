@@ -166,8 +166,8 @@ void bench_hash() {
     cout << "Hash of str1 as string: " << string_hash(str1) << endl;
     cout << "Hash of str2 as string: " << string_hash(str2) << endl;
 
-    time_it_n("std::string_hash(long)\t", string_hash(str1), 10000);
-    time_it_n("std::string_hash(short)\t", string_hash(str2), 10000);
+    time_it_n("std::string_hash(long)\t", (void) string_hash(str1), 10000);
+    time_it_n("std::string_hash(short)\t", (void) string_hash(str2), 10000);
 
     time_it_n("hash_string(long)\t", hash_string(str1), 10000);
     time_it_n("hash_string(short)\t", hash_string(str2), 10000);
@@ -254,10 +254,10 @@ void test_factset_hash(int N=1000){
     cout << IntHash(1) << endl;
     cout << IntHash(2) << endl;
     cout << IntHash(3) << endl;
-    cout << bits_to_string(FNV_BASIS) << endl;
-    cout << bits_to_string(FNV_BASIS*FNV_BASIS) << endl;
-    cout << bits_to_string(int64_t(FNV_BASIS) * int64_t(FNV_BASIS)) << endl;
-    cout << bits_to_string(uint64_t(FNV_BASIS) * uint64_t(FNV_BASIS))<< endl;
+    // cout << bits_to_string(FNV_BASIS) << endl;
+    // cout << bits_to_string(FNV_BASIS*FNV_BASIS) << endl;
+    // cout << bits_to_string(int64_t(FNV_BASIS) * int64_t(FNV_BASIS)) << endl;
+    // cout << bits_to_string(uint64_t(FNV_BASIS) * uint64_t(FNV_BASIS))<< endl;
 
     //  --- Check that simple facts have random-ish hashes ---
     std::vector<int> ones(64, 0);
@@ -281,7 +281,7 @@ void test_factset_hash(int N=1000){
 
     // --- Check that FactSets have random-ish hashes --
     int byte_width = 24;
-    double total_duration;
+    double total_duration = 0.0;
     // total_duration = 0;
     ones = std::vector(byte_width*8, 0);
     for(int k=0; k < N; k++){

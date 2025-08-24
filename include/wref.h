@@ -218,7 +218,7 @@ template <typename T> struct type_caster<wref<T>> {
         const T* cpp_obj = value.get();
 
         if(cpp_obj == nullptr){
-            throw std::bad_weak_ptr("Attempt to return a freed CRE_Obj to python.");
+            throw std::runtime_error("Attempt to return a freed CRE_Obj to python.");
         }
 
         const ControlBlock* control_block = value.get_cb();
