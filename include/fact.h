@@ -63,7 +63,7 @@ public:
     hash(FNV_BASIS ^ (_length * FNV_PRIME)),
     immutable(false)
 {
-  this->init_control_block(&Fact_dtor, T_ID);
+  // this->init_control_block(&Fact_dtor, T_ID);
 }
 
   void ensure_unique_id();
@@ -574,22 +574,24 @@ inline uint32_t _resolve_fact_len(FactType* type, size_t n_items){
 inline ref<Fact> alloc_fact(FactType* type, uint32_t length=0, AllocBuffer* buffer=nullptr){
   length = _resolve_fact_len(type, length);
 
-  bool did_malloc = false;
-  Fact* fact_addr = nullptr;
-  if(buffer != nullptr){
-    fact_addr = (Fact*) buffer->alloc_bytes(SIZEOF_FACT(length), did_malloc);
+  // bool did_malloc = false;
+  // Fact* fact_addr = nullptr;
+  // if(buffer != nullptr){
+  //   fact_addr = (Fact*) buffer->alloc_bytes(SIZEOF_FACT(length), did_malloc);
     
-  }else{
-    did_malloc = true;
-    fact_addr = (Fact*) malloc(SIZEOF_FACT(length));
-  }
+  // }else{
+  //   did_malloc = true;
+  //   fact_addr = (Fact*) malloc(SIZEOF_FACT(length));
+  // }
+
+  auto [fact_addr, did_malloc] =  alloc_cre_obj(SIZEOF_FACT(length), &Fact_dtor, T_ID_FACT, buffer);
 
   ref<Fact> fact = new (fact_addr) Fact(type, length);
 
-  if(!did_malloc){
-      fact->control_block->alloc_buffer = buffer;
-      buffer->inc_ref();
-  }
+  // if(!did_malloc){
+  //     fact->control_block->alloc_buffer = buffer;
+  //     buffer->inc_ref();
+  // }
 
   // cout << "MOO: " << uint64_t(fact.get()) << endl;
 

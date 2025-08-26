@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <map>
 #include "../include/ref.h"
 #include "../include/types.h"
 #include "../include/cre_obj.h"
@@ -236,26 +237,40 @@ struct Func : CRE_Obj{
   // void set_var_arg(size_t i, Var* val);
   // void set_func_arg(size_t i, Func* val);
 
-  inline void set(uint32_t a_id, const Item& val){
+  inline void set(uint32_t ind, const Item& val){
 		Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
 		);
-		data_ptr[a_id] = val;
+
+		// Emplacement new with Undef member to make valgrind happy
+    new (data_ptr + ind) Item();
+
+		data_ptr[ind] = val;
 	}
 
-	inline Item* get(uint32_t a_id) const {
+	inline Item* get(uint32_t ind) const {
 	    Item* data_ptr = std::bit_cast<Item*>(
 	        std::bit_cast<uint64_t>(this) + sizeof(Func)
 	    );
-	    return &data_ptr[a_id];
+	    return &data_ptr[ind];
 	}
 
 	std::string bytecode_to_string();
 
 	FuncRef copy_shallow();
 	FuncRef copy_deep();
-	size_t calc_byte_code_size();
+	
 	void reinitialize();
+
+// private:
+	uint16_t calc_bytecode_length();
+
+	void write_bytecode(
+		uint16_t bytecode_len,
+		uint16_t args_stack_length,
+		const std::map<void*, size_t>& base_var_map,
+		const std::vector<uint16_t>& arg_stack_offsets
+	);
 };
 
 
@@ -293,7 +308,7 @@ FuncRef compose(Func* self, Ts && ... inputs){
 // }
 
 
-ref<Func> new_func(size_t n_args, void* cfunc_ptr, OriginData* origin_data);
+ref<Func> new_func(void* cfunc_ptr, size_t n_args, OriginData* origin_data, AllocBuffer* buffer=nullptr);
 
 FuncRef define_func(
 		const std::string_view& name, 
@@ -331,11 +346,7 @@ constexpr bool FUNC_NEED_ALIGN_PAD = (FUNC_ALIGN_PADDING(sizeof(Func)) | FUNC_AL
   #define SIZEOF_FUNC(n) _SIZEOF_FUNC(n)
 #endif
 
-inline Func* _alloc_func(uint32_t _length){
-  Func* ptr = (Func*) malloc(SIZEOF_FUNC(_length));
-  return ptr;
-}
-
+// Func* alloc_func(uint32_t length, AllocBuffer* buffer=nullptr);
 
 // -----------------------------------------
 // : stack_call<func>(...),  stack_call_func_ptr(&func, ...)

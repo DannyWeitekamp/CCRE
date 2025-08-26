@@ -75,11 +75,11 @@ struct Var : public CRE_Obj{
 
 };
 
-ref<Var> new_var(const Item& _alias,
- 			CRE_Type* _type=nullptr,
+ref<Var> new_var(const Item& alias,
+ 			CRE_Type* type=nullptr,
  			DerefInfo* deref_infos=NULL,
  			size_t length=0,
- 			AllocBuffer* alloc_buffer=nullptr);
+ 			AllocBuffer* buffer=nullptr);
 
 // ref<Var> new_var(const std::string_view& _alias,
 //  			CRE_Type* _type=nullptr,

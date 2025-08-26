@@ -2,6 +2,7 @@
 
 #include <atomic> 
 #include "../include/ref.h"
+// #include "../include/alloc_buffer.h"
 // #include "../include/context.h"
 // #include "../include/control_block.h"
 
@@ -312,6 +313,10 @@ public :
 const uint8_t LOW_VERBOSITY = 1;
 const uint8_t DEFAULT_VERBOSITY = 2;
 const uint8_t HIGH_VERBOSITY = 3;
+
+
+std::tuple<CRE_Obj*, bool> alloc_cre_obj(size_t size, CRE_dtor_function _dtor, uint16_t t_id, AllocBuffer* buffer=nullptr);
+void CRE_Obj_dtor(const CRE_Obj* x);
 
 } // NAMESPACE_END(cre)
 

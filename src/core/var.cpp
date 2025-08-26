@@ -11,19 +11,13 @@ namespace cre {
 
 void Var_dtor(const CRE_Obj* x){
 	Var* var = (Var*) x;
-	cout << "VAR DTOR" << endl;
+	// cout << "VAR DTOR" << endl;
 
 	if(var->base != 0 && var->base != var){
 		var->base->dec_ref();
 	}
 
-	if(x->control_block->alloc_buffer == nullptr){
-    	free((void*) x);
-	}else{
-		// NOTE: We need to do this because cannot
-		//  write alloc_buffer as a ref<AllocBuffer> 
-		x->control_block->alloc_buffer->dec_ref();
-	}
+	CRE_Obj_dtor(x);
 }
 
 
@@ -97,27 +91,29 @@ Var::Var(const Item& _alias,
 // }
 
 ref<Var> new_var(
-			const Item& _alias,
-			CRE_Type* _type,
- 			DerefInfo* _deref_infos,
- 			size_t _length,
- 			AllocBuffer* alloc_buffer){
+			const Item& alias,
+			CRE_Type* type,
+ 			DerefInfo* deref_infos,
+ 			size_t length,
+ 			AllocBuffer* buffer){
 	
 
-	bool did_malloc = true;
-	Var* var;
-	if(alloc_buffer != nullptr){
-		var = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
-	}else{
-		var = (Var*) malloc(SIZEOF_VAR(_length)); 
-	}
-    
-    var = new (var) Var(_alias, _type, _deref_infos, _length);
+	auto [var_addr, did_malloc] =  alloc_cre_obj(SIZEOF_VAR(length), &Var_dtor, T_ID_VAR, buffer);
 
-    if(!did_malloc){
-    	var->control_block->alloc_buffer = alloc_buffer;
-    	alloc_buffer->inc_ref();
-    }
+	// bool did_malloc = true;
+	// Var* var;
+	// if(alloc_buffer != nullptr){
+	// 	var = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
+	// }else{
+	// 	var = (Var*) malloc(SIZEOF_VAR(_length)); 
+	// }
+    
+    Var* var = new (var_addr) Var(alias, type, deref_infos, length);
+
+    // if(!did_malloc){
+    // 	var->control_block->alloc_buffer = alloc_buffer;
+    // 	alloc_buffer->inc_ref();
+    // }
     
     var->hash = CREHash{}(var);
 	// Allocate a new var 

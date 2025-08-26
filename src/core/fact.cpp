@@ -71,14 +71,16 @@ void Fact_dtor(const CRE_Obj* x){
 		
 		}
 
-		if(x->control_block->alloc_buffer == nullptr){
-	    	free((void*) x);
-		}else{
-			// NOTE: We need to do this because cannot
-			//  write alloc_buffer as a ref<AllocBuffer> 
-			// cout << "alloc buff refcount=" << x->alloc_buffer->get_refcount() << endl;
-			x->control_block->alloc_buffer->dec_ref();
-		}
+		CRE_Obj_dtor(x);
+
+		// if(x->control_block->alloc_buffer == nullptr){
+	  //   	free((void*) x);
+		// }else{
+		// 	// NOTE: We need to do this because cannot
+		// 	//  write alloc_buffer as a ref<AllocBuffer> 
+		// 	// cout << "alloc buff refcount=" << x->alloc_buffer->get_refcount() << endl;
+		// 	x->control_block->alloc_buffer->dec_ref();
+		// }
 }
 
 

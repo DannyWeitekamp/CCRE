@@ -3,6 +3,7 @@
 
 #include "../include/context.h"
 #include "../include/cre_obj.h"
+#include "../include/alloc_buffer.h"
 
 
 using std::cout;
@@ -90,6 +91,35 @@ void CRE_Obj::init_control_block(CRE_dtor_function _dtor, uint16_t t_id){
 
 }
 
+std::tuple<CRE_Obj*, bool> alloc_cre_obj(size_t size, CRE_dtor_function _dtor, uint16_t t_id, AllocBuffer* buffer){
+    bool did_malloc = false;
+    CRE_Obj* obj = nullptr;
+    if(buffer != nullptr){
+        obj = (CRE_Obj*) buffer->alloc_bytes(size, did_malloc);
+    }else{
+        did_malloc = true;
+        obj = (CRE_Obj*) malloc(size);
+    }
+    obj->init_control_block(_dtor, t_id);
+
+    if(!did_malloc){
+        obj->control_block->alloc_buffer = buffer;
+        buffer->inc_ref();
+    }
+
+    return {obj, did_malloc};
+}
+
+void CRE_Obj_dtor(const CRE_Obj* x){
+    if(x->control_block->alloc_buffer == nullptr){
+        free((void*) x);
+    }else{
+        // NOTE: We need to do this because cannot
+        //  write alloc_buffer as a ref<AllocBuffer> 
+        // cout << "alloc buff refcount=" << x->alloc_buffer->get_refcount() << endl;
+        x->control_block->alloc_buffer->dec_ref();
+    }
+}
 
 
 // void CRE_Obj::operator delete(void* p){

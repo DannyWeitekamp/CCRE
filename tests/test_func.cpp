@@ -27,55 +27,112 @@ typedef int64_t (*two_int_func_t)(int64_t a, int64_t b);
 two_int_func_t add_ptr = &add;
 
 void test_define(){
+
+	cout << global_cb_pool.get_stats() << endl;
+
 	ref<Var> A = new_var("A", cre_int);
 	ref<Var> B = new_var("B", cre_int);
 	ref<Var> C = new_var("C", cre_int);
 	ref<Var> D = new_var("D", cre_int);
 
+	cout << global_cb_pool.get_stats() << endl;
+
+	{ // Start New Frame 
+
 	cout << "-----add_f------" << endl;
 	FuncRef add_f = define_func("add", (void*) &add, cre_int, {cre_int, cre_int});
 	cout << "add_f: " << add_f << endl;
+	cout << "bc_len=" << add_f->calc_bytecode_length() << endl;
 	cout << add_f->bytecode_to_string() << endl;
 
 	// Set Const
 	cout << "-----f_1_A------" << endl;
 	FuncRef f_1_A = add_f(1, A);
 	cout << "f_1_A: " << f_1_A << endl;
+	cout << "bc_len=" << f_1_A->calc_bytecode_length() << endl;
 	cout << f_1_A->bytecode_to_string() << endl;
+
+	cout << "A=" << A.get_refcount() << endl;
+	cout << "B=" << B.get_refcount() << endl;
 
 	cout << "-----f_1_A_B------" << endl;
 	// Compose Func
 	FuncRef f_1_A_B = add_f(f_1_A, B);
 	cout << "f_1_A_B:" << f_1_A_B << endl;
+	cout << "bc_len=" << f_1_A_B->calc_bytecode_length() << endl;
 	cout << f_1_A_B->bytecode_to_string() << endl;
 
-	cout << "-----f_1_A_B-copy----" << endl;
-	FuncRef cpy = f_1_A_B->copy_deep();//f_1_A_B(f_1_A, 9);
-	cout << "f_1_A_B copy:" << cpy << endl;
+	cout << "A=" << A.get_refcount() << endl;
+	cout << "B=" << B.get_refcount() << endl;
+
+	// cout << "-----f_1_A_B-copy----" << endl;
+	// FuncRef cpy = f_1_A_B->copy_deep();//f_1_A_B(f_1_A, 9);
+	// cout << "f_1_A_B copy:" << cpy << endl;
 
 
 	cout << "-----big--------" << endl;
 	// Deep Compose Func
 	FuncRef big = f_1_A_B(9, f_1_A);
 	cout << "big:" << big << endl;
+	cout << "bc_len=" << big->calc_bytecode_length() << endl;
 	cout << big->bytecode_to_string() << endl;
+
+	cout << "A=" << A.get_refcount() << endl;
+	cout << "B=" << B.get_refcount() << endl;
+
 
 
 	// Deep Compose Repeat Vars
 	cout << "----------------" << endl;
 	FuncRef dub = f_1_A_B(A, add_f(B, A));
 	cout << "dub:" << dub << endl;
-	cout << "dub:" << dub->n_args << endl;
+	cout << "bc_len=" << dub->calc_bytecode_length() << endl;
+	cout << dub->bytecode_to_string() << endl;
 
 	// Deep Compose Repeat Vars; insert const
 	FuncRef dub_const = dub(1, A);
-	cout << "dub_const:" << dub_const << endl;	
+	cout << "dub_const:" << dub_const << endl;
+	cout << "bc_len=" << dub_const->calc_bytecode_length() << endl;
+	cout << dub_const->bytecode_to_string() << endl;	
 
 
 	// Deep Compose Repeat Vars; insert funcs
 	cout << "<----------------" << endl;
 	FuncRef dub_func = dub(add_f(A,B), add_f(C,D));
-	cout << "dub_func:" << dub_func << endl;	
+	cout << "dub_func:" << dub_func << endl;
+	cout << "bc_len=" << dub_func->calc_bytecode_length() << endl;
+	cout << dub_func->bytecode_to_string() << endl;	
+
+
+	// Before the functions are cleaned up they should borrow
+	//   references to variables
+	IS_TRUE(A.get_refcount() > 1)
+	IS_TRUE(B.get_refcount() > 1)
+	IS_TRUE(C.get_refcount() > 1)
+	IS_TRUE(D.get_refcount() > 1)
+
+	// Only refrences should be in this stack
+	cout << "A=" << A.get_refcount() << endl;
+	cout << "B=" << B.get_refcount() << endl;
+	cout << "C=" << C.get_refcount() << endl;
+	cout << "D=" << D.get_refcount() << endl;
+
+	cout << global_cb_pool.get_stats() << endl;
+
+	} // END Frame: All funcs should have been deconstructed 
+
+	// Only refrences should be in this stack
+	cout << "A=" << A.get_refcount() << endl;
+	cout << "B=" << B.get_refcount() << endl;
+	cout << "C=" << C.get_refcount() << endl;
+	cout << "D=" << D.get_refcount() << endl;
+
+	IS_TRUE(A.get_refcount() == 1)
+	IS_TRUE(B.get_refcount() == 1)
+	IS_TRUE(C.get_refcount() == 1)
+	IS_TRUE(D.get_refcount() == 1)
+
+	cout << global_cb_pool.get_stats() << endl;
 }
 
 void test_compose_derefs(){
@@ -115,9 +172,6 @@ void test_compose_derefs(){
 	cout << "--------------" << endl;
 	FuncRef bdadd_m = dadd_m(A->extend_attr("best_bud"), B->extend_attr("best_bud"));
 	cout << bdadd_m;
-
-	
-
 }
 
 
@@ -135,9 +189,14 @@ item_func_t add_items_ptr = &add_items;
 int64_t add_alloca(int64_t a, int64_t b){
 	Item* stack = (Item*) alloca(sizeof(Item)*3);
 	auto func = (*add_items_ptr);
-	stack[1] = Item(a);
-	stack[2] = Item(b);
-	stack[0] = func(stack+1);
+	new (stack+1) Item(a);
+	new (stack+2) Item(b);
+	new (stack) Item(func(stack+1));
+
+
+	// stack[1] = Item(a);
+	// stack[2] = Item(b);
+	// stack[0] =
 	return stack[0].as_int();
 }
 
@@ -258,7 +317,9 @@ int main(){
 	test_define();
 	// test_compose_derefs();
 // 
-	// return 0;
+	return 0;
+
+
 
 	auto func = (*add_items_ptr);
 
