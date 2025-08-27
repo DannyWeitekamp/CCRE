@@ -23,8 +23,8 @@ void Func_dtor(const CRE_Obj* x){
 
 	Func* func = (Func*) x;
 
-	cout << "FUNC_DTOR: " << func << endl;
-	
+	// cout << "FUNC_DTOR: " << func << endl;
+
 	// Release all of function's members
 	for(size_t i=0; i < func->root_arg_infos.size(); ++i){
 		func->get(i)->release();
@@ -35,6 +35,10 @@ void Func_dtor(const CRE_Obj* x){
 		delete[] func->bytecode;
 	}
 
+	if(func->is_origin){
+		delete func->origin_data;	
+	}
+	
 	// Explicitly call the builtin destructor to clear various std::vector
 	func->~Func();
 	CRE_Obj_dtor(x);
@@ -158,6 +162,7 @@ FuncRef define_func(
 
 	_init_arg_specs(func, arg_types);
 	func->return_type = ret_type;
+	func->is_origin = true;
 
 	// cout << "DEFINE FUNC: " << uint64_t(func.get()) << endl;
 

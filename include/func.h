@@ -202,6 +202,7 @@ struct Func : CRE_Obj{
   bool has_any_derefs;
 
   bool is_composed;
+  bool is_origin=false;
 
 
   Func(void* _cfunc_ptr,
@@ -213,7 +214,13 @@ struct Func : CRE_Obj{
   	origin_data(_origin_data),
   	call_heads_addr(_cfunc_ptr)
   {
-  	this->init_control_block(&Func_dtor, T_ID);
+  	Item* data_ptr = std::bit_cast<Item*>(
+		    std::bit_cast<uint64_t>(this) + sizeof(Func)
+		);
+	  for(size_t i=0; i < n_root_args; ++i){
+			new (data_ptr + i) Item();
+		}
+  	// this->init_control_block(&Func_dtor, T_ID);
   }
   // Func(const Func&) = default;
 
@@ -243,8 +250,8 @@ struct Func : CRE_Obj{
 		);
 
 		// Emplacement new with Undef member to make valgrind happy
-    new (data_ptr + ind) Item();
-
+    
+		// data_ptr[ind].release();
 		data_ptr[ind] = val;
 	}
 

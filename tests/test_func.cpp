@@ -27,15 +27,10 @@ typedef int64_t (*two_int_func_t)(int64_t a, int64_t b);
 two_int_func_t add_ptr = &add;
 
 void test_define(){
-
-	cout << global_cb_pool.get_stats() << endl;
-
 	ref<Var> A = new_var("A", cre_int);
 	ref<Var> B = new_var("B", cre_int);
 	ref<Var> C = new_var("C", cre_int);
 	ref<Var> D = new_var("D", cre_int);
-
-	cout << global_cb_pool.get_stats() << endl;
 
 	{ // Start New Frame 
 
@@ -111,28 +106,13 @@ void test_define(){
 	IS_TRUE(C.get_refcount() > 1)
 	IS_TRUE(D.get_refcount() > 1)
 
-	// Only refrences should be in this stack
-	cout << "A=" << A.get_refcount() << endl;
-	cout << "B=" << B.get_refcount() << endl;
-	cout << "C=" << C.get_refcount() << endl;
-	cout << "D=" << D.get_refcount() << endl;
-
-	cout << global_cb_pool.get_stats() << endl;
-
 	} // END Frame: All funcs should have been deconstructed 
 
 	// Only refrences should be in this stack
-	cout << "A=" << A.get_refcount() << endl;
-	cout << "B=" << B.get_refcount() << endl;
-	cout << "C=" << C.get_refcount() << endl;
-	cout << "D=" << D.get_refcount() << endl;
-
 	IS_TRUE(A.get_refcount() == 1)
 	IS_TRUE(B.get_refcount() == 1)
 	IS_TRUE(C.get_refcount() == 1)
 	IS_TRUE(D.get_refcount() == 1)
-
-	cout << global_cb_pool.get_stats() << endl;
 }
 
 void test_compose_derefs(){
