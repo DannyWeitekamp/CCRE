@@ -379,6 +379,20 @@ public:
     }
 
 
+
+
+    template <std::integral T>
+    T as(){
+        return T(std::bit_cast<int64_t>(val));
+    }
+
+    template <std::floating_point T>
+    T as(){
+        return T(std::bit_cast<double>(val));
+    }
+    
+
+
     inline bool as_bool() const {
         return bool(val);
     }
@@ -442,6 +456,17 @@ public:
 
     inline Func* as_func() const {
         return std::bit_cast<Func*>(get_ptr());
+    }
+
+    // template <std::derived_from<T, CRE_Obj> ref<T>>
+    // ref<T> as(){
+    //     return std::bit_cast<T*>(get_ptr());
+    // }
+
+    template <typename T>
+    requires std::is_pointer_v<T>
+    T as(){
+        return std::bit_cast<T>(get_ptr());
     }
 
     // inline void to_weak() {    

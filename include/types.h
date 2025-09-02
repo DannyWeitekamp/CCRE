@@ -214,6 +214,45 @@ extern vector<CRE_Type*> cre_builtins;
 vector<CRE_Type*> make_builtins();
 // extern CRE_Context default_context;
 
+class CRE_Obj;
+class Fact;
+class FactSet;
+struct Var;
+struct Func;
+struct Literal;
+struct Conditions;
+struct Rule;
+
+template <typename T>
+CRE_Type* to_cre_type() {
+    if constexpr (std::is_same_v<bool, T>) {
+        return cre_bool;
+    }else if constexpr (std::is_integral_v<T>) {
+        return cre_int;
+    } else if constexpr (std::is_floating_point_v<T>) {
+        return cre_float;
+    } else if constexpr (std::is_same_v<std::string, T> ||
+                         std::is_same_v<std::string_view, T>) {
+        return cre_str;
+    } else if constexpr (std::is_same_v<CRE_Obj, T>){
+        return cre_obj;
+    } else if constexpr (std::is_same_v<Fact, T>){
+        return cre_Fact;
+    } else if constexpr (std::is_same_v<FactSet, T>){
+        return cre_FactSet;
+    } else if constexpr (std::is_same_v<Var, T>){
+        return cre_Var;
+    } else if constexpr (std::is_same_v<Func, T>){
+        return cre_Func;
+    } else if constexpr (std::is_same_v<Literal, T>){
+        return cre_Literal;
+    } else if constexpr (std::is_same_v<Conditions, T>){
+        return cre_Conditions;
+    } else if constexpr (std::is_same_v<Rule, T>){
+        return cre_Rule;
+    }
+}
+
 
 struct DefferedType : public CRE_Type {
     // std::string name;

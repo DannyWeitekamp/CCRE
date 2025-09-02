@@ -18,6 +18,8 @@ struct Func;
 struct FuncRef;
 
 
+
+
 // ARGINFO type enums
 const uint8_t ARGINFO_CONST = 1;
 const uint8_t ARGINFO_VAR = 2;
@@ -141,6 +143,8 @@ struct OriginData {
 
 void Func_dtor(const CRE_Obj* x);
 
+typedef void (*StackCallFunc)(void*, void**);
+
 struct Func : CRE_Obj{
 	static constexpr uint16_t T_ID = T_ID_FUNC;
 
@@ -160,6 +164,8 @@ struct Func : CRE_Obj{
 	uint8_t* bytecode = nullptr;
 	uint8_t* bytecode_end = nullptr;
 
+	size_t stack_size = 0;
+
 	// The args to the root CREFunc 
 	std::vector<ArgInfo> root_arg_infos = {};
 
@@ -177,7 +183,9 @@ struct Func : CRE_Obj{
 
 	// The address for the root CREFunc's 'call_head' implementation.
     // Essentially the CREFunc's main call function.     
-	void* call_heads_addr;
+	// void* call_heads_addr;
+
+	StackCallFunc stack_call_func;
 
 	// The address for the root CREFunc's 'call_self' implementation.
   // Calls call_heads on any values stored in 'h{i}' (i.e. 'head') slots.
@@ -205,14 +213,14 @@ struct Func : CRE_Obj{
   bool is_origin=false;
 
 
-  Func(void* _cfunc_ptr,
+  Func(StackCallFunc _stack_call_func,
   	 size_t n_args,
   	 OriginData* _origin_data) :
 
   	n_args(n_args),
   	n_root_args(n_args),
   	origin_data(_origin_data),
-  	call_heads_addr(_cfunc_ptr)
+  	stack_call_func(_stack_call_func)
   {
   	Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
@@ -278,6 +286,13 @@ struct Func : CRE_Obj{
 		const std::map<void*, size_t>& base_var_map,
 		const std::vector<uint16_t>& arg_stack_offsets
 	);
+
+	void* call_stack(uint8_t* stack);
+
+	// template <class... Ts>
+	// Item operator()(Ts && ... inputs){
+	// 	//TODO
+	// }
 };
 
 
@@ -289,10 +304,29 @@ struct FuncRef : ref<Func> {
 	}
 };
 
+inline void throw_bad_n_args(Func* func, int n_got){
+	std::stringstream ss;
+	ss << "Func Error: " << func << " with " << func->n_args << " arguments given " << n_got << " arguments." << endl;
+	throw std::runtime_error(ss.str());
+}
+
+template<typename T>
+void throw_bad_arg(Func* func, int i, CRE_Type* type){
+	std::stringstream ss;
+	ss << "Func Error: Incorrect Argument Type:" << typeid(T).name() <<
+	 			" for argument i=" << i << " with type: " << type << 
+	 			" in Func: " << func << endl;
+	throw std::runtime_error(ss.str());
+}
+
 
 template <class ... Ts>
-FuncRef compose(Func* self, Ts && ... inputs){
+FuncRef compose(Func* self, Ts && ... args){
   FuncRef cf = self->copy_deep();//new Func(*this);
+
+  if(sizeof...(args) != self->n_args){
+  	throw_bad_n_args(self, sizeof...(args));
+  }
 
   // cout << "COMPOSE: " << uint64_t(cf.get()) << endl;
   int i = 0;
@@ -300,12 +334,53 @@ FuncRef compose(Func* self, Ts && ... inputs){
     {
     		// cout << typeid(Ts).name() << endl;
     		// cout << "INPUT:" << inputs << endl;
-    		cf->set_arg(i, inputs);	
+    		cf->set_arg(i, args);	
         ++i;        
     } (), ...);
   cf->reinitialize();
   return cf;
 }
+
+
+
+template <class ... Ts>
+Item call(Func* self, Ts... args){
+	uint8_t* stack = (uint8_t*) alloca(self->stack_size);
+	uint8_t* arg_head = stack;
+
+	if(sizeof...(args) != self->n_args){
+  	throw_bad_n_args(self, sizeof...(args));
+  }
+
+	int i = 0;
+  ([&]
+    {
+	    	const HeadInfo& hi0 = self->head_infos[self->head_ranges[i].start];
+
+	    	if(to_cre_type<Ts>() != hi0.base_type){
+	    		throw_bad_arg<Ts>(self, i, hi0.base_type);
+	    	}
+
+	    	Ts* _arg_ptr = (Ts*) arg_head;
+	    	_arg_ptr[0] = args;
+	    	arg_head += hi0.base_type->byte_width;
+
+	    	// cout << uint64_t(hi0.base_type) << "::" << self->head_ranges[i].start << endl;
+	    	// cout << int64_t(arg_head)-int64_t(stack) << endl;
+
+    		// cf->set_arg(i, args);	
+        ++i;        
+    } (), ...);
+
+  void* ret_ptr = self->call_stack(stack);
+
+  // cout << "BLARG: " << uint64_t(*((uint64_t*) ret_ptr)) << endl;
+  return Item(uint64_t(*((uint64_t*) ret_ptr)));
+  // return 
+  // cf->reinitialize();
+}
+
+
 
 
 
@@ -315,15 +390,7 @@ FuncRef compose(Func* self, Ts && ... inputs){
 // }
 
 
-ref<Func> new_func(void* cfunc_ptr, size_t n_args, OriginData* origin_data, AllocBuffer* buffer=nullptr);
 
-FuncRef define_func(
-		const std::string_view& name, 
-		void* cfunc_ptr,
-		CRE_Type* ret_type,
-		const std::vector<CRE_Type*>& arg_types,
-		const std::string_view& expr_template = "",
-		const std::string_view& shorthand_template = "");
 
 std::ostream& operator<<(std::ostream& out, Func* func);
 std::ostream& operator<<(std::ostream& out, ref<Func> func);
@@ -353,60 +420,158 @@ constexpr bool FUNC_NEED_ALIGN_PAD = (FUNC_ALIGN_PADDING(sizeof(Func)) | FUNC_AL
   #define SIZEOF_FUNC(n) _SIZEOF_FUNC(n)
 #endif
 
+
+
+
+
 // Func* alloc_func(uint32_t length, AllocBuffer* buffer=nullptr);
 
 // -----------------------------------------
 // : stack_call<func>(...),  stack_call_func_ptr(&func, ...)
 
 template <typename Arg, std::size_t I>
-inline Arg read_arg(uint8_t* data_start, uint16_t* arg_offsets) {
-    return *( (Arg*) (data_start+arg_offsets[I]));
+inline Arg read_arg(void** args) {
+    return *( (Arg*) args[I]);
 }
 
 
 template <typename RT, typename... Args, std::size_t... I>
-inline void stack_call_func_ptr_w_indices(RT (*func)(Args...), uint8_t* ret, uint16_t* arg_offsets, std::index_sequence<I...>) {
-    *((RT*) ret) = func(read_arg<Args, I>(ret, arg_offsets)...);
+inline void stack_call_func_ptr_w_indices(RT (*func)(Args...), void* ret, void** args, std::index_sequence<I...>) {
+    *((RT*) ret) = func(read_arg<Args, I>(args)...);
 }
 
 
 template <typename RT, typename... Args>
-void stack_call_func_ptr(RT (*func)(Args...), uint8_t* ret, uint16_t* arg_offsets) {
+void stack_call_func_ptr(RT (*func)(Args...), void* ret, void** args) {
 	stack_call_func_ptr_w_indices(
-		func, ret, arg_offsets, std::index_sequence_for<Args...>{}
+		func, ret, args, std::index_sequence_for<Args...>{}
 	);
 }
 
 
 template<auto Func>
-struct StackCallFunc final
+struct StackCallWrapper final
 {
 	template <typename RT, typename... Args, std::size_t... I>
 	inline void variatic_call_w_indicies(RT (* )(Args...),
-	 	uint8_t* ret, uint16_t* arg_offsets,
+	 	void* ret, void** args,
 	 	std::index_sequence<I...>) const {
 
-	    *((RT*) ret) = Func(read_arg<Args, I>(ret, arg_offsets)...);
+	    *((RT*) ret) = Func(read_arg<Args, I>(args)...);
 	}	
 
 	template <typename RT, typename... Args>
 	inline void variatic_call(RT (* )(Args...),
-	 	uint8_t* ret, uint16_t* arg_offsets) const {
+	 	void* ret, void** args) const {
 
-	    variatic_call_w_indicies(Func, ret, arg_offsets, std::index_sequence_for<Args...>{});
+	    variatic_call_w_indicies(Func, ret, args, std::index_sequence_for<Args...>{});
 	}	
     
-  void operator()(uint8_t* ret, uint16_t* arg_offsets) const
+  void operator()(void* ret, void** args) const
   {
-      return variatic_call(Func, ret, arg_offsets);
+      return variatic_call(Func, ret, args);
   }
 };
 
 template<auto Func>
-void stack_call(uint8_t* ret, uint16_t* arg_offsets){
-	StackCallFunc<Func>{}(ret, arg_offsets);
+void stack_call(void* ret, void** args){
+	StackCallWrapper<Func>{}(ret, args);
 }
 
 // ------------------------------------------------------
+
+
+// -----------------------------------------
+// : stack_call<func>(...),  stack_call_func_ptr(&func, ...)
+
+template <typename Arg, std::size_t I>
+inline Arg read_arg_generic(Item* args) {
+    return args[I].as<Arg>();
+}
+
+// template <typename RT, typename... Args, std::size_t... I>
+// inline Item stack_call_func_ptr_w_indices_v(RT (*func)(Args...), Item* args, std::index_sequence<I...>) {
+//     return Item(func(read_arg_v<Args, I>(args)...));
+// }
+
+
+// template <typename RT, typename... Args>
+// Item stack_call_func_ptr_v(RT (*func)(Args...), Item* args) {
+// 	return stack_call_func_ptr_w_indices_v(
+// 		func, args, std::index_sequence_for<Args...>{}
+// 	);
+// }
+
+
+template<auto Func>
+struct StackCallFuncGeneric final
+{
+	template <typename RT, typename... Args, std::size_t... I>
+	inline Item variatic_call_w_indicies(RT (* )(Args...),
+	 	Item* args, std::index_sequence<I...>) const {
+	    return Item(Func(read_arg_generic<Args, I>(args)...));
+	}	
+
+	template <typename RT, typename... Args>
+	inline Item variatic_call(RT (* )(Args...), Item* args) const {
+	    return variatic_call_w_indicies(Func, args, std::index_sequence_for<Args...>{});
+	}	
+    
+  Item operator()(Item* args) const {
+      return variatic_call(Func, args);
+  }
+};
+
+template<auto Func>
+Item stack_call_generic(Item* args){
+	return StackCallFuncGeneric<Func>{}(args);
+}
+
+// ------------------------------------------------------
+
+
+
+ref<Func> new_func(StackCallFunc stack_call_func, size_t n_args, OriginData* origin_data, AllocBuffer* buffer=nullptr);
+
+FuncRef define_func(
+		const std::string_view& name, 
+		StackCallFunc cfunc_ptr,
+		CRE_Type* ret_type,
+		const std::vector<CRE_Type*>& arg_types,
+		const std::string_view& expr_template = "",
+		const std::string_view& shorthand_template = "");
+
+
+
+// -- Helper struct for extracting RT and ARGS --
+template <typename T>
+struct FuncToCRETypes;
+
+template <typename RT, typename... Args>
+struct FuncToCRETypes<RT(*)(Args...)> {
+    static std::tuple<CRE_Type*, std::vector<CRE_Type*>> get(){
+			CRE_Type* ret_type = to_cre_type<RT>();
+			std::vector<CRE_Type*> arg_types = {to_cre_type<Args>()...};		
+			return {ret_type, arg_types};
+		}
+};
+
+template <auto Func>
+FuncRef define_func(
+		const std::string_view& name, 
+		const std::string_view& expr_template = "",
+		const std::string_view& shorthand_template = ""){
+
+  auto stack_call_lambda = [](void* ret, void** args) {
+      stack_call<Func>(ret, args);
+  };
+
+	// void (*cfunc_ptr)(void* ret, void** args) = stack_call_lambda;
+	StackCallFunc stack_call_func = stack_call_lambda;
+	auto [ret_type, arg_types] = FuncToCRETypes<decltype(Func)>::get();
+
+	return define_func(name, stack_call_func, ret_type, arg_types, expr_template, shorthand_template);
+}
+
 
 } // NAMESPACE_END(cre)

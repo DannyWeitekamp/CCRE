@@ -23,6 +23,17 @@ int64_t add(int64_t a, int64_t b){
 	return a+b;
 }
 
+int64_t add_flt(double a, double b){
+	return a+b;
+}
+
+
+const auto add_stack = stack_call<add>;
+// void add_stack(void* ret, void** args){
+// 	stack_call<add>(ret, args);	
+// }
+
+
 typedef int64_t (*two_int_func_t)(int64_t a, int64_t b);
 two_int_func_t add_ptr = &add;
 
@@ -35,7 +46,11 @@ void test_define(){
 	{ // Start New Frame 
 
 	cout << "-----add_f------" << endl;
-	FuncRef add_f = define_func("add", (void*) &add, cre_int, {cre_int, cre_int});
+	// FuncRef add_f = define_func("add", add);
+	FuncRef add_f = define_func<add>("add");
+
+	
+	// FuncRef add_f = define_func("add", (void*) &add_stack, cre_int, {cre_int, cre_int});
 	cout << "add_f: " << add_f << endl;
 	cout << "bc_len=" << add_f->calc_bytecode_length() << endl;
 	cout << add_f->bytecode_to_string() << endl;
@@ -116,7 +131,8 @@ void test_define(){
 }
 
 void test_compose_derefs(){
-	FuncRef add_f = define_func("add_flt", (void*) &add, cre_float, {cre_float, cre_float});
+	// FuncRef add_f = define_func("add_flt", (void*) &add, cre_float, {cre_float, cre_float});
+	FuncRef add_f = define_func<add_flt>("add_flt");
 
 	FactType* Person = define_fact("Person", 
 	    {{"id", cre_str, {{"unique_id", true}}},
@@ -261,31 +277,78 @@ int64_t run_add(){
 
 
 int64_t run_stack_call_func_ptr(){
-	uint16_t arg_offsets[2] = {8,16};
 	uint8_t* stack = (uint8_t*) alloca(sizeof(int64_t)*3);
 	int64_t* int_stack = (int64_t*) stack;
+	
+	void* args[2] = {stack,stack+8};
+	void* ret = &int_stack[2];
+
 	int64_t t = 0;
 	for(int i=0; i < 1000; ++i){
-		int_stack[0] = 0;
-		int_stack[1] = t>>8;
-		int_stack[2] = i;
-		stack_call_func_ptr(add_ptr, stack, arg_offsets);
-		t += int_stack[0];
+		int_stack[0] = t>>8;
+		int_stack[1] = i;
+		int_stack[2] = 0;
+		stack_call_func_ptr(add_ptr, ret, args);
+		t += int_stack[2];
 	} 
 	return t;
 }
 
 int64_t run_stack_call(){
-	uint16_t arg_offsets[2] = {8,16};
 	uint8_t* stack = (uint8_t*) alloca(sizeof(int64_t)*3);
 	int64_t* int_stack = (int64_t*) stack;
+	
+	// void  args[2] = {stack,stack+8};
+	void* args[2] = {stack,stack+8};
+	void* ret = &int_stack[2];
+
 	int64_t t = 0;
 	for(int i=0; i < 1000; ++i){
-		int_stack[0] = 0;
-		int_stack[1] = t>>8;
-		int_stack[2] = i;
-		stack_call<add>(stack, arg_offsets);
-		t += int_stack[0];
+		int_stack[0] = t>>8;
+		int_stack[1] = i;
+		int_stack[2] = 0;
+		stack_call<add>(ret, args);
+		t += int_stack[2];
+	} 
+	return t;
+}
+
+int64_t run_call_func(auto add_f){
+	// uint8_t* stack = (uint8_t*) alloca(sizeof(int64_t)*3);
+	// int64_t* int_stack = (int64_t*) stack;
+	
+	// void  args[2] = {stack,stack+8};
+	// void* args[2] = {stack,stack+8};
+	// void* ret = &int_stack[2];
+
+	
+	// cout << "Bytecode: " << uint64_t(add_f->bytecode) << endl;
+
+	int64_t t = 0;
+	for(int i=0; i < 1000; ++i){
+		Item val = call(add_f.get(), t>>8, i);
+
+		// int_stack[0] = t>>8;
+		// int_stack[1] = i;
+		// int_stack[2] = 0;
+		// stack_call<add>(ret, args);
+		t += val.as<int64_t>();
+	} 
+	return t;
+}
+
+
+int64_t run_stack_call_generic(){
+	// uint16_t arg_offsets[2] = {8,16};
+	Item* args = (Item*) alloca(sizeof(Item)*2);
+	// int64_t* int_stack = (int64_t*) stack;
+	int64_t t = 0;
+	for(int i=0; i < 1000; ++i){
+		// args[0] = Item(0);
+		args[0] = Item(t>>8); // <- Extra time is mostly in conversion here
+		args[1] = Item(i);
+		t += stack_call_generic<add>(args).as<int64_t>();
+		// t += int_stack[0];
 	} 
 	return t;
 }
@@ -296,10 +359,23 @@ int64_t run_stack_call(){
 int main(){
 	test_define();
 	// test_compose_derefs();
+
+	int64_t out = 0;
+
+	time_it_n("run_stack_call_func_ptr", out=run_stack_call_func_ptr(); ,10000);
+	cout << out << endl;
+
+	time_it_n("run_stack_call_generic", out=run_stack_call_generic(); ,10000);
+	cout << out << endl;
+
+
+	FuncRef add_f = define_func<add>("add");
+	time_it_n("run_call_func", out=run_call_func(add_f); ,10000);
+	cout << out << endl;
 // 
 	return 0;
 
-
+	/*
 
 	auto func = (*add_items_ptr);
 
@@ -354,6 +430,6 @@ int main(){
 
 
 	// bloop<add>(stack, arg_offsets);
-
+	*/
 	return 0;
 }

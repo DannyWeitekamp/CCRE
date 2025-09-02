@@ -65,10 +65,10 @@ std::string make_default_template(
 //   return (Func*) func_addr;
 
 
-ref<Func> new_func(void* cfunc_ptr, size_t n_args,  OriginData* origin_data, AllocBuffer* buffer){
+ref<Func> new_func(StackCallFunc stack_call_func, size_t n_args,  OriginData* origin_data, AllocBuffer* buffer){
 	auto [func_addr, did_malloc] =  alloc_cre_obj(SIZEOF_FUNC(n_args), &Func_dtor, T_ID_FUNC, buffer);
 	// Func* func = alloc_func(n_args);
-	ref<Func> func = new (func_addr) Func(cfunc_ptr, n_args, origin_data);
+	ref<Func> func = new (func_addr) Func(stack_call_func, n_args, origin_data);
 	
 	return func;
 }
@@ -132,7 +132,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 
 FuncRef define_func(
 		const std::string_view& name, 
-		void* cfunc_ptr,
+		StackCallFunc cfunc_ptr,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template,
@@ -164,6 +164,8 @@ FuncRef define_func(
 	func->return_type = ret_type;
 	func->is_origin = true;
 
+	func->reinitialize();
+
 	// cout << "DEFINE FUNC: " << uint64_t(func.get()) << endl;
 
 	return (FuncRef) func;
@@ -172,7 +174,7 @@ FuncRef define_func(
 // -------------------------------------------------------------
 // copy()
 FuncRef Func::copy_shallow(){
-	ref<Func> nf = new_func(call_heads_addr, n_root_args, origin_data);
+	ref<Func> nf = new_func(stack_call_func, n_root_args, origin_data);
 
 	// nf->dtor = &Func_dtor;
 
@@ -860,6 +862,8 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 	){
 	uint16_t* arg_offsets = (uint16_t*) alloca(cf->n_root_args * sizeof(uint16_t));
 
+
+
 	for(size_t i=0; i < cf->root_arg_infos.size(); ++i){
 		auto& arg_info = cf->root_arg_infos[i];
 		switch(arg_info.kind){
@@ -867,13 +871,19 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 		case ARGINFO_FUNC:
 		{
 			Func* func =  (*cf->get(i)).as_func();
+
+			
+			// Recurse... should reserve offsets 
 			std::tie(bc_head, stack_offset) = _write_bytecode(
 				func,
 				bc_head, stack_offset,
 				base_var_map, arg_stack_offsets
 			);
+			// Reserve room on stack for return  
 			arg_offsets[i] = stack_offset;
 			stack_offset += cf->return_type->byte_width;
+
+			
 			break;
 		}
 		case ARGINFO_CONST:
@@ -922,15 +932,17 @@ void Func::write_bytecode(
 		const std::vector<uint16_t>& arg_stack_offsets
 		){
 
-	uint8_t* bytecode = new uint8_t[bytecode_len];
-	cout << "bytecode:" << uint64_t(bytecode) << endl;
+	bytecode = new uint8_t[bytecode_len];
+	// cout << "bytecode:" << uint64_t(bytecode) << endl;
 	uint8_t* bc_head = bytecode;
 	// size_t bytecode_len = 0;
-	size_t stack_offset = args_stack_length;
-	_write_bytecode(this, bytecode, args_stack_length, base_var_map, arg_stack_offsets);
+	// size_t stack_offset = args_stack_length;
+	auto [_, stack_size] = _write_bytecode(this, bytecode, args_stack_length, base_var_map, arg_stack_offsets);
 
-	this->bytecode = bytecode;
-	this->bytecode_end = bytecode + bytecode_len;
+
+	// this->bytecode = bytecode;
+	bytecode_end = bytecode + bytecode_len;
+	this->stack_size = stack_size;
 }
 
 
@@ -1460,6 +1472,87 @@ void Func::reinitialize(){
 
     // cout << "-----" << endl;
 }
+
+
+void write_args_to_stack(){
+
+}
+
+
+void* Func::call_stack(uint8_t* stack){
+	uint8_t* bc = bytecode;
+
+	// cout << "bc:" << uint64_t(bc) << endl;
+
+	if(bytecode == nullptr){
+		throw std::runtime_error("Called Func with uninitialized bytecode.");
+	}
+
+	void* ret_ptr;
+
+	while(bc < bytecode_end){
+		uint16_t* rc_instr = (uint16_t*) bc;	
+		switch(rc_instr[0]){
+			case BC_READ_CONST:
+				
+				break;
+			case BC_DEREF_VAR:
+				
+				break;
+			case BC_CALL_FUNC:
+			{
+				// std::vector<std::string> arg_strs = {};
+				uint16_t ret_offset = rc_instr[2];
+				uint16_t n_args = rc_instr[3];
+				Func* cf = *((Func**) &rc_instr[4]);
+
+
+				// cout << "ret_offset:" << uint64_t(ret_offset) << endl;
+				// cout << "n_args:" << uint64_t(n_args) << endl;
+				// cout << "cf:" << uint64_t(cf) << endl;
+
+				ret_ptr = (void *) (stack + ret_offset);
+				void** arg_ptrs = (void**) alloca(sizeof(void*) * n_args);
+				for(size_t i=0; i < n_args; ++i){
+					arg_ptrs[i] = stack + rc_instr[8+i];
+					// cout << "::" << uint64_t(arg_ptrs[i]) << endl;
+				}
+
+
+
+				// void (*_call_stack)(void**) = (void()(void**)) call_heads_addr;
+				// _call_stack(ret_ptr, arg_ptrs);
+				stack_call_func(ret_ptr, arg_ptrs);
+
+
+				// cout << "AFTER: " << uint64_t(ret_ptr) << endl;
+				// for(int i=0; i < n_args; ++i){ 
+				// 	arg_strs.push_back(fmt::format("@{}", rc_instr[8+i]));
+				// }
+				
+				// ss << fmt::format("CALL : {}({})->@{}\n", cf->origin_data->name, fmt::join(arg_strs, ", "), rc_instr[2]);
+				break;
+			}
+		}
+		// End case, null terminated
+		if(rc_instr[1] == 0){
+			break;
+		}
+
+		// Get next bytecode
+		bc += rc_instr[1];
+	}
+
+	return ret_ptr;
+	// return ss.str();
+}
+
+
+void* Func::call_recursive(){
+
+
+}
+
 
 // Example: 
 // a + (d + c + 1) + c 
