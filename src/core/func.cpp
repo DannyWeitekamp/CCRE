@@ -65,10 +65,10 @@ std::string make_default_template(
 //   return (Func*) func_addr;
 
 
-ref<Func> new_func(StackCallFunc stack_call_func, size_t n_args,  OriginData* origin_data, AllocBuffer* buffer){
+ref<Func> new_func(StackCallFunc stack_call_func, StackCallFunc2 stack_call_func2, size_t n_args,  OriginData* origin_data, AllocBuffer* buffer){
 	auto [func_addr, did_malloc] =  alloc_cre_obj(SIZEOF_FUNC(n_args), &Func_dtor, T_ID_FUNC, buffer);
 	// Func* func = alloc_func(n_args);
-	ref<Func> func = new (func_addr) Func(stack_call_func, n_args, origin_data);
+	ref<Func> func = new (func_addr) Func(stack_call_func, stack_call_func2, n_args, origin_data);
 	
 	return func;
 }
@@ -133,6 +133,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 FuncRef define_func(
 		const std::string_view& name, 
 		StackCallFunc cfunc_ptr,
+		StackCallFunc2 cfunc_ptr2,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template,
@@ -154,7 +155,7 @@ FuncRef define_func(
 		origin_data->shorthand_template = shorthand_template;
 	}
 
-	ref<Func> func = new_func(cfunc_ptr, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
+	ref<Func> func = new_func(cfunc_ptr, cfunc_ptr2, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
 	// func->init_control_block(&Func_dtor);
 	// func->dtor = &Func_dtor;
 
@@ -174,7 +175,7 @@ FuncRef define_func(
 // -------------------------------------------------------------
 // copy()
 FuncRef Func::copy_shallow(){
-	ref<Func> nf = new_func(stack_call_func, n_root_args, origin_data);
+	ref<Func> nf = new_func(stack_call_func, stack_call_func2, n_root_args, origin_data);
 
 	// nf->dtor = &Func_dtor;
 
@@ -881,7 +882,7 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 			);
 			// Reserve room on stack for return  
 			arg_offsets[i] = stack_offset;
-			stack_offset += cf->return_type->byte_width;
+			stack_offset += func->return_type->byte_width;
 
 			
 			break;
@@ -921,7 +922,10 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 
 	write_call_func(bc_head, cf, stack_offset, arg_offsets);
 	bc_head += sizeof_call_func(cf);
-	
+
+	cf->return_stack_offset = stack_offset;
+	stack_offset += cf->return_type->byte_width;
+
 	return {bc_head, stack_offset};
 }
 
@@ -1417,6 +1421,7 @@ void Func::reinitialize(){
 	// stack_offset += return_type->byte_width;
 	// // bc_head += sizeof_call_func(cf);
 	uint16_t bc_len = this->calc_bytecode_length();
+	args_size = args_stack_length;
 	this->write_bytecode(bc_len, args_stack_length, base_var_map, arg_stack_offsets);
 
 	cout << "--+++++++--" << bc_len <<  endl;
@@ -1474,9 +1479,9 @@ void Func::reinitialize(){
 }
 
 
-void write_args_to_stack(){
+// void write_args_to_stack(){
 
-}
+// }
 
 
 void* Func::call_stack(uint8_t* stack){
@@ -1548,10 +1553,59 @@ void* Func::call_stack(uint8_t* stack){
 }
 
 
-void* Func::call_recursive(){
 
-
+void Func::call_recursive(void* ret_ptr, uint8_t* input_args){
+	if(is_composed){
+		uint8_t* args_stack = (uint8_t*) alloca(args_size);
+		_call_recursive(ret_ptr, args_stack, input_args);
+	}else{
+		stack_call_func2(ret_ptr, input_args);
+	}
 }
+
+void Func::_call_recursive(void* ret_ptr,
+						   uint8_t* args_stack,
+						   uint8_t* input_args){
+
+	for(size_t i=0; i < root_arg_infos.size(); ++i){
+		auto& arg_info = root_arg_infos[i];
+		switch(arg_info.kind){
+
+		case ARGINFO_FUNC:
+		{
+			Func* func =  (*this->get(i)).as_func();
+			uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
+			void* _ret_ptr = (void*) &args_stack[arg_info.offset];
+			func->_call_recursive(_ret_ptr, _args_stack, input_args);
+			break;
+		}
+		case ARGINFO_CONST:
+		{
+			Item* const_val = get(i);
+			memcpy(&args_stack[arg_info.offset], &(const_val->val), arg_info.type->byte_width);
+			break;
+		}
+		case ARGINFO_VAR:
+		{
+			Var* var =  (*get(i)).as_var();
+			if(var->size() == 0){
+				break;
+				// memcpy(&args_stack[arg_info.offset],
+				//  	   &input_args[arg_info.base_offset],
+				//  	   arg_info.type->byte_width);
+			}else{
+				break; // Deref chain
+			}
+			break;
+		}
+		default:
+			throw std::runtime_error("Unrecognized arg_info.kind="+std::to_string(arg_info.kind));
+		}
+	}
+
+	stack_call_func2(ret_ptr, args_stack);
+}
+
 
 
 // Example: 

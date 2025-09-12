@@ -223,8 +223,12 @@ struct Literal;
 struct Conditions;
 struct Rule;
 
-template <typename T>
+template <typename _T>
 CRE_Type* to_cre_type() {
+
+    using T = std::remove_cvref_t<_T>;
+
+
     if constexpr (std::is_same_v<bool, T>) {
         return cre_bool;
     }else if constexpr (std::is_integral_v<T>) {

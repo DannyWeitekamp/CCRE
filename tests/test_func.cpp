@@ -23,7 +23,11 @@ int64_t add(int64_t a, int64_t b){
 	return a+b;
 }
 
-int64_t add_flt(double a, double b){
+double add_flt(double a, double b){
+	return a+b;
+}
+
+std::string concat(std::string& a, std::string& b){
 	return a+b;
 }
 
@@ -313,6 +317,45 @@ int64_t run_stack_call(){
 	return t;
 }
 
+int64_t run_stack_call2(){
+	uint8_t* stack = (uint8_t*) alloca(sizeof(int64_t)*3);
+	int64_t* int_stack = (int64_t*) stack;
+	
+	// void  args[2] = {stack,stack+8};
+	// void* args[2] = {stack,stack+8};
+	void* ret = &int_stack[2];
+
+	int64_t t = 0;
+	for(int i=0; i < 1000; ++i){
+		int_stack[0] = t>>8;
+		int_stack[1] = i;
+		int_stack[2] = 0;
+		stack_call2<add>(ret, stack);
+		t += int_stack[2];
+	} 
+	return t;
+}
+
+int64_t run_stack_call_func(auto add_f){
+	uint8_t* stack = (uint8_t*) alloca(sizeof(int64_t)*3);
+	int64_t* int_stack = (int64_t*) stack;
+	
+	void* args[2] = {stack,stack+8};
+	void* ret = &int_stack[2];
+
+	int64_t t = 0;
+	for(int i=0; i < 1000; ++i){
+		int_stack[0] = t>>8;
+		int_stack[1] = i;
+		int_stack[2] = 0;
+		add_f->stack_call_func(ret, args);
+		t += int_stack[2];
+	} 
+	return t;
+}
+
+
+
 int64_t run_call_func(auto add_f){
 	// uint8_t* stack = (uint8_t*) alloca(sizeof(int64_t)*3);
 	// int64_t* int_stack = (int64_t*) stack;
@@ -341,6 +384,7 @@ int64_t run_call_func(auto add_f){
 int64_t run_stack_call_generic(){
 	// uint16_t arg_offsets[2] = {8,16};
 	Item* args = (Item*) alloca(sizeof(Item)*2);
+	
 	// int64_t* int_stack = (int64_t*) stack;
 	int64_t t = 0;
 	for(int i=0; i < 1000; ++i){
@@ -356,22 +400,60 @@ int64_t run_stack_call_generic(){
 
 
 
+
+
 int main(){
-	test_define();
+	FuncRef concat_f = define_func<concat>("concat");
+	// call(concat_f, "A","B");
+	// cout << "CONCAT:" << call(concat_f, "A","B") << endl;
+
+	// Using the C++17 fold expression approach
+    constexpr auto offsets_cxx17 = AlignedLayout<char, int, double>::offsets;
+    // constexpr auto offsets2 = AlignedStructInfo<char, int, double>::offsets;
+
+    // cout << offsets2 << endl;
+
+
+    cout << "Offsets (C++17):" << endl;
+    for (size_t i=0; i < offsets_cxx17.size(); ++i){
+    	cout << offsets_cxx17[i] << " ";
+    }
+    cout << endl;
+    // 	std::size_t offset : offsets_cxx17) {
+    // std::cout << offsets_cxx17[0] << " " << std::get<0>(offsets2) << endl;
+    // std::cout << offsets_cxx17[1] << " " << std::get<1>(offsets2) << endl;
+    // std::cout << offsets_cxx17[2] << " " << std::get<2>(offsets2) << endl;
+    // }
+    // std::cout << std::endl;
+    // std::cout << "Total size (C++17): " << AlignedLayout<char, int, double>::total_size << std::endl;
+    // std::cout << "Max alignment (C++17): " << AlignedLayout<char, int, double>::max_align << std::endl;
+
+
+	// test_define();
 	// test_compose_derefs();
 
 	int64_t out = 0;
 
-	time_it_n("run_stack_call_func_ptr", out=run_stack_call_func_ptr(); ,10000);
-	cout << out << endl;
+	// time_it_n("run_stack_call_func_ptr", out=run_stack_call_func_ptr(); ,10000);
+	// cout << out << endl;
 
 	time_it_n("run_stack_call_generic", out=run_stack_call_generic(); ,10000);
-	cout << out << endl;
+	// cout << out << endl;
 
 
 	FuncRef add_f = define_func<add>("add");
+	
+	time_it_n("run_stack_call_func", out=run_stack_call_func(add_f); ,10000);
+	cout << out << endl;
+	
 	time_it_n("run_call_func", out=run_call_func(add_f); ,10000);
 	cout << out << endl;
+
+	// time_it_n("stack_call<add>", out=run_stack_call(); ,10000);
+	// cout << out << endl;
+
+	// time_it_n("stack_call2<add>", out=run_stack_call2(); ,10000);
+	// cout << out << endl;
 // 
 	return 0;
 
