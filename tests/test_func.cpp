@@ -27,8 +27,11 @@ double add_flt(double a, double b){
 	return a+b;
 }
 
-std::string concat(std::string& a, std::string& b){
-	return a+b;
+std::string concat(const std::string_view& a, const std::string_view& b){
+	std::stringstream ss;
+	ss << a << b;
+	return ss.str();
+	// return a+b;
 }
 
 
@@ -52,6 +55,7 @@ void test_define(){
 	cout << "-----add_f------" << endl;
 	// FuncRef add_f = define_func("add", add);
 	FuncRef add_f = define_func<add>("add");
+	ASSERT_TRUE(add_f->call(1,2).as<int64_t>() == 3);
 
 	
 	// FuncRef add_f = define_func("add", (void*) &add_stack, cre_int, {cre_int, cre_int});
@@ -405,7 +409,9 @@ int64_t run_stack_call_generic(){
 int main(){
 	FuncRef concat_f = define_func<concat>("concat");
 	// call(concat_f, "A","B");
-	// cout << "CONCAT:" << call(concat_f, "A","B") << endl;
+	cout << "CONCAT:" << call(concat_f, "A","B") << endl;
+
+	// return 0;
 
 	// Using the C++17 fold expression approach
     constexpr auto offsets_cxx17 = AlignedLayout<char, int, double>::offsets;

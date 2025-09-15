@@ -65,10 +65,15 @@ std::string make_default_template(
 //   return (Func*) func_addr;
 
 
-ref<Func> new_func(StackCallFunc stack_call_func, StackCallFunc2 stack_call_func2, size_t n_args,  OriginData* origin_data, AllocBuffer* buffer){
+ref<Func> new_func(StackCallFunc stack_call_func,
+				   StackCallFunc2 stack_call_func2,
+				   PtrToItemFunc ptr_to_item_func,
+				   size_t n_args, 
+				   OriginData* origin_data,
+				   AllocBuffer* buffer){
 	auto [func_addr, did_malloc] =  alloc_cre_obj(SIZEOF_FUNC(n_args), &Func_dtor, T_ID_FUNC, buffer);
 	// Func* func = alloc_func(n_args);
-	ref<Func> func = new (func_addr) Func(stack_call_func, stack_call_func2, n_args, origin_data);
+	ref<Func> func = new (func_addr) Func(stack_call_func, stack_call_func2, ptr_to_item_func, n_args, origin_data);
 	
 	return func;
 }
@@ -103,7 +108,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 		// ArgInfo
 		// uint16_t t_id = arg_type->t_id;
 		root_arg_infos.emplace_back(
-			arg_type, ARGINFO_VAR, offset, false);
+			arg_type, ARGINFO_VAR, offset, i, false);
 		offset += arg_type->byte_width;
 
 		// Head Info
@@ -134,6 +139,7 @@ FuncRef define_func(
 		const std::string_view& name, 
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
+		PtrToItemFunc ptr_to_item_func,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template,
@@ -155,7 +161,7 @@ FuncRef define_func(
 		origin_data->shorthand_template = shorthand_template;
 	}
 
-	ref<Func> func = new_func(cfunc_ptr, cfunc_ptr2, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
+	ref<Func> func = new_func(cfunc_ptr, cfunc_ptr2, ptr_to_item_func, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
 	// func->init_control_block(&Func_dtor);
 	// func->dtor = &Func_dtor;
 
@@ -175,7 +181,9 @@ FuncRef define_func(
 // -------------------------------------------------------------
 // copy()
 FuncRef Func::copy_shallow(){
-	ref<Func> nf = new_func(stack_call_func, stack_call_func2, n_root_args, origin_data);
+	ref<Func> nf = new_func(
+		stack_call_func, stack_call_func2, ptr_to_item_func,
+		n_root_args, origin_data);
 
 	// nf->dtor = &Func_dtor;
 
@@ -1554,16 +1562,16 @@ void* Func::call_stack(uint8_t* stack){
 
 
 
-void Func::call_recursive(void* ret_ptr, uint8_t* input_args){
+void Func::call_recursive2(void* ret_ptr, uint8_t* input_args){
 	if(is_composed){
 		uint8_t* args_stack = (uint8_t*) alloca(args_size);
-		_call_recursive(ret_ptr, args_stack, input_args);
+		_call_recursive2(ret_ptr, args_stack, input_args);
 	}else{
 		stack_call_func2(ret_ptr, input_args);
 	}
 }
 
-void Func::_call_recursive(void* ret_ptr,
+void Func::_call_recursive2(void* ret_ptr,
 						   uint8_t* args_stack,
 						   uint8_t* input_args){
 
@@ -1576,7 +1584,7 @@ void Func::_call_recursive(void* ret_ptr,
 			Func* func =  (*this->get(i)).as_func();
 			uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
 			void* _ret_ptr = (void*) &args_stack[arg_info.offset];
-			func->_call_recursive(_ret_ptr, _args_stack, input_args);
+			func->_call_recursive2(_ret_ptr, _args_stack, input_args);
 			break;
 		}
 		case ARGINFO_CONST:
@@ -1604,6 +1612,76 @@ void Func::_call_recursive(void* ret_ptr,
 	}
 
 	stack_call_func2(ret_ptr, args_stack);
+}
+
+
+void Func::call_recursive(void* ret_ptr, void** input_arg_ptrs){
+	if(is_composed){
+		_call_recursive(ret_ptr, input_arg_ptrs);
+	}else{
+		stack_call_func(ret_ptr, input_arg_ptrs);
+	}
+}
+
+void Func::_call_recursive(void* ret_ptr,
+						   void** input_arg_ptrs){
+
+	void** arg_ptrs = (void**) alloca(sizeof(void**)*n_root_args);
+	uint8_t* inter_stack = (uint8_t*) alloca(stack_size); // TODO:
+
+
+	for(size_t i=0; i < n_root_args; ++i){
+		auto& arg_info = root_arg_infos[i];
+		switch(arg_info.kind){
+
+		case ARGINFO_FUNC:
+		{
+			Func* func =  (*this->get(i)).as_func();
+			// uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
+			// void* _ret_ptr = alloca()//(void*) &args_stack[arg_info.offset];
+			void* _ret_ptr = (void*) (inter_stack + arg_info.offset); // TODO +??
+			func->_call_recursive(_ret_ptr, input_arg_ptrs);
+			break;
+		}
+		case ARGINFO_CONST:
+		{
+			Item* const_val = get(i);
+			arg_ptrs[i] = (void*) &const_val->val;
+			// memcpy(&args_stack[arg_info.offset], &(const_val->val), arg_info.type->byte_width);
+			break;
+		}
+		case ARGINFO_VAR:
+		{
+			// Var* var =  (*get(i)).as_var();
+
+			// NOTE: has_deref doesn't matter because input_arg_ptrs
+			//  should have already resolved dereferences.
+			arg_ptrs[i] = input_arg_ptrs[arg_info.var_ind];
+
+
+			// if(!arg_info.has_deref){
+			// 	// arg_ptrs[i] = input_arg_ptrs[arg_info.var_ind];
+			// 	break;
+			// 	// memcpy(&args_stack[arg_info.offset],
+			// 	//  	   &input_args[arg_info.base_offset],
+			// 	//  	   arg_info.type->byte_width);
+			// }else{
+
+			// 	break; // Deref chain
+			// }
+			break;
+		}
+		default:
+			throw std::runtime_error("Unrecognized arg_info.kind="+std::to_string(arg_info.kind));
+		}
+	}
+
+	stack_call_func(ret_ptr, arg_ptrs);
+
+	// Cleanup
+	for(size_t i=0; i < n_root_args; ++i){
+		//
+	}
 }
 
 

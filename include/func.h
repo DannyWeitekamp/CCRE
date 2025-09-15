@@ -49,8 +49,16 @@ struct ArgInfo {
 	// uint16_t t_id;
 	// uint16_t byte_width;
 
-	// The offset that the arg is written to in the call-stack
-	uint16_t offset;
+
+	// ** Begin Composition-Specific Info ** // 
+
+	// The offset in an temporary stack where intermediate values go 
+	uint16_t offset = 0;
+
+	// Base var index 
+	uint16_t var_ind = 0;
+
+
 
 	// The offset of the base source; either a const written into the Func or 
 	//   the input arguments. 
@@ -62,12 +70,15 @@ struct ArgInfo {
 
 
 	ArgInfo(CRE_Type* _type, //Item* _ptr,
-	 		uint16_t _kind, uint16_t _offset, 
+	 		uint16_t _kind, 
+	 		uint16_t _offset, 
+	 		uint16_t _var_ind, 
 	 		// uint16_t _base_offset, 
 	 		bool _has_deref) :
-		type(_type), //ptr(_ptr),
+		 type(_type), //ptr(_ptr),
 		 kind(_kind), 
-		offset(_offset), 
+		 offset(_offset), 
+		 var_ind(_var_ind),
 		// base_offset(_base_offset),
 		 has_deref(_has_deref)
 	{};
@@ -155,6 +166,7 @@ void Func_dtor(const CRE_Obj* x);
 
 typedef void (*StackCallFunc)(void*, void**);
 typedef void (*StackCallFunc2)(void*, uint8_t*);
+typedef Item (*PtrToItemFunc)(void*);
 
 struct Func : CRE_Obj{
 	static constexpr uint16_t T_ID = T_ID_FUNC;
@@ -199,6 +211,7 @@ struct Func : CRE_Obj{
 
 	StackCallFunc stack_call_func;
 	StackCallFunc2 stack_call_func2;
+	PtrToItemFunc ptr_to_item_func;
 
 	// The address for the root CREFunc's 'call_self' implementation.
   // Calls call_heads on any values stored in 'h{i}' (i.e. 'head') slots.
@@ -210,14 +223,14 @@ struct Func : CRE_Obj{
   void* resolve_heads_addr;
 
   // True if the func has beed initialized
-  bool is_initialized;
+  bool is_initialized=false;
 
   // True if this func is a ptr func
-  bool is_ptr_func;
+  bool is_ptr_func=false;
 
   // The composition depth
   uint16_t depth = 1;
-  uint16_t return_stack_offset;
+  uint16_t return_stack_offset=0;
 
 
     
@@ -230,6 +243,7 @@ struct Func : CRE_Obj{
 
   Func(StackCallFunc _stack_call_func,
   		 StackCallFunc2 _stack_call_func2,
+  		 PtrToItemFunc _ptr_to_item_func,
   	 size_t n_args,
   	 OriginData* _origin_data) :
 
@@ -237,7 +251,8 @@ struct Func : CRE_Obj{
   	n_root_args(n_args),
   	origin_data(_origin_data),
   	stack_call_func(_stack_call_func),
-  	stack_call_func2(_stack_call_func2)
+  	stack_call_func2(_stack_call_func2),
+  	ptr_to_item_func(_ptr_to_item_func)
   {
   	Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
@@ -305,8 +320,11 @@ struct Func : CRE_Obj{
 	);
 
 	void* call_stack(uint8_t* stack);
-	void call_recursive(void* ret_ptr, uint8_t* input_args);
-	void _call_recursive(void* ret_ptr, uint8_t* args_stack, uint8_t* input_args);
+	void call_recursive2(void* ret_ptr, uint8_t* input_args);
+	void _call_recursive2(void* ret_ptr, uint8_t* args_stack, uint8_t* input_args);
+
+	void call_recursive(void* ret_ptr, void** input_arg_ptrs);
+	void _call_recursive(void* ret_ptr, void** input_arg_ptrs);
 
 	// template <class... Ts>
 	// Item operator()(Ts && ... inputs){
@@ -373,31 +391,27 @@ FuncRef compose(Func* self, Ts && ... args){
 //     		throw std::runtime_error(ss.str());
 
 template <typename T>
-inline bool _copy_convert_from_str(void* dest, T&& val, CRE_Type* type){
-	cout << "BEFORE" << endl;
+inline bool _copy_convert_from_str(void* dest, const T& val, CRE_Type* type){
 	switch(type->t_id) {
-    	case T_ID_INT:
-
-    		*((int64_t*) dest) = int64_t(std::stoi(val));
-    		break;
-    	case T_ID_FLOAT:
-    		*((double *) dest) = double(std::stof(val));
-    		break;
-    	case T_ID_STR:
-    	{
-    		cout << "THIS" << endl;
-    		std::string* s = (std::string*) new(dest) std::string(val); // Construct string in buffer
-    		// *s = val;
-
-    		// *((std::to_string *) dest) = std::to_string(val);
-    		break;
-    	}
-    	default:
-    	{
-    		return true;
-    	}
+		case T_ID_STR:
+  	{
+  		// std::string_view* s = std::string_view(data, length);
+  		new (dest) std::string_view(val); // Construct string_view in buffer
+  		break;
+  	}
+  	case T_ID_INT:
+  		*((int64_t*) dest) = int64_t(std::stoi(val));
+  		break;
+  	case T_ID_FLOAT:
+  		*((double *) dest) = double(std::stof(val));
+  		break;
+    	
+  	default:
+  	{
+  		return true;
+  	}
   }
-  cout << "END" << endl;
+  // cout << "END" << endl;
   return false;
 }
 
@@ -460,11 +474,14 @@ template <typename T>
 bool copy_convert_arg(void* dest, T& val, CRE_Type* type){
 	using Tb = std::remove_cv_t<T>;
 
-	if constexpr(std::is_same_v<Tb, std::string>){
-		return _copy_convert_from_str(dest, std::move(val), type);
-	}else if constexpr(is_c_str<Tb>::value){
-		return _copy_convert_from_str(dest, std::string(val), type);
-	}else if constexpr(std::is_arithmetic_v<T>){
+	// if constexpr(std::is_same_v<Tb, std::string>){
+	if constexpr(std::is_convertible_v<const T&, std::string_view>){
+		return _copy_convert_from_str(dest, val, type);
+	// }else if constexpr(std::is_same_v<Tb, std::string>){
+	// 	return _copy_convert_from_str(dest, val.data(), val.size(), type);
+	// }else if constexpr(is_c_str<Tb>::value){
+		// return _copy_convert_from_str(dest, val, std:strlen(val), type);
+	}else if constexpr(std::is_arithmetic_v<Tb>){
 		return _copy_convert_from_numerical(dest, val, type);
 	}else{
 		// static_assert(0, );
@@ -483,11 +500,12 @@ bool copy_convert_arg(void* dest, T& val, CRE_Type* type){
 
 
 template <class ... Ts>
-Item call(Func* self, Ts&& ... args){
+Item call2(Func* self, Ts&& ... args){
 	// cout << "STACK SIZE: " << self->stack_size << endl;
 	uint8_t* stack = (uint8_t*) alloca(self->stack_size);
 	uint8_t* arg_head = stack;
 	int64_t ret = 0;
+	void* ret_ptr = (void*) (stack+self->return_stack_offset);
 
 	// if(sizeof...(args) != self->n_args){
   // 	throw_bad_n_args(self, sizeof...(args));
@@ -528,7 +546,9 @@ Item call(Func* self, Ts&& ... args){
   // void* ret_ptr = self->call_stack(stack);
   // void* ret_ptr = alloca(sizeof(int64_t));
   // int64_t ret = 0;
-  self->call_recursive((void*) stack+self->return_stack_offset, stack);
+
+  // self->call_recursive((void*) stack+self->return_stack_offset, stack);
+  self->call_recursive2(ret_ptr, stack);
 
   // cout << "B STACK: " << uint64_t(stack) << " size=" << uint64_t(self->stack_size) << "; " << (uint64_t) *stack << ", " << (uint64_t) *(stack+8) << endl;
 
@@ -542,6 +562,56 @@ Item call(Func* self, Ts&& ... args){
   return Item(ret);
   // return 
   // cf->reinitialize();
+}
+
+
+
+template <class ... Ts>
+Item call(Func* self, Ts&& ... args){
+	/* TODO Test  */ 
+
+
+	// cout << "STACK SIZE: " << self->stack_size << endl;
+
+
+	void** input_arg_ptrs = (void**) alloca(sizeof(void**)*self->n_root_args);
+	uint8_t* stack = (uint8_t*) alloca(self->stack_size);
+	uint8_t* arg_head = stack;
+
+
+	int64_t ret = 0;
+	void* ret_ptr = (void*) (stack+self->return_stack_offset);
+
+	if(sizeof...(args) != self->n_args){
+  	throw_bad_n_args(self, sizeof...(args));
+  }
+
+	int i = 0;
+  ([&]
+    {
+	    	const HeadInfo& hi0 = self->head_infos[self->head_ranges[i].start];
+
+	    	// cout << i << " V:" << args << " width=" << hi0.base_type->byte_width << " type=" << typeid(Ts).name() << endl;
+
+	    	bool conv_error = copy_convert_arg((void*) arg_head, args, hi0.base_type);
+
+	    	if(conv_error){ [[unlikely]]
+	    		throw_bad_arg<Ts>(self, i, hi0.base_type);	
+	    	}
+
+	    	input_arg_ptrs[i] = arg_head;
+	    	// input_arg_ptrs[i] = &args;
+	    	
+	    	arg_head += hi0.base_type->byte_width;	    	
+        ++i;        
+    } (), ...);
+
+ 
+  self->call_recursive(ret_ptr, input_arg_ptrs);
+
+  // TODO: This needs to be dynamic
+  return self->ptr_to_item_func(ret_ptr);
+  // return Item(*((int64_t*) ret_ptr));
 }
 
 
@@ -622,7 +692,10 @@ struct StackCallWrapper final
 	 	void* ret, void** args,
 	 	std::index_sequence<I...>) const {
 
-	    *((RT*) ret) = Func(read_arg<Args, I>(args)...);
+			// Use placement new to initialize return value to make 
+		  //  valgrind happy, since it should be uninitialized memory.
+			new (ret) RT(Func(read_arg<Args, I>(args)...)); 
+	    // *((RT*) ret) = Func(read_arg<Args, I>(args)...);
 	}	
 
 	template <typename RT, typename... Args>
@@ -805,6 +878,7 @@ Item stack_call_generic(Item* args){
 ref<Func> new_func(
 	StackCallFunc stack_call_func,
 	StackCallFunc2 stack_call_func2,
+	PtrToItemFunc ptr_to_item_func,
 	size_t n_args, OriginData* origin_data, AllocBuffer* buffer=nullptr
 );
 
@@ -812,6 +886,7 @@ FuncRef define_func(
 		const std::string_view& name, 
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
+		PtrToItemFunc ptr_to_item_func,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template = "",
@@ -832,6 +907,29 @@ struct FuncToCRETypes<RT(*)(Args...)> {
 		}
 };
 
+
+ 
+template <typename T>
+struct PtrToItem;
+
+template <typename RT, typename... Args>
+struct PtrToItem<RT(*)(Args...)> {
+    static Item as_item(void* ret){
+			return Item(*((RT*) ret));	
+		}
+};
+
+
+template<typename T>
+Item ptr_to_item(void* ret){
+	if constexpr(std::is_function_v<T>){
+		return PtrToItem<T>::as_item(ret);	
+	}else{
+		return Item(*((T*) ret));	
+	}
+} 
+
+
 template <auto Func>
 FuncRef define_func(
 		const std::string_view& name, 
@@ -846,17 +944,22 @@ FuncRef define_func(
       stack_call2<Func>(ret, args);
   };
 
+  auto ptr_to_item_func_lambda = [](void* ret) {
+      return PtrToItem<decltype(Func)>::as_item(ret);
+  };
+
 	// void (*cfunc_ptr)(void* ret, void** args) = stack_call_lambda;
 	StackCallFunc stack_call_func = stack_call_lambda;
 	StackCallFunc2 stack_call_func2 = stack_call_lambda2;
+	PtrToItemFunc ptr_to_item_func = ptr_to_item_func_lambda;
 	auto [ret_type, arg_types] = FuncToCRETypes<decltype(Func)>::get();
 
-	return define_func(name, stack_call_func, stack_call_func2, ret_type, arg_types, expr_template, shorthand_template);
+	return define_func(name, 
+		stack_call_func, stack_call_func2, ptr_to_item_func, ret_type, arg_types, expr_template, shorthand_template);
 }
 
 
 } // NAMESPACE_END(cre)
-
 
 /*
 
