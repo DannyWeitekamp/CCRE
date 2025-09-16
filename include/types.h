@@ -219,6 +219,7 @@ class Fact;
 class FactSet;
 struct Var;
 struct Func;
+struct FuncRef;
 struct Literal;
 struct Conditions;
 struct Rule;
@@ -267,5 +268,35 @@ struct DefferedType : public CRE_Type {
 
     DefferedType(std::string_view _name);    
 };
+
+// -------------------------
+// : Define is_var_or_func() and has_var_or_func()
+
+template<typename T>
+struct is_var_or_func : std::false_type {};
+
+template<>
+struct is_var_or_func<Var> : std::true_type {};
+
+template<>
+struct is_var_or_func<Func> : std::true_type {};
+
+template<>
+struct is_var_or_func<ref<Var>> : std::true_type {};
+
+template<>
+struct is_var_or_func<ref<Func>> : std::true_type {};
+
+template<>
+struct is_var_or_func<FuncRef> : std::true_type {};
+
+// Helper to check if any argument is Var or Func
+template<typename... Ts>
+struct has_var_or_func : std::false_type {};
+
+template<typename T, typename... Rest>
+struct has_var_or_func<T, Rest...> : std::bool_constant<
+    is_var_or_func<std::remove_cvref_t<T>>::value || has_var_or_func<Rest...>::value
+> {};
 
 } // NAMESPACE_END(cre)

@@ -108,7 +108,7 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 		// ArgInfo
 		// uint16_t t_id = arg_type->t_id;
 		root_arg_infos.emplace_back(
-			arg_type, ARGINFO_VAR, offset, i, false);
+			arg_type, ARGINFO_VAR, offset, i, i, false);
 		offset += arg_type->byte_width;
 
 		// Head Info
@@ -867,14 +867,18 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 	Func* cf,
 	uint8_t* bc_head, uint16_t stack_offset,
 	const std::map<void*, size_t>& base_var_map,
-	const std::vector<uint16_t>& arg_stack_offsets
+	const std::vector<uint16_t>& arg_stack_offsets//,
+	// uint16_t head_ind
 	){
+
 	uint16_t* arg_offsets = (uint16_t*) alloca(cf->n_root_args * sizeof(uint16_t));
 
 
 
 	for(size_t i=0; i < cf->root_arg_infos.size(); ++i){
 		auto& arg_info = cf->root_arg_infos[i];
+		// arg_info.head_ind = head_ind;
+
 		switch(arg_info.kind){
 
 		case ARGINFO_FUNC:
@@ -883,10 +887,10 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 
 			
 			// Recurse... should reserve offsets 
+			// std::tie(bc_head, stack_offset, head_ind) = _write_bytecode(
 			std::tie(bc_head, stack_offset) = _write_bytecode(
-				func,
-				bc_head, stack_offset,
-				base_var_map, arg_stack_offsets
+				func, bc_head, stack_offset,
+				base_var_map, arg_stack_offsets//, head_ind
 			);
 			// Reserve room on stack for return  
 			arg_offsets[i] = stack_offset;
@@ -921,6 +925,8 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 			}else{
 				arg_offsets[i] = arg_offset;
 			}
+
+			// ++head_ind;
 			break;
 		}
 		default:
@@ -949,8 +955,9 @@ void Func::write_bytecode(
 	uint8_t* bc_head = bytecode;
 	// size_t bytecode_len = 0;
 	// size_t stack_offset = args_stack_length;
-	auto [_, stack_size] = _write_bytecode(this, bytecode, args_stack_length, base_var_map, arg_stack_offsets);
-
+	auto [_, stack_size] = _write_bytecode(
+		this, bytecode, args_stack_length,
+		base_var_map, arg_stack_offsets);
 
 	// this->bytecode = bytecode;
 	bytecode_end = bytecode + bytecode_len;
@@ -1268,7 +1275,12 @@ void Func::reinitialize(){
 
 	// Calculate arg_stack_offsets  
 	for(auto hrng : head_ranges){
+	// for(size_t i=0; i<head_ranges.size(); ++i){
+	// 	auto hrng = head_ranges[i];
+	// 	auto hrng = [i];
+
 		for(uint16_t j=hrng.start; j < hrng.end; ++j){
+
 
 			HeadInfo head_info = head_infos[j];
 			// ArgInfo root_info = root_arg_infos[head_info.arg_ind];
@@ -1432,7 +1444,7 @@ void Func::reinitialize(){
 	args_size = args_stack_length;
 	this->write_bytecode(bc_len, args_stack_length, base_var_map, arg_stack_offsets);
 
-	cout << "--+++++++--" << bc_len <<  endl;
+	// cout << "--+++++++--" << bc_len <<  endl;
     // Make new head_ranges (spans of HeadInfos for same base)
 	//   according to base_var_map. Count total to reserve head_infos.
 	size_t n_bases = base_var_map.size();
@@ -1448,13 +1460,21 @@ void Func::reinitialize(){
 	// Make new head_infos according to base_var_map
 	std::vector<HeadInfo> new_head_infos;
 	new_head_infos.reserve(n_heads);
+
+	size_t head_ind=0;
 	for(auto [base_ptr, base_head_infos] : base_vars){
+	// for(size_t i=0; i<base_vars.size(); i++){
+		// auto [base_ptr, base_head_infos] = base_vars[i];
 		Var* base_var = (Var *) base_ptr;
 		for(HeadInfo& base_head_info : base_head_infos){
 			HeadInfo hi = base_head_info;
 			hi.base_type = base_var->base_type;
+
+			ArgInfo& root_arg_info = hi.cf_ptr->root_arg_infos[hi.arg_ind];
+			root_arg_info.head_ind = head_ind;
 			// cout << "hi " << hi.kind << endl;
 			new_head_infos.push_back(hi);
+			++head_ind;
 		}
 	}
 
@@ -1615,20 +1635,22 @@ void Func::_call_recursive2(void* ret_ptr,
 }
 
 
-void Func::call_recursive(void* ret_ptr, void** input_arg_ptrs){
+void Func::call_recursive(void* ret_ptr, void** head_val_ptrs){
 	if(is_composed){
-		_call_recursive(ret_ptr, input_arg_ptrs);
+		_call_recursive(ret_ptr, head_val_ptrs);
 	}else{
-		stack_call_func(ret_ptr, input_arg_ptrs);
+		stack_call_func(ret_ptr, head_val_ptrs);
 	}
 }
 
 void Func::_call_recursive(void* ret_ptr,
-						   void** input_arg_ptrs){
+						   void** head_val_ptrs){
 
 	void** arg_ptrs = (void**) alloca(sizeof(void**)*n_root_args);
 	uint8_t* inter_stack = (uint8_t*) alloca(stack_size); // TODO:
 
+	// cout << "THIS: " << uint64_t(this) << endl;
+	// cout << "HEAD VAL PTRS 0: " << uint64_t(head_val_ptrs[0]) << endl;
 
 	for(size_t i=0; i < n_root_args; ++i){
 		auto& arg_info = root_arg_infos[i];
@@ -1636,27 +1658,34 @@ void Func::_call_recursive(void* ret_ptr,
 
 		case ARGINFO_FUNC:
 		{
-			Func* func =  (*this->get(i)).as_func();
+			Func* func = this->get(i)->as_func();
+			// cout << "Func: " << uint64_t(func) << endl;
 			// uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
 			// void* _ret_ptr = alloca()//(void*) &args_stack[arg_info.offset];
 			void* _ret_ptr = (void*) (inter_stack + arg_info.offset); // TODO +??
-			func->_call_recursive(_ret_ptr, input_arg_ptrs);
+			arg_ptrs[i] = _ret_ptr;
+			func->_call_recursive(_ret_ptr, head_val_ptrs);
+
+			// cout << "Func val: " << int64_t(*((int64_t*)_ret_ptr)) << endl << endl;
 			break;
 		}
 		case ARGINFO_CONST:
 		{
 			Item* const_val = get(i);
-			arg_ptrs[i] = (void*) &const_val->val;
+			// cout << "CONST: " <<  const_val->val << endl;
+			arg_ptrs[i] = (void*) &(const_val->val);
 			// memcpy(&args_stack[arg_info.offset], &(const_val->val), arg_info.type->byte_width);
 			break;
 		}
 		case ARGINFO_VAR:
 		{
 			// Var* var =  (*get(i)).as_var();
-
+			// cout << "Var i: " << arg_info.var_ind << " Head i: " <<  arg_info.head_ind << endl;
+			// cout << "Var val addr: " <<  uint64_t(head_val_ptrs[arg_info.head_ind]) << endl;
+			// cout << "Var val: " <<  *((uint64_t*) head_val_ptrs[arg_info.head_ind]) << endl;
 			// NOTE: has_deref doesn't matter because input_arg_ptrs
 			//  should have already resolved dereferences.
-			arg_ptrs[i] = input_arg_ptrs[arg_info.var_ind];
+			arg_ptrs[i] = head_val_ptrs[arg_info.head_ind];
 
 
 			// if(!arg_info.has_deref){

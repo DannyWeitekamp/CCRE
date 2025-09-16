@@ -57,6 +57,7 @@ struct ArgInfo {
 
 	// Base var index 
 	uint16_t var_ind = 0;
+	uint16_t head_ind = 0;
 
 
 
@@ -73,12 +74,14 @@ struct ArgInfo {
 	 		uint16_t _kind, 
 	 		uint16_t _offset, 
 	 		uint16_t _var_ind, 
+	 		uint16_t _head_ind,
 	 		// uint16_t _base_offset, 
 	 		bool _has_deref) :
 		 type(_type), //ptr(_ptr),
 		 kind(_kind), 
 		 offset(_offset), 
 		 var_ind(_var_ind),
+		 head_ind(_head_ind),
 		// base_offset(_base_offset),
 		 has_deref(_has_deref)
 	{};
@@ -160,6 +163,53 @@ struct OriginData {
 	std::string shorthand_template;
 	// std::vector<void *> repr_const_addrs;
 };
+
+template <typename T>
+std::string get_type_name() {
+    #ifdef __GNUC__
+        std::string s = __PRETTY_FUNCTION__;
+        // Extract the type name from the pretty function string (compiler-dependent parsing)
+        size_t start = s.find(" = ") + 3;
+        size_t end = s.find("&", start);
+        return s.substr(start, end - start);
+    #elif _MSC_VER
+        std::string s = __FUNCSIG__;
+        // Extract the type name from the function signature string (compiler-dependent parsing)
+        size_t start = s.find("get_type_name<") + 14;
+        size_t end = s.find(">(void)", start);
+        return s.substr(start, end - start);
+    #else
+        return "Unknown Type (Compiler specific)";
+    #endif
+}
+
+
+template <typename T>
+bool copy_convert_arg(void* dest, T& val, CRE_Type* type){
+	using Tb = std::remove_cv_t<T>;
+
+	// if constexpr(std::is_same_v<Tb, std::string>){
+	if constexpr(std::is_convertible_v<const T&, std::string_view>){
+		return _copy_convert_from_str(dest, val, type);
+	// }else if constexpr(std::is_same_v<Tb, std::string>){
+	// 	return _copy_convert_from_str(dest, val.data(), val.size(), type);
+	// }else if constexpr(is_c_str<Tb>::value){
+		// return _copy_convert_from_str(dest, val, std:strlen(val), type);
+	}else if constexpr(std::is_arithmetic_v<Tb>){
+		return _copy_convert_from_numerical(dest, std::move(val), type);
+	}else{
+		// static_assert(0, );
+		std::stringstream ss;
+		ss << "Not Implemented for type: ";
+		ss << get_type_name<Tb>() << ".";
+		// ss << get_type_name<T>() << ", ";
+		// ss << ", " << std::is_arithmetic_v<Tb> << " " << std::is_arithmetic_v<T> << " " << std::is_arithmetic_v<int64_t> << endl;
+		// std::is_arithmetic_v<Tb>
+		throw std::runtime_error(ss.str());
+	}
+	// cout << "END_-" << endl;
+
+}
 
 
 void Func_dtor(const CRE_Obj* x);
@@ -323,8 +373,33 @@ struct Func : CRE_Obj{
 	void call_recursive2(void* ret_ptr, uint8_t* input_args);
 	void _call_recursive2(void* ret_ptr, uint8_t* args_stack, uint8_t* input_args);
 
-	void call_recursive(void* ret_ptr, void** input_arg_ptrs);
-	void _call_recursive(void* ret_ptr, void** input_arg_ptrs);
+	void call_recursive(void* ret_ptr, void** head_val_ptrs);
+	void _call_recursive(void* ret_ptr, void** head_val_ptrs);
+
+	inline void throw_bad_n_args(int n_got){
+		std::stringstream ss;
+		ss << "Func Error: " << this << " with " << n_args << " arguments given " << n_got << " arguments." << endl;
+		throw std::runtime_error(ss.str());
+	}
+
+	template<typename T>
+	inline void throw_bad_arg(int i, CRE_Type* type){
+		std::stringstream ss;
+		ss << "Func Argument Error: No Conversion of Type:" << typeid(T).name() <<
+		 			" to argument type: " << type << "for argument i=" << i << 
+		 			" in Func: " << this << endl;
+		throw std::runtime_error(ss.str());
+	}
+
+	template <class ... Ts>
+	FuncRef compose(Ts && ... args);
+
+	template <class ... Ts>
+	Item call(Ts&& ... args);
+
+	template <class ... Ts>
+	inline auto operator()(Ts&& ... args);
+	
 
 	// template <class... Ts>
 	// Item operator()(Ts && ... inputs){
@@ -336,33 +411,20 @@ struct Func : CRE_Obj{
 // An alias of ref<Func> which has call operator() defined
 struct FuncRef : ref<Func> {
 	template <class ... Ts>
-	inline FuncRef operator()(Ts && ... inputs){
-		return compose(*this, inputs...);
-	}
+	inline auto operator()(Ts && ... inputs);
+	// inline FuncRef operator()(Ts && ... inputs){
+	// 	return get()->compose(*this, inputs...);
+	// }
+	
 };
-
-inline void throw_bad_n_args(Func* func, int n_got){
-	std::stringstream ss;
-	ss << "Func Error: " << func << " with " << func->n_args << " arguments given " << n_got << " arguments." << endl;
-	throw std::runtime_error(ss.str());
-}
-
-template<typename T>
-void throw_bad_arg(Func* func, int i, CRE_Type* type){
-	std::stringstream ss;
-	ss << "Func Argument Error: No Conversion of Type:" << typeid(T).name() <<
-	 			" to argument type: " << type << "for argument i=" << i << 
-	 			" in Func: " << func << endl;
-	throw std::runtime_error(ss.str());
-}
 
 
 template <class ... Ts>
-FuncRef compose(Func* self, Ts && ... args){
-  FuncRef cf = self->copy_deep();//new Func(*this);
+FuncRef Func::compose(Ts && ... args){
+  FuncRef cf = this->copy_deep();//new Func(*this);
 
-  if(sizeof...(args) != self->n_args){
-  	throw_bad_n_args(self, sizeof...(args));
+  if(sizeof...(args) != n_args){
+  	throw_bad_n_args(sizeof...(args));
   }
 
   // cout << "COMPOSE: " << uint64_t(cf.get()) << endl;
@@ -377,6 +439,87 @@ FuncRef compose(Func* self, Ts && ... args){
   cf->reinitialize();
   return cf;
 }
+
+template <class ... Ts>
+Item Func::call(Ts&& ... args){
+	void** head_val_ptrs = (void**) alloca(sizeof(void**)*head_infos.size());
+	uint8_t* stack = (uint8_t*) alloca(stack_size);
+	uint8_t* arg_head = stack;
+
+	// cout << "STACK SIZE: " << stack_size << endl;
+	// cout << "STACK: " << uint64_t(stack) << endl;
+	// cout << "HEAD VAL PTRS SIZE: " << sizeof(void**)*head_infos.size() << endl;
+	// cout << "HEAD VAL ADDR: " << uint64_t(head_val_ptrs) << endl;
+	
+
+
+	int64_t ret = 0;
+	void* ret_ptr = (void*) (stack+return_stack_offset);
+
+	if(sizeof...(args) != n_args){
+  	throw_bad_n_args(sizeof...(args));
+  }
+
+	int i = 0;
+  ([&]
+    {	
+    		auto h_start = head_ranges[i].start;
+    		auto h_end = head_ranges[i].end;
+
+	    	// const HeadInfo& hi0 = head_infos[h_start];
+
+	    	// cout << "i=" << i << " h:" << head_ind << " V:" << args << " width=" << hi0.base_type->byte_width << " type=" << typeid(Ts).name() << endl;
+
+	    	for(size_t head_ind=h_start; head_ind<h_end; ++head_ind){
+	    	// size_t head_ind = h_start;
+	    		const HeadInfo& hi = head_infos[head_ind];
+
+		    	bool conv_error = copy_convert_arg((void*) arg_head, args, hi.base_type);
+
+		    	if(conv_error){ [[unlikely]]
+		    		throw_bad_arg<Ts>(i, hi.base_type);	
+		    	}
+
+    			
+    			head_val_ptrs[head_ind] = arg_head;	
+    			arg_head += hi.base_type->byte_width;	    	
+    		}
+
+	    	
+	    	// input_arg_ptrs[i] = &args;
+	    	
+	    	
+        ++i;        
+    } (), ...);
+
+	// cout << "HEAD VAL PTRS 0: " << uint64_t(head_val_ptrs[0]) << endl;
+ 
+  call_recursive(ret_ptr, head_val_ptrs);
+
+  // TODO: This needs to be dynamic
+  return ptr_to_item_func(ret_ptr);
+  // return Item(*((int64_t*) ret_ptr));
+}
+
+template <class ... Ts>
+inline auto Func::operator()(Ts&& ... args){
+	// Check if any argument is Var or Func type
+	if constexpr (has_var_or_func<Ts...>::value) {
+		// If any argument is Var or Func, call compose
+		return compose(std::forward<Ts>(args)...);
+	} else {
+		// Otherwise, call the function directly
+		return call(std::forward<Ts>(args)...);
+	}
+}
+
+template <class ... Ts>
+inline auto FuncRef::operator()(Ts && ... args){
+	return get()->operator()(std::forward<Ts>(args)...);
+}
+
+
+
 
 
 // ss << "Func Error: Incorrect Argument Type:" << typeid(T).name() <<
@@ -417,13 +560,17 @@ inline bool _copy_convert_from_str(void* dest, const T& val, CRE_Type* type){
 
 template <typename T>
 inline bool _copy_convert_from_numerical(void* dest, T&& val, CRE_Type* type){
-	// cout << "BEFORE" << endl;
+	// cout << "BEFORE DEST: " << uint64_t(dest) << endl;
 	switch(type->t_id) {
     	case T_ID_INT:
-    		*((int64_t*) dest) = int64_t(val);
+
+    		new (dest) int64_t(val);
+    		
+    		// *((int64_t*) dest) = int64_t(val);
     		break;
     	case T_ID_FLOAT:
-    		*((double *) dest) = double(val);
+    		new (dest) double(val);
+    		// *((double *) dest) = double(val);
     		break;
     	case T_ID_STR:
     	{
@@ -451,51 +598,7 @@ struct is_c_str
       std::is_same<char *, typename std::decay<T>::type>::value
 > {};
 
-template <typename T>
-std::string get_type_name() {
-    #ifdef __GNUC__
-        std::string s = __PRETTY_FUNCTION__;
-        // Extract the type name from the pretty function string (compiler-dependent parsing)
-        size_t start = s.find(" = ") + 3;
-        size_t end = s.find("&", start);
-        return s.substr(start, end - start);
-    #elif _MSC_VER
-        std::string s = __FUNCSIG__;
-        // Extract the type name from the function signature string (compiler-dependent parsing)
-        size_t start = s.find("get_type_name<") + 14;
-        size_t end = s.find(">(void)", start);
-        return s.substr(start, end - start);
-    #else
-        return "Unknown Type (Compiler specific)";
-    #endif
-}
 
-template <typename T>
-bool copy_convert_arg(void* dest, T& val, CRE_Type* type){
-	using Tb = std::remove_cv_t<T>;
-
-	// if constexpr(std::is_same_v<Tb, std::string>){
-	if constexpr(std::is_convertible_v<const T&, std::string_view>){
-		return _copy_convert_from_str(dest, val, type);
-	// }else if constexpr(std::is_same_v<Tb, std::string>){
-	// 	return _copy_convert_from_str(dest, val.data(), val.size(), type);
-	// }else if constexpr(is_c_str<Tb>::value){
-		// return _copy_convert_from_str(dest, val, std:strlen(val), type);
-	}else if constexpr(std::is_arithmetic_v<Tb>){
-		return _copy_convert_from_numerical(dest, val, type);
-	}else{
-		// static_assert(0, );
-		std::stringstream ss;
-		ss << "Not Implemented for type: ";
-		ss << get_type_name<Tb>() << ".";
-		// ss << get_type_name<T>() << ", ";
-		// ss << ", " << std::is_arithmetic_v<Tb> << " " << std::is_arithmetic_v<T> << " " << std::is_arithmetic_v<int64_t> << endl;
-		// std::is_arithmetic_v<Tb>
-		throw std::runtime_error(ss.str());
-	}
-	// cout << "END_-" << endl;
-
-}
 
 
 
@@ -566,53 +669,7 @@ Item call2(Func* self, Ts&& ... args){
 
 
 
-template <class ... Ts>
-Item call(Func* self, Ts&& ... args){
-	/* TODO Test  */ 
 
-
-	// cout << "STACK SIZE: " << self->stack_size << endl;
-
-
-	void** input_arg_ptrs = (void**) alloca(sizeof(void**)*self->n_root_args);
-	uint8_t* stack = (uint8_t*) alloca(self->stack_size);
-	uint8_t* arg_head = stack;
-
-
-	int64_t ret = 0;
-	void* ret_ptr = (void*) (stack+self->return_stack_offset);
-
-	if(sizeof...(args) != self->n_args){
-  	throw_bad_n_args(self, sizeof...(args));
-  }
-
-	int i = 0;
-  ([&]
-    {
-	    	const HeadInfo& hi0 = self->head_infos[self->head_ranges[i].start];
-
-	    	// cout << i << " V:" << args << " width=" << hi0.base_type->byte_width << " type=" << typeid(Ts).name() << endl;
-
-	    	bool conv_error = copy_convert_arg((void*) arg_head, args, hi0.base_type);
-
-	    	if(conv_error){ [[unlikely]]
-	    		throw_bad_arg<Ts>(self, i, hi0.base_type);	
-	    	}
-
-	    	input_arg_ptrs[i] = arg_head;
-	    	// input_arg_ptrs[i] = &args;
-	    	
-	    	arg_head += hi0.base_type->byte_width;	    	
-        ++i;        
-    } (), ...);
-
- 
-  self->call_recursive(ret_ptr, input_arg_ptrs);
-
-  // TODO: This needs to be dynamic
-  return self->ptr_to_item_func(ret_ptr);
-  // return Item(*((int64_t*) ret_ptr));
-}
 
 
 

@@ -55,33 +55,44 @@ void test_define(){
 	cout << "-----add_f------" << endl;
 	// FuncRef add_f = define_func("add", add);
 	FuncRef add_f = define_func<add>("add");
-	ASSERT_TRUE(add_f->call(1,2).as<int64_t>() == 3);
+	// IS_TRUE(add_f(1,2).as<int64_t>() == 3);
 
 	
 	// FuncRef add_f = define_func("add", (void*) &add_stack, cre_int, {cre_int, cre_int});
-	cout << "add_f: " << add_f << endl;
-	cout << "bc_len=" << add_f->calc_bytecode_length() << endl;
-	cout << add_f->bytecode_to_string() << endl;
+	// cout << "add_f: " << add_f << endl;
+	// cout << "bc_len=" << add_f->calc_bytecode_length() << endl;
+	// cout << add_f->bytecode_to_string() << endl;
 
 	// Set Const
 	cout << "-----f_1_A------" << endl;
 	FuncRef f_1_A = add_f(1, A);
 	cout << "f_1_A: " << f_1_A << endl;
-	cout << "bc_len=" << f_1_A->calc_bytecode_length() << endl;
-	cout << f_1_A->bytecode_to_string() << endl;
+	// cout << "bc_len=" << f_1_A->calc_bytecode_length() << endl;
+	// cout << f_1_A->bytecode_to_string() << endl;
+	
+	// cout << "CALL:" << f_1_A(int64_t(10)).as<int64_t>() << endl;
+	IS_TRUE(f_1_A(2).as<int64_t>() == 3);
 
-	cout << "A=" << A.get_refcount() << endl;
-	cout << "B=" << B.get_refcount() << endl;
+	// return;
+
+	// cout << "A=" << A.get_refcount() << endl;
+	// cout << "B=" << B.get_refcount() << endl;
 
 	cout << "-----f_1_A_B------" << endl;
 	// Compose Func
 	FuncRef f_1_A_B = add_f(f_1_A, B);
 	cout << "f_1_A_B:" << f_1_A_B << endl;
-	cout << "bc_len=" << f_1_A_B->calc_bytecode_length() << endl;
-	cout << f_1_A_B->bytecode_to_string() << endl;
+	// cout << "bc_len=" << f_1_A_B->calc_bytecode_length() << endl;
+	// cout << f_1_A_B->bytecode_to_string() << endl;
 
-	cout << "A=" << A.get_refcount() << endl;
-	cout << "B=" << B.get_refcount() << endl;
+	// cout << "CALL:" << f_1_A_B(3,7).as<int64_t>() << endl;
+	IS_TRUE(f_1_A_B(3,7).as<int64_t>() == 11);
+
+
+
+	// return;
+	// cout << "A=" << A.get_refcount() << endl;
+	// cout << "B=" << B.get_refcount() << endl;
 
 	// cout << "-----f_1_A_B-copy----" << endl;
 	// FuncRef cpy = f_1_A_B->copy_deep();//f_1_A_B(f_1_A, 9);
@@ -92,34 +103,44 @@ void test_define(){
 	// Deep Compose Func
 	FuncRef big = f_1_A_B(9, f_1_A);
 	cout << "big:" << big << endl;
-	cout << "bc_len=" << big->calc_bytecode_length() << endl;
-	cout << big->bytecode_to_string() << endl;
+	// cout << "bc_len=" << big->calc_bytecode_length() << endl;
+	// cout << big->bytecode_to_string() << endl;
+	// cout << "CALL:" << big(7).as<int64_t>() << endl;
+	IS_TRUE(big(7).as<int64_t>() == 18);
+	// return;
 
-	cout << "A=" << A.get_refcount() << endl;
-	cout << "B=" << B.get_refcount() << endl;
+	// cout << "A=" << A.get_refcount() << endl;
+	// cout << "B=" << B.get_refcount() << endl;
 
 
 
 	// Deep Compose Repeat Vars
-	cout << "----------------" << endl;
+	cout << "-----dub--------" << endl;
 	FuncRef dub = f_1_A_B(A, add_f(B, A));
 	cout << "dub:" << dub << endl;
-	cout << "bc_len=" << dub->calc_bytecode_length() << endl;
-	cout << dub->bytecode_to_string() << endl;
+
+
+	// cout << "bc_len=" << dub->calc_bytecode_length() << endl;
+	// cout << dub->bytecode_to_string() << endl;
+	IS_TRUE(dub(2,7).as<int64_t>() == 12);
+	// return;
 
 	// Deep Compose Repeat Vars; insert const
+	cout << "-----dub const--------" << endl;
 	FuncRef dub_const = dub(1, A);
 	cout << "dub_const:" << dub_const << endl;
-	cout << "bc_len=" << dub_const->calc_bytecode_length() << endl;
-	cout << dub_const->bytecode_to_string() << endl;	
+	// cout << "bc_len=" << dub_const->calc_bytecode_length() << endl;
+	// cout << dub_const->bytecode_to_string() << endl;	
+	IS_TRUE(dub_const(7).as<int64_t>() == 18);
 
 
 	// Deep Compose Repeat Vars; insert funcs
-	cout << "<----------------" << endl;
+	cout << "-----dub func--------" << endl;
 	FuncRef dub_func = dub(add_f(A,B), add_f(C,D));
 	cout << "dub_func:" << dub_func << endl;
-	cout << "bc_len=" << dub_func->calc_bytecode_length() << endl;
-	cout << dub_func->bytecode_to_string() << endl;	
+	// cout << "bc_len=" << dub_func->calc_bytecode_length() << endl;
+	// cout << dub_func->bytecode_to_string() << endl;	
+	IS_TRUE(dub_func(1,2,3,4).as<int64_t>() == 14);
 
 
 	// Before the functions are cleaned up they should borrow
@@ -373,7 +394,7 @@ int64_t run_call_func(auto add_f){
 
 	int64_t t = 0;
 	for(int i=0; i < 1000; ++i){
-		Item val = call(add_f.get(), t>>8, i);
+		Item val = add_f->call(t>>8, i);
 
 		// int_stack[0] = t>>8;
 		// int_stack[1] = i;
@@ -401,6 +422,35 @@ int64_t run_stack_call_generic(){
 	return t;
 }
 
+int64_t run_composition(auto add_f){
+	// uint16_t arg_offsets[2] = {8,16};
+	// FuncRef add_f = define_func<add>("add");
+
+
+	ref<Var> A = new_var("A", cre_int);
+	ref<Var> B = new_var("B", cre_int);
+	ref<Var> C = new_var("C", cre_int);
+
+	FuncRef composition = add_f(add_f(add_f(A,B), add_f(2,B)), 7);
+
+	// Item* args = (Item*) alloca(sizeof(Item)*2);
+
+
+	
+	// int64_t* int_stack = (int64_t*) stack;
+	int64_t t = 0;
+	for(int i=0; i < 1000; ++i){
+
+		t += composition(t>>8, i).as<int64_t>();
+		// args[0] = Item(0);
+		// args[0] = Item(t>>8); // <- Extra time is mostly in conversion here
+		// args[1] = Item(i);
+		// t += stack_call_generic<add>(args).as<int64_t>();
+		// t += int_stack[0];
+	} 
+	return t;
+}
+
 
 
 
@@ -409,7 +459,7 @@ int64_t run_stack_call_generic(){
 int main(){
 	FuncRef concat_f = define_func<concat>("concat");
 	// call(concat_f, "A","B");
-	cout << "CONCAT:" << call(concat_f, "A","B") << endl;
+	cout << "CONCAT:" << concat_f("A","B") << endl;
 
 	// return 0;
 
@@ -418,6 +468,8 @@ int main(){
     // constexpr auto offsets2 = AlignedStructInfo<char, int, double>::offsets;
 
     // cout << offsets2 << endl;
+
+
 
 
     cout << "Offsets (C++17):" << endl;
@@ -443,23 +495,26 @@ int main(){
 	// time_it_n("run_stack_call_func_ptr", out=run_stack_call_func_ptr(); ,10000);
 	// cout << out << endl;
 
-	time_it_n("run_stack_call_generic", out=run_stack_call_generic(); ,10000);
-	// cout << out << endl;
+	// time_it_n("run_stack_call_generic", out=run_stack_call_generic(); ,10000);
+	// // cout << out << endl;
 
 
 	FuncRef add_f = define_func<add>("add");
 	
-	time_it_n("run_stack_call_func", out=run_stack_call_func(add_f); ,10000);
+	// time_it_n("run_stack_call_func", out=run_stack_call_func(add_f); ,10000);
+	// cout << out << endl;
+
+	time_it_n("stack_call<add>", out=run_stack_call(); ,10000);
 	cout << out << endl;
 	
 	time_it_n("run_call_func", out=run_call_func(add_f); ,10000);
 	cout << out << endl;
 
-	// time_it_n("stack_call<add>", out=run_stack_call(); ,10000);
-	// cout << out << endl;
-
 	// time_it_n("stack_call2<add>", out=run_stack_call2(); ,10000);
 	// cout << out << endl;
+
+	time_it_n("composition", out=run_composition(add_f); ,10000);
+	cout << out << endl;
 // 
 	return 0;
 
