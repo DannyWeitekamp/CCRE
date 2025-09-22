@@ -30,6 +30,14 @@ double add_flt(double a, double b){
 std::string concat(const std::string_view& a, const std::string_view& b){
 	std::stringstream ss;
 	ss << a << b;
+	cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
+	return ss.str();
+	// return a+b;
+}
+
+std::string paren(const std::string_view& x){
+	std::stringstream ss;
+	ss << "(" << x << ")";
 	return ss.str();
 	// return a+b;
 }
@@ -44,7 +52,7 @@ const auto add_stack = stack_call<add>;
 typedef int64_t (*two_int_func_t)(int64_t a, int64_t b);
 two_int_func_t add_ptr = &add;
 
-void test_define(){
+void test_basic_int(){
 	ref<Var> A = new_var("A", cre_int);
 	ref<Var> B = new_var("B", cre_int);
 	ref<Var> C = new_var("C", cre_int);
@@ -157,6 +165,25 @@ void test_define(){
 	IS_TRUE(B.get_refcount() == 1)
 	IS_TRUE(C.get_refcount() == 1)
 	IS_TRUE(D.get_refcount() == 1)
+}
+
+void test_basic_str(){
+	ref<Var> A = new_var("A", cre_str);
+	ref<Var> B = new_var("B", cre_str);
+	ref<Var> C = new_var("C", cre_str);
+	ref<Var> D = new_var("D", cre_str);
+
+	FuncRef concat_f = define_func<concat>("concat");
+	FuncRef paren_f = define_func<paren>("paren");
+	
+	FuncRef cat_paren = concat_f(paren_f(A), paren_f(B));
+	Item val = cat_paren("x","y");
+	cout << "---------" << endl;
+	cout << val << endl;
+
+	// IS_TRUE(cat_paren("x","y") == "(x)(y)");
+	
+
 }
 
 void test_compose_derefs(){
@@ -457,9 +484,12 @@ int64_t run_composition(auto add_f){
 
 
 int main(){
-	FuncRef concat_f = define_func<concat>("concat");
+	// FuncRef concat_f = define_func<concat>("concat");
 	// call(concat_f, "A","B");
-	cout << "CONCAT:" << concat_f("A","B") << endl;
+	// cout << "CONCAT:" << concat_f("A","B") << endl;
+
+	test_basic_str();
+	return 0;
 
 	// return 0;
 
@@ -487,7 +517,7 @@ int main(){
     // std::cout << "Max alignment (C++17): " << AlignedLayout<char, int, double>::max_align << std::endl;
 
 
-	// test_define();
+	// test_basic_int();
 	// test_compose_derefs();
 
 	int64_t out = 0;

@@ -410,6 +410,14 @@ public:
         return std::string_view(this->data, this->length);
     }
 
+    template <typename T>
+    requires std::is_same_v<T, std::string>
+    std::string as(){
+        return std::string(this->data, this->length);
+    }
+
+    
+
     inline CRE_Obj* get_ptr() const{
         if(is_wref()){
             ControlBlock* cb = (ControlBlock*) ptr;

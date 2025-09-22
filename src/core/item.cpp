@@ -109,15 +109,17 @@ Item::Item(const std::string_view& arg) :
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
-    InternStr intern_str = intern(arg);
+    // InternStr intern_str = intern(arg);
     // std::string_view intern_str = tup.first;
     // uint64_t hash = tup.second;
     // cout << "AFTER INTERN" << endl;
     // const char* data = intern_str.data();
 
     // UnicodeItem item;
-    data = intern_str.data();
-    length = uint32_t(intern_str.length());
+    data = arg.data();
+    length = uint32_t(arg.length());
+
+    cout << "CONVERT:" << arg << "DATA: " << uint64_t(data[0]) << endl;
     // item.hash = intern_str.hash;
     t_id = T_ID_STR;
     meta_data = 0; // TODO

@@ -238,7 +238,7 @@ struct Func : CRE_Obj{
 	uint8_t* bytecode_end = nullptr;
 
 	size_t stack_size = 0;
-	size_t args_size = 0;
+	size_t outer_stack_size = 0;
 
 	// The args to the root CREFunc 
 	std::vector<ArgInfo> root_arg_infos = {};
@@ -443,10 +443,13 @@ FuncRef Func::compose(Ts && ... args){
 template <class ... Ts>
 Item Func::call(Ts&& ... args){
 	void** head_val_ptrs = (void**) alloca(sizeof(void**)*head_infos.size());
-	uint8_t* stack = (uint8_t*) alloca(stack_size);
+	uint8_t* stack = (uint8_t*) alloca(outer_stack_size);
 	uint8_t* arg_head = stack;
 
-	// cout << "STACK SIZE: " << stack_size << endl;
+	cout << "STR SIZE: " << sizeof(std::string) << endl;
+	cout << "STACK SIZE: " << stack_size << endl;
+	cout << "OUTER STACK SIZE: " << outer_stack_size << endl;
+	cout << "RT B: " << return_type->byte_width << endl;
 	// cout << "STACK: " << uint64_t(stack) << endl;
 	// cout << "HEAD VAL PTRS SIZE: " << sizeof(void**)*head_infos.size() << endl;
 	// cout << "HEAD VAL ADDR: " << uint64_t(head_val_ptrs) << endl;
@@ -454,7 +457,9 @@ Item Func::call(Ts&& ... args){
 
 
 	int64_t ret = 0;
-	void* ret_ptr = (void*) (stack+return_stack_offset);
+	void* ret_ptr = (void*) (stack+outer_stack_size-return_type->byte_width);
+
+	cout << "ret_ptr: " << uint64_t(ret_ptr) << endl;
 
 	if(sizeof...(args) != n_args){
   	throw_bad_n_args(sizeof...(args));
@@ -495,6 +500,9 @@ Item Func::call(Ts&& ... args){
 	// cout << "HEAD VAL PTRS 0: " << uint64_t(head_val_ptrs[0]) << endl;
  
   call_recursive(ret_ptr, head_val_ptrs);
+
+  cout << "CALL END VAL: " << *((std::string_view*) ret_ptr) << endl;
+  cout << "CALL END LEN: " << ((std::string_view*) ret_ptr)->size() << endl;
 
   // TODO: This needs to be dynamic
   return ptr_to_item_func(ret_ptr);
@@ -751,7 +759,18 @@ struct StackCallWrapper final
 
 			// Use placement new to initialize return value to make 
 		  //  valgrind happy, since it should be uninitialized memory.
-			new (ret) RT(Func(read_arg<Args, I>(args)...)); 
+			if constexpr (std::is_same_v<RT, std::string>){
+				void* temp_addr = (void*) alloca(sizeof(std::string));
+				// std::string* temp_str = new (temp_addr) RT(Func(read_arg<Args, I>(args)...));
+				new (ret) std::string_view(
+					*(new (temp_addr) RT(Func(read_arg<Args, I>(args)...)))
+				); 	
+				cout << "ITER: " << *(std::string_view*) ret 
+					   << " @ " << uint64_t(ret)
+					   << " L=" << ((std::string_view*) ret)->size()  << endl;
+			}else{
+				new (ret) RT(Func(read_arg<Args, I>(args)...)); 	
+			}
 	    // *((RT*) ret) = Func(read_arg<Args, I>(args)...);
 	}	
 
@@ -944,6 +963,8 @@ FuncRef define_func(
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
 		PtrToItemFunc ptr_to_item_func,
+		size_t stack_size,
+		const std::vector<uint16_t>& offsets,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template = "",
@@ -957,14 +978,42 @@ struct FuncToCRETypes;
 
 template <typename RT, typename... Args>
 struct FuncToCRETypes<RT(*)(Args...)> {
-    static std::tuple<CRE_Type*, std::vector<CRE_Type*>> get(){
-			CRE_Type* ret_type = to_cre_type<RT>();
-			std::vector<CRE_Type*> arg_types = {to_cre_type<Args>()...};		
-			return {ret_type, arg_types};
+
+		static std::tuple<CRE_Type*, std::vector<CRE_Type*>, size_t, std::vector<uint16_t>>
+      get(){
+				CRE_Type* ret_type = to_cre_type<RT>();
+				std::vector<CRE_Type*> arg_types = {to_cre_type<Args>()...};		
+
+				using arg_layout = AlignedLayout<Args..., RT>;
+
+				size_t stack_size;
+				if constexpr (std::is_same_v<RT, std::string>){
+					stack_size = arg_layout::total_size + sizeof(std::string_view);
+				}else{
+					stack_size = arg_layout::total_size + sizeof(RT);	
+				}
+				
+				std::vector<uint16_t> offsets = {};
+				offsets.reserve(sizeof...(Args)+1);
+				// for(int i=0; i < sizeof...(Args); i++){
+				for(auto offset : arg_layout::offsets){
+					offsets.push_back(offset);
+				}
+				// std::vector(arg_layout::offsets);
+
+				return {ret_type, arg_types, stack_size, offsets};
 		}
 };
 
 
+template <typename T>
+inline Item _ptr_to_item(void* ret){
+	if constexpr(std::is_same_v<T, std::string>){
+		return Item(std::string(*((std::string_view*) ret)));
+	}else{
+		return Item(*((T*) ret));		
+	}
+}
  
 template <typename T>
 struct PtrToItem;
@@ -972,17 +1021,17 @@ struct PtrToItem;
 template <typename RT, typename... Args>
 struct PtrToItem<RT(*)(Args...)> {
     static Item as_item(void* ret){
-			return Item(*((RT*) ret));	
+			return _ptr_to_item<RT>(ret);
 		}
 };
-
 
 template<typename T>
 Item ptr_to_item(void* ret){
 	if constexpr(std::is_function_v<T>){
 		return PtrToItem<T>::as_item(ret);	
 	}else{
-		return Item(*((T*) ret));	
+		return _ptr_to_item<T>(ret);
+		// return Item(*((T*) ret));	
 	}
 } 
 
@@ -1009,10 +1058,15 @@ FuncRef define_func(
 	StackCallFunc stack_call_func = stack_call_lambda;
 	StackCallFunc2 stack_call_func2 = stack_call_lambda2;
 	PtrToItemFunc ptr_to_item_func = ptr_to_item_func_lambda;
-	auto [ret_type, arg_types] = FuncToCRETypes<decltype(Func)>::get();
+	auto [ret_type, arg_types, stack_size, offsets] =
+	 			FuncToCRETypes<decltype(Func)>::get();
+
+	// cout << offsets << endl;
+
+
 
 	return define_func(name, 
-		stack_call_func, stack_call_func2, ptr_to_item_func, ret_type, arg_types, expr_template, shorthand_template);
+		stack_call_func, stack_call_func2, ptr_to_item_func, stack_size, offsets, ret_type, arg_types, expr_template, shorthand_template);
 }
 
 

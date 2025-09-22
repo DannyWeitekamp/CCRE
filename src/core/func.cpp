@@ -81,7 +81,9 @@ ref<Func> new_func(StackCallFunc stack_call_func,
 // ----------------------------------------------------------
 //  define_func()
 
-void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
+void _init_arg_specs(Func* func, 
+					const std::vector<CRE_Type*>& arg_types,
+					const std::vector<uint16_t>& offsets){
 	size_t n_args = arg_types.size();
 
 	std::vector<ArgInfo>& root_arg_infos = func->root_arg_infos;
@@ -108,8 +110,8 @@ void _init_arg_specs(Func* func, const std::vector<CRE_Type*>& arg_types){
 		// ArgInfo
 		// uint16_t t_id = arg_type->t_id;
 		root_arg_infos.emplace_back(
-			arg_type, ARGINFO_VAR, offset, i, i, false);
-		offset += arg_type->byte_width;
+			arg_type, ARGINFO_VAR, offsets[i], i, i, false);
+		// offset += arg_type->byte_width;
 
 		// Head Info
 		HeadInfo hi;
@@ -140,6 +142,8 @@ FuncRef define_func(
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
 		PtrToItemFunc ptr_to_item_func,
+		size_t stack_size,
+		const std::vector<uint16_t>& offsets,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template,
@@ -167,9 +171,12 @@ FuncRef define_func(
 
 	origin_data->func = func.get();
 
-	_init_arg_specs(func, arg_types);
+	_init_arg_specs(func, arg_types, offsets);
 	func->return_type = ret_type;
+	func->return_stack_offset = offsets[arg_types.size()];
 	func->is_origin = true;
+	func->stack_size = stack_size;
+	cout << "ST@@CK: " << stack_size << endl;
 
 	func->reinitialize();
 
@@ -194,6 +201,8 @@ FuncRef Func::copy_shallow(){
 	nf->root_arg_infos = root_arg_infos;
 	nf->head_ranges = head_ranges;
 	nf->head_infos = head_infos;
+	nf->stack_size = stack_size;
+	nf->return_stack_offset = return_stack_offset;
 
 	// Make the arg_data_ptr and head_data_ptr point to the copy
 	for(size_t i=0; i < head_infos.size(); ++i){
@@ -937,7 +946,7 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 	write_call_func(bc_head, cf, stack_offset, arg_offsets);
 	bc_head += sizeof_call_func(cf);
 
-	cf->return_stack_offset = stack_offset;
+	// cf->return_stack_offset = stack_offset;
 	stack_offset += cf->return_type->byte_width;
 
 	return {bc_head, stack_offset};
@@ -961,8 +970,11 @@ void Func::write_bytecode(
 
 	// this->bytecode = bytecode;
 	bytecode_end = bytecode + bytecode_len;
-	this->stack_size = stack_size;
+	// this->stack_size = stack_size;
 }
+
+
+
 
 
 
@@ -1441,7 +1453,7 @@ void Func::reinitialize(){
 	// stack_offset += return_type->byte_width;
 	// // bc_head += sizeof_call_func(cf);
 	uint16_t bc_len = this->calc_bytecode_length();
-	args_size = args_stack_length;
+	// args_size = args_stack_length;
 	this->write_bytecode(bc_len, args_stack_length, base_var_map, arg_stack_offsets);
 
 	// cout << "--+++++++--" << bc_len <<  endl;
@@ -1462,6 +1474,7 @@ void Func::reinitialize(){
 	new_head_infos.reserve(n_heads);
 
 	size_t head_ind=0;
+	size_t head_stack_size=0;
 	for(auto [base_ptr, base_head_infos] : base_vars){
 	// for(size_t i=0; i<base_vars.size(); i++){
 		// auto [base_ptr, base_head_infos] = base_vars[i];
@@ -1469,6 +1482,7 @@ void Func::reinitialize(){
 		for(HeadInfo& base_head_info : base_head_infos){
 			HeadInfo hi = base_head_info;
 			hi.base_type = base_var->base_type;
+			head_stack_size += hi.head_type->byte_width;
 
 			ArgInfo& root_arg_info = hi.cf_ptr->root_arg_infos[hi.arg_ind];
 			root_arg_info.head_ind = head_ind;
@@ -1483,6 +1497,8 @@ void Func::reinitialize(){
 	this->n_args = n_bases;
 	this->head_infos = new_head_infos;
 	this->head_ranges = new_head_ranges;
+	// this->return_stack_offset = head_stack_size;
+	this->outer_stack_size = head_stack_size + return_type->byte_width;
 	// cout << "n_bases: " << n_bases << endl;
 
 
@@ -1584,7 +1600,7 @@ void* Func::call_stack(uint8_t* stack){
 
 void Func::call_recursive2(void* ret_ptr, uint8_t* input_args){
 	if(is_composed){
-		uint8_t* args_stack = (uint8_t*) alloca(args_size);
+		uint8_t* args_stack = (uint8_t*) alloca(stack_size);
 		_call_recursive2(ret_ptr, args_stack, input_args);
 	}else{
 		stack_call_func2(ret_ptr, input_args);
@@ -1602,7 +1618,7 @@ void Func::_call_recursive2(void* ret_ptr,
 		case ARGINFO_FUNC:
 		{
 			Func* func =  (*this->get(i)).as_func();
-			uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
+			uint8_t* _args_stack = (uint8_t*) alloca(func->stack_size);
 			void* _ret_ptr = (void*) &args_stack[arg_info.offset];
 			func->_call_recursive2(_ret_ptr, _args_stack, input_args);
 			break;
@@ -1649,6 +1665,10 @@ void Func::_call_recursive(void* ret_ptr,
 	void** arg_ptrs = (void**) alloca(sizeof(void**)*n_root_args);
 	uint8_t* inter_stack = (uint8_t*) alloca(stack_size); // TODO:
 
+	// cout << "SIZEOF OBJ:: " << sizeof(CRE_Obj) << endl;
+	// cout << "SIZEOF STR:: " << sizeof(std::string) << endl;
+	// cout << "SIZEOF STR_VIEW:: " << sizeof(std::string_view) << endl;
+	cout << "R: STACK SIZE: " << stack_size << endl;
 	// cout << "THIS: " << uint64_t(this) << endl;
 	// cout << "HEAD VAL PTRS 0: " << uint64_t(head_val_ptrs[0]) << endl;
 
@@ -1662,9 +1682,16 @@ void Func::_call_recursive(void* ret_ptr,
 			// cout << "Func: " << uint64_t(func) << endl;
 			// uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
 			// void* _ret_ptr = alloca()//(void*) &args_stack[arg_info.offset];
+			cout << "OFFSET: " << arg_info.offset << endl;
 			void* _ret_ptr = (void*) (inter_stack + arg_info.offset); // TODO +??
 			arg_ptrs[i] = _ret_ptr;
+
+			cout << "ADDR B:" << uint64_t(_ret_ptr) << endl;
 			func->_call_recursive(_ret_ptr, head_val_ptrs);
+
+
+			cout << "ADDR A:" << uint64_t(_ret_ptr) << endl;
+			cout << "VAL:" << ((std::string_view*) _ret_ptr)->size() << endl;
 
 			// cout << "Func val: " << int64_t(*((int64_t*)_ret_ptr)) << endl << endl;
 			break;
@@ -1705,6 +1732,7 @@ void Func::_call_recursive(void* ret_ptr,
 		}
 	}
 
+	cout << "INTO CALL FUNC: " << uint64_t(ret_ptr) << endl;
 	stack_call_func(ret_ptr, arg_ptrs);
 
 	// Cleanup
