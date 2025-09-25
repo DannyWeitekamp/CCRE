@@ -5,6 +5,7 @@
 #include "../include/item.h"
 #include "../include/cre_obj.h"
 #include "../include/intern.h"
+#include "../include/func.h"
 #include <iostream>
 #include <bitset>
 #include <fmt/format.h>
@@ -379,7 +380,7 @@ vector<CRE_Type*> make_builtins(){
         cre_ptr = new CRE_Type("ptr", T_ID_PTR,
                                 sizeof(double), {}, 1);
         cre_str = new CRE_Type("str", T_ID_STR,      
-                                sizeof(std::string_view), {}, 1);
+                                sizeof(StrBlock), {}, 1);
         cre_obj = new CRE_Type("obj", T_ID_OBJ,      
                                 sizeof(double), {}, 1);
         cre_Fact = new CRE_Type("Fact", T_ID_FACT, 

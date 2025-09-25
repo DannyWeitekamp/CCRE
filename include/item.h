@@ -205,9 +205,16 @@ public:
          val(other.val), t_id(other.t_id),
          meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
     {
+        if(other.t_id == T_ID_STR and other.is_value() and other.data != nullptr){
+            char* data_ptr = (char*) malloc(sizeof(char) * ( length+1 ));
+            strcpy(data_ptr, other.data);
+            data = data_ptr;
+        }else{
+            borrow();
+        }
         // Force copies to be strong refs
         // _force_strong();
-        borrow();
+        
     };
 
     Item& operator=(Item&& other) {    
@@ -225,10 +232,19 @@ public:
         return *this;
     };
 
-    Item& operator=(const Item& other) {    
-        other.borrow();
-        release();
-        val = other.val;
+    Item& operator=(const Item& other) {
+        if(other.t_id == T_ID_STR and other.is_value() and other.data != nullptr){
+            char* data_ptr = (char*) malloc(sizeof(char) * ( length+1 ));
+            strcpy(data_ptr, other.data);
+            release();
+            data = data_ptr;
+            // length = other.length;
+        }else{
+            other.borrow();        
+            release();
+            val = other.val;
+        }
+
         t_id = other.t_id;
         meta_data = other.meta_data;
         val_kind = other.val_kind;
@@ -344,6 +360,7 @@ public:
     }
 
 
+    Item(const std::string& arg);
     Item(const std::string_view& arg);
     Item(const char* data, size_t _length=-1);
 
@@ -416,6 +433,11 @@ public:
         return std::string(this->data, this->length);
     }
 
+    template <typename T>
+    requires std::is_same_v<T, std::string_view>
+    std::string_view as(){
+        return std::string_view(this->data, this->length);
+    }
     
 
     inline CRE_Obj* get_ptr() const{

@@ -27,7 +27,10 @@ double add_flt(double a, double b){
 	return a+b;
 }
 
-std::string concat(const std::string_view& a, const std::string_view& b){
+// std::string concat(const std::string_view& a, const std::string_view& b){
+std::string concat(const StrBlock& _a, const StrBlock& _b){
+	std::string_view a = _a.view;
+	std::string_view b = _b.view;
 	std::stringstream ss;
 	ss << a << b;
 	cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
@@ -35,7 +38,9 @@ std::string concat(const std::string_view& a, const std::string_view& b){
 	// return a+b;
 }
 
-std::string paren(const std::string_view& x){
+// std::string paren(const std::string_view& x){
+std::string paren(const StrBlock& _x){
+	std::string_view x = _x.view;
 	std::stringstream ss;
 	ss << "(" << x << ")";
 	return ss.str();
@@ -175,15 +180,24 @@ void test_basic_str(){
 
 	FuncRef concat_f = define_func<concat>("concat");
 	FuncRef paren_f = define_func<paren>("paren");
+
+	Item val;
+	val = concat_f("A","B");
+	cout << "---------" << endl;
+	cout << val << endl;
 	
 	FuncRef cat_paren = concat_f(paren_f(A), paren_f(B));
-	Item val = cat_paren("x","y");
+	val = cat_paren("x","y");
+	cout << "---------" << endl;
+	cout << val << endl;
+
+	FuncRef neg_cat_paren = concat_f("-",paren_f(cat_paren));
+	cout << neg_cat_paren << endl;
+	val = neg_cat_paren("x","y");
 	cout << "---------" << endl;
 	cout << val << endl;
 
 	// IS_TRUE(cat_paren("x","y") == "(x)(y)");
-	
-
 }
 
 void test_compose_derefs(){
@@ -494,7 +508,7 @@ int main(){
 	// return 0;
 
 	// Using the C++17 fold expression approach
-    constexpr auto offsets_cxx17 = AlignedLayout<char, int, double>::offsets;
+    // constexpr auto offsets_cxx17 = AlignedLayout<char, int, double>::offsets;
     // constexpr auto offsets2 = AlignedStructInfo<char, int, double>::offsets;
 
     // cout << offsets2 << endl;
@@ -502,11 +516,11 @@ int main(){
 
 
 
-    cout << "Offsets (C++17):" << endl;
-    for (size_t i=0; i < offsets_cxx17.size(); ++i){
-    	cout << offsets_cxx17[i] << " ";
-    }
-    cout << endl;
+    // cout << "Offsets (C++17):" << endl;
+    // for (size_t i=0; i < offsets_cxx17.size(); ++i){
+    // 	cout << offsets_cxx17[i] << " ";
+    // }
+    // cout << endl;
     // 	std::size_t offset : offsets_cxx17) {
     // std::cout << offsets_cxx17[0] << " " << std::get<0>(offsets2) << endl;
     // std::cout << offsets_cxx17[1] << " " << std::get<1>(offsets2) << endl;
@@ -518,6 +532,7 @@ int main(){
 
 
 	// test_basic_int();
+	// return 0;
 	// test_compose_derefs();
 
 	int64_t out = 0;

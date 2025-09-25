@@ -68,12 +68,15 @@ std::string make_default_template(
 ref<Func> new_func(StackCallFunc stack_call_func,
 				   StackCallFunc2 stack_call_func2,
 				   PtrToItemFunc ptr_to_item_func,
+				   CallRecursiveFunc call_recursive_fc,
 				   size_t n_args, 
 				   OriginData* origin_data,
 				   AllocBuffer* buffer){
 	auto [func_addr, did_malloc] =  alloc_cre_obj(SIZEOF_FUNC(n_args), &Func_dtor, T_ID_FUNC, buffer);
 	// Func* func = alloc_func(n_args);
-	ref<Func> func = new (func_addr) Func(stack_call_func, stack_call_func2, ptr_to_item_func, n_args, origin_data);
+	ref<Func> func = new (func_addr) Func(
+			stack_call_func, stack_call_func2, ptr_to_item_func,
+			 call_recursive_fc, n_args, origin_data);
 	
 	return func;
 }
@@ -142,6 +145,7 @@ FuncRef define_func(
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
 		PtrToItemFunc ptr_to_item_func,
+		CallRecursiveFunc call_recursive_fc,
 		size_t stack_size,
 		const std::vector<uint16_t>& offsets,
 		CRE_Type* ret_type,
@@ -165,7 +169,9 @@ FuncRef define_func(
 		origin_data->shorthand_template = shorthand_template;
 	}
 
-	ref<Func> func = new_func(cfunc_ptr, cfunc_ptr2, ptr_to_item_func, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
+	ref<Func> func = new_func(
+		cfunc_ptr, cfunc_ptr2, ptr_to_item_func,
+		call_recursive_fc, n_args, origin_data);//new Func(origin_data, cfunc_ptr);
 	// func->init_control_block(&Func_dtor);
 	// func->dtor = &Func_dtor;
 
@@ -190,7 +196,7 @@ FuncRef define_func(
 FuncRef Func::copy_shallow(){
 	ref<Func> nf = new_func(
 		stack_call_func, stack_call_func2, ptr_to_item_func,
-		n_root_args, origin_data);
+		call_recursive_fc, n_root_args, origin_data);
 
 	// nf->dtor = &Func_dtor;
 
@@ -1662,13 +1668,15 @@ void Func::call_recursive(void* ret_ptr, void** head_val_ptrs){
 void Func::_call_recursive(void* ret_ptr,
 						   void** head_val_ptrs){
 
-	void** arg_ptrs = (void**) alloca(sizeof(void**)*n_root_args);
 	uint8_t* inter_stack = (uint8_t*) alloca(stack_size); // TODO:
+	void** arg_ptrs = (void**) alloca(sizeof(void**)*n_root_args);
+	// uint8_t* inter_stack = (uint8_t*) alloca(stack_size); // TODO:
 
 	// cout << "SIZEOF OBJ:: " << sizeof(CRE_Obj) << endl;
 	// cout << "SIZEOF STR:: " << sizeof(std::string) << endl;
 	// cout << "SIZEOF STR_VIEW:: " << sizeof(std::string_view) << endl;
 	cout << "R: STACK SIZE: " << stack_size << endl;
+	cout << "R: STACK: " << uint64_t(inter_stack) << endl;
 	// cout << "THIS: " << uint64_t(this) << endl;
 	// cout << "HEAD VAL PTRS 0: " << uint64_t(head_val_ptrs[0]) << endl;
 
@@ -1686,12 +1694,12 @@ void Func::_call_recursive(void* ret_ptr,
 			void* _ret_ptr = (void*) (inter_stack + arg_info.offset); // TODO +??
 			arg_ptrs[i] = _ret_ptr;
 
-			cout << "ADDR B:" << uint64_t(_ret_ptr) << endl;
+			cout << "ADDR B:" << uint64_t(_ret_ptr) << ", " << uint64_t(inter_stack) << endl;
 			func->_call_recursive(_ret_ptr, head_val_ptrs);
 
 
 			cout << "ADDR A:" << uint64_t(_ret_ptr) << endl;
-			cout << "VAL:" << ((std::string_view*) _ret_ptr)->size() << endl;
+			cout << "VAL:" << ((StrBlock*) _ret_ptr)->view << endl;
 
 			// cout << "Func val: " << int64_t(*((int64_t*)_ret_ptr)) << endl << endl;
 			break;
@@ -1733,7 +1741,12 @@ void Func::_call_recursive(void* ret_ptr,
 	}
 
 	cout << "INTO CALL FUNC: " << uint64_t(ret_ptr) << endl;
+	for(size_t i=0; i < n_root_args; ++i){
+		cout << "ARG:" << ((StrBlock*) arg_ptrs[i])->view << endl;
+	}
 	stack_call_func(ret_ptr, arg_ptrs);
+	cout << "RET VAL:" << ((StrBlock*) ret_ptr)->view << endl;
+	// cout << "INTO CALL FUNC: " << uint64_t(ret_ptr) << endl;
 
 	// Cleanup
 	for(size_t i=0; i < n_root_args; ++i){

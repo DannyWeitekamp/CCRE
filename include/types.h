@@ -223,6 +223,7 @@ struct FuncRef;
 struct Literal;
 struct Conditions;
 struct Rule;
+struct StrBlock;
 
 template <typename _T>
 CRE_Type* to_cre_type() {
@@ -237,7 +238,8 @@ CRE_Type* to_cre_type() {
     } else if constexpr (std::is_floating_point_v<T>) {
         return cre_float;
     } else if constexpr (std::is_same_v<std::string, T> ||
-                         std::is_same_v<std::string_view, T>) {
+                         std::is_same_v<std::string_view, T> ||
+                         std::is_same_v<StrBlock, T>) {
         return cre_str;
     } else if constexpr (std::is_same_v<CRE_Obj, T>){
         return cre_obj;

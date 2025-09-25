@@ -70,9 +70,16 @@ struct CREHash {
         return _Py_HashDouble_cre_impl(x);
     }
 
+
+
     uint64_t operator()(const std::string_view& x) const {
         // return fnv1a((const uint8_t*) x.data(), x.size());
         return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
+    }
+
+    uint64_t operator()(const std::string& x) const {
+        // return fnv1a((const uint8_t*) x.data(), x.size());
+        return CREHash{}(std::string_view(x));
     }
 
     // uint64_t operator()(const std::string& x) const {

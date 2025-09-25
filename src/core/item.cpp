@@ -102,10 +102,23 @@ namespace cre {
 //     val(0), hash(0), t_id(0), pad(0){
 // }
 
+Item::Item(const std::string& arg) :
+    data(nullptr), length(arg.length()), t_id(T_ID_STR),
+    // val(0), t_id(T_ID_STR),
+    meta_data(0), val_kind(VALUE) {
+
+    char* data_ptr = (char*) malloc(sizeof(char) * ( arg.length()+1 ));
+    strcpy(data_ptr, arg.c_str());
+    data = data_ptr;
+    cout << "MALLOC: " << data_ptr << endl; 
+    // length = uint32_t(arg.length());
+    // t_id = T_ID_STR;
+};
+
 Item::Item(const std::string_view& arg) :
-    val(0), t_id(T_ID_UNDEF),
-    meta_data(0), val_kind(VALUE), pad(0) 
- {
+    data(arg.data()), length(arg.length()), t_id(T_ID_STR),
+    meta_data(0), val_kind(RAW_PTR) 
+ {};
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
@@ -116,14 +129,14 @@ Item::Item(const std::string_view& arg) :
     // const char* data = intern_str.data();
 
     // UnicodeItem item;
-    data = arg.data();
-    length = uint32_t(arg.length());
+    // data = arg.data();
+    // length = uint32_t(arg.length());
 
-    cout << "CONVERT:" << arg << "DATA: " << uint64_t(data[0]) << endl;
-    // item.hash = intern_str.hash;
-    t_id = T_ID_STR;
-    meta_data = 0; // TODO
-    val_kind = VALUE; 
+    // // cout << "CONVERT:" << arg << "DATA: " << uint64_t(data[0]) << endl;
+    // // item.hash = intern_str.hash;
+    // t_id = T_ID_STR;
+    // meta_data = 0; // TODO
+    // val_kind = VALUE; 
     
     // TODO
     // item.kind = 1; 
@@ -136,13 +149,13 @@ Item::Item(const std::string_view& arg) :
     // Item generic_item = std::bit_cast<Item>(item);
     // cout << "STR_TO_ITEM: " << item.get_t_id() << ", " << generic_item.get_t_id() << endl;
     // return generic_item;
-}
+// }
 
 
 
 Item::Item(const char* data, size_t _length) :
     val(0), t_id(T_ID_UNDEF),
-    meta_data(0), val_kind(VALUE), pad(0) 
+    meta_data(0), val_kind(RAW_PTR), pad(0) 
 {
     // cout << "CHAR str_to_item " << length << endl;
     if(_length == size_t(-1)){
@@ -249,6 +262,10 @@ void Item::release() const {
         }else{
             ((CRE_Obj*) val)->dec_ref();
         }
+    }else if(t_id == T_ID_STR and is_value() and data != nullptr){
+        cout << "-FREE: " << (char*) data << endl;
+        // throw std::runtime_error("HI");
+        free((char*) data);
     }
 }
 
@@ -345,7 +362,7 @@ std::string item_to_string(const Item& item) {
     std::stringstream ss;
         
     bool known_type = true;
-    if(item.is_value()){
+    if(!item.is_ref()){
         switch(t_id) {
 
         case T_ID_UNDEF:
@@ -364,6 +381,7 @@ std::string item_to_string(const Item& item) {
             ss << flt_to_str(item.as_float());
             break;
         case T_ID_STR:
+            cout << "??: " << std::string(item.as_string()) << endl;
             ss << "'" << std::string(item.as_string()) << "'";
             break;
         default:

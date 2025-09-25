@@ -211,12 +211,35 @@ bool copy_convert_arg(void* dest, T& val, CRE_Type* type){
 
 }
 
+struct StrBlock {
+	std::string str;
+	std::string_view view;
+
+	StrBlock() : 
+		str(""), view("") {};
+
+	StrBlock(const char* _str) : 
+		view(_str) {};
+
+	StrBlock(const std::string& _str) : 
+		str(_str), view(str) {};
+
+	StrBlock(const std::string&& _str) : 
+		str(_str), view(str) {};
+
+	StrBlock(const std::string_view& view) : 
+		view(view) {};
+};
+
 
 void Func_dtor(const CRE_Obj* x);
 
+
+struct Func;
 typedef void (*StackCallFunc)(void*, void**);
 typedef void (*StackCallFunc2)(void*, uint8_t*);
 typedef Item (*PtrToItemFunc)(void*);
+typedef void (*CallRecursiveFunc)(Func*, void*, void**);
 
 struct Func : CRE_Obj{
 	static constexpr uint16_t T_ID = T_ID_FUNC;
@@ -262,6 +285,7 @@ struct Func : CRE_Obj{
 	StackCallFunc stack_call_func;
 	StackCallFunc2 stack_call_func2;
 	PtrToItemFunc ptr_to_item_func;
+	CallRecursiveFunc call_recursive_fc;
 
 	// The address for the root CREFunc's 'call_self' implementation.
   // Calls call_heads on any values stored in 'h{i}' (i.e. 'head') slots.
@@ -294,6 +318,7 @@ struct Func : CRE_Obj{
   Func(StackCallFunc _stack_call_func,
   		 StackCallFunc2 _stack_call_func2,
   		 PtrToItemFunc _ptr_to_item_func,
+  		 CallRecursiveFunc _call_recursive_fc,
   	 size_t n_args,
   	 OriginData* _origin_data) :
 
@@ -302,7 +327,8 @@ struct Func : CRE_Obj{
   	origin_data(_origin_data),
   	stack_call_func(_stack_call_func),
   	stack_call_func2(_stack_call_func2),
-  	ptr_to_item_func(_ptr_to_item_func)
+  	ptr_to_item_func(_ptr_to_item_func),
+  	call_recursive_fc(_call_recursive_fc)
   {
   	Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
@@ -446,10 +472,10 @@ Item Func::call(Ts&& ... args){
 	uint8_t* stack = (uint8_t*) alloca(outer_stack_size);
 	uint8_t* arg_head = stack;
 
-	cout << "STR SIZE: " << sizeof(std::string) << endl;
-	cout << "STACK SIZE: " << stack_size << endl;
-	cout << "OUTER STACK SIZE: " << outer_stack_size << endl;
-	cout << "RT B: " << return_type->byte_width << endl;
+	// cout << "STR SIZE: " << sizeof(std::string) << endl;
+	// cout << "STACK SIZE: " << stack_size << endl;
+	// cout << "OUTER STACK SIZE: " << outer_stack_size << endl;
+	// cout << "RT B: " << return_type->byte_width << endl;
 	// cout << "STACK: " << uint64_t(stack) << endl;
 	// cout << "HEAD VAL PTRS SIZE: " << sizeof(void**)*head_infos.size() << endl;
 	// cout << "HEAD VAL ADDR: " << uint64_t(head_val_ptrs) << endl;
@@ -457,9 +483,11 @@ Item Func::call(Ts&& ... args){
 
 
 	int64_t ret = 0;
+	// void* ret_ptr = (void*) alloca(return_type->byte_width);
 	void* ret_ptr = (void*) (stack+outer_stack_size-return_type->byte_width);
+	// void* ret_ptr = (void*) (stack+outer_stack_size-return_type->byte_width);
 
-	cout << "ret_ptr: " << uint64_t(ret_ptr) << endl;
+	// cout << "ret_ptr: " << uint64_t(ret_ptr) << endl;
 
 	if(sizeof...(args) != n_args){
   	throw_bad_n_args(sizeof...(args));
@@ -499,10 +527,11 @@ Item Func::call(Ts&& ... args){
 
 	// cout << "HEAD VAL PTRS 0: " << uint64_t(head_val_ptrs[0]) << endl;
  
-  call_recursive(ret_ptr, head_val_ptrs);
+  // call_recursive(ret_ptr, head_val_ptrs);
+  call_recursive_fc(this, ret_ptr, head_val_ptrs);
 
-  cout << "CALL END VAL: " << *((std::string_view*) ret_ptr) << endl;
-  cout << "CALL END LEN: " << ((std::string_view*) ret_ptr)->size() << endl;
+  // cout << "CALL END VAL: " << *((std::string_view*) ret_ptr) << endl;
+  // cout << "CALL END LEN: " << ((std::string_view*) ret_ptr)->size() << endl;
 
   // TODO: This needs to be dynamic
   return ptr_to_item_func(ret_ptr);
@@ -547,7 +576,7 @@ inline bool _copy_convert_from_str(void* dest, const T& val, CRE_Type* type){
 		case T_ID_STR:
   	{
   		// std::string_view* s = std::string_view(data, length);
-  		new (dest) std::string_view(val); // Construct string_view in buffer
+  		new (dest) StrBlock(val); // Construct string_view in buffer
   		break;
   	}
   	case T_ID_INT:
@@ -760,14 +789,17 @@ struct StackCallWrapper final
 			// Use placement new to initialize return value to make 
 		  //  valgrind happy, since it should be uninitialized memory.
 			if constexpr (std::is_same_v<RT, std::string>){
-				void* temp_addr = (void*) alloca(sizeof(std::string));
+				// void* temp_addr = (void*) alloca(sizeof(std::string));
 				// std::string* temp_str = new (temp_addr) RT(Func(read_arg<Args, I>(args)...));
-				new (ret) std::string_view(
-					*(new (temp_addr) RT(Func(read_arg<Args, I>(args)...)))
-				); 	
-				cout << "ITER: " << *(std::string_view*) ret 
+
+				new (ret) StrBlock(RT(Func(read_arg<Args, I>(args)...)));
+
+				// new (ret) std::string_view(
+				// 	*(new (temp_addr) RT(Func(read_arg<Args, I>(args)...)))
+				// ); 	
+				cout << "ITER: " << (*(StrBlock*) ret).view 
 					   << " @ " << uint64_t(ret)
-					   << " L=" << ((std::string_view*) ret)->size()  << endl;
+					   << " L=" << ((StrBlock*) ret)->view.size()  << endl;
 			}else{
 				new (ret) RT(Func(read_arg<Args, I>(args)...)); 	
 			}
@@ -787,9 +819,110 @@ struct StackCallWrapper final
   }
 };
 
-template<auto Func>
+template<auto F>
 void stack_call(void* ret, void** args){
-	StackCallWrapper<Func>{}(ret, args);
+	StackCallWrapper<F>{}(ret, args);
+}
+
+
+template<auto F>
+struct RecursiveCallWrapper final
+{
+	template <typename RT, typename... Args, std::size_t... I>
+	inline void variatic_call_w_indicies(RT (* )(Args...),
+	 	Func* self, void* ret, void** head_val_ptrs,
+	 	std::index_sequence<I...>) const {
+		
+	// Stack initialize N argument pointers, and a tuple to write in 
+	//  intermediate values, if any function returns or copies are necessary   
+		void* arg_ptrs[sizeof...(Args)];
+		std::tuple<std::remove_cvref_t<Args>...> temp;  // Remove refs from tuple
+		// cout << "SIZEOF TEMP: "<< sizeof(std::tuple<std::remove_cvref_t<Args>...>) << endl;
+
+	// Lambda apply the switch case over the known argument types for type specialization
+	//   and to avoid overhead of looping. 
+		([&] {	
+	    	auto& arg_info = self->root_arg_infos[I];
+			switch(arg_info.kind){
+			case ARGINFO_FUNC:
+			{
+			// For a Func argument recurse into it.
+				Func* func = self->get(I)->as_func();
+				func->call_recursive_fc(func, &std::get<I>(temp), head_val_ptrs);
+				arg_ptrs[I] = &std::get<I>(temp);
+				break;
+			}
+			case ARGINFO_CONST:
+			{
+			// For constant arguments just point to the value of the relevant Item member 
+				using DecayArg = std::remove_cvref_t<Args>;
+				Item* const_val = self->get(I);
+				if constexpr (std::is_same_v<DecayArg, StrBlock> ||
+				 			  std::is_same_v<DecayArg, std::string_view> ||
+				 			  std::is_same_v<DecayArg, std::string>){
+
+				// For strings we need to copy into a StrBlock as a string_view.
+					std::get<I>(temp) = StrBlock(const_val->as<std::string_view>());
+					arg_ptrs[I] = &std::get<I>(temp);	
+				}else{
+					arg_ptrs[I] = (void*) &(const_val->val);
+				}
+				break;
+			}
+			case ARGINFO_VAR:
+			{
+			// For Var arguments we draw from the head_val_ptrs provided by the outer call,
+			//   which points to values found by de-referencing variables (i.e. A.next.next.value). 
+				arg_ptrs[I] = head_val_ptrs[arg_info.head_ind];
+				break;
+			}
+			default:
+				throw std::runtime_error("Unrecognized arg_info.kind="+std::to_string(arg_info.kind));
+			}
+			// cout << "-Arg " << I << ":" << ((StrBlock*) arg_ptrs[I])->view << " @ " << uint64_t(arg_ptrs[I]) << endl;
+        // ++i;        
+    	} (), ...);
+
+    	// ([&] {	
+		// 	cout << " Arg " << I << ":" << ((StrBlock*) arg_ptrs[I])->view << " @ " << uint64_t(arg_ptrs[I]) << endl;
+    	// } (), ...);
+
+    	// for(size_t i=0; i < self->n_root_args; ++i){
+		// 	cout << std::get<i>()
+		// }
+
+		// Call the Func at this level and insert the result into the return pointer. 
+		if constexpr (std::is_same_v<RT, std::string>){
+			// new (ret) StrBlock(std::move(F(read_arg<Args, I>(arg_ptrs)...)));
+			new (ret) StrBlock(std::move(F(*(StrBlock*) arg_ptrs[I]...)));
+			// cout << "Ret " << ":" << ((StrBlock*) ret)->view << " @ " << uint64_t(ret) << endl;
+		}else{
+			// new (ret) RT(F(read_arg<Args, I>(arg_ptrs)...)); 	
+			new (ret) RT(F( *((Args*) arg_ptrs[I]) ...)); 	
+		}
+
+		// ([&] {	
+		// 	cout << "+Arg " << I << ":" << ((StrBlock*) arg_ptrs[I])->view << " @ " << uint64_t(arg_ptrs[I]) << endl;
+    	// } (), ...);
+	}	
+
+	template <typename RT, typename... Args>
+	inline void variatic_call(RT (* )(Args...),
+	 	Func* self, void* ret, void** head_val_ptrs) const {
+
+	    variatic_call_w_indicies(F, self, ret, head_val_ptrs, std::index_sequence_for<Args...>{});
+	}	
+    
+  void operator()(Func* self, void* ret, void** head_val_ptrs) const
+  {
+      return variatic_call(F, self, ret, head_val_ptrs);
+  }
+};
+
+
+template<auto F>
+void call_recursive_fc(Func* self, void* ret_ptr, void** head_val_ptrs){
+	RecursiveCallWrapper<F>{}(self, ret_ptr, head_val_ptrs);
 }
 
 
@@ -812,6 +945,18 @@ void stack_call(void* ret, void** args){
 #include <cstddef>
 #include <array>
 // #include <vector> // If dynamic array is acceptable
+
+// template <typename... Ts>
+// struct RegType{
+
+// 	static constexpr 
+// 	if constexpr(std::is_same_v<Ts, std::string> || std::is_same_v<Ts, std::string_view>){
+// 		using ArgTy = StrBlock;
+// 	}else{
+// 		using ArgTy = Ts;
+// 	}
+// };
+
 
 template <typename... Ts>
 struct AlignedLayout {
@@ -851,7 +996,7 @@ struct AlignedLayout {
 
 
 
-template<auto Func>
+template<auto F>
 struct StackCallWrapper2 final
 {
 	template <typename RT, typename... Args, size_t... I>
@@ -873,14 +1018,14 @@ struct StackCallWrapper2 final
 		// }(), ...);
 
 
-	  *((RT*) ret) = Func( *( (std::remove_cvref_t<Args>*) &args[offsets[I]]) ...);
+	  *((RT*) ret) = F( *( (std::remove_cvref_t<Args>*) &args[offsets[I]]) ...);
 	}	
 
 	template <typename RT, typename... Args>
 	constexpr void variatic_call(RT (* )(Args...),
 	 	void* ret, uint8_t* args) const {
 
-	    variatic_call_w_offsets(Func, ret, args, 
+	    variatic_call_w_offsets(F, ret, args, 
 	    		std::index_sequence_for<Args...>{},
 	    		AlignedLayout<Args...>::offsets
 	    );
@@ -888,13 +1033,13 @@ struct StackCallWrapper2 final
     
   void operator()(void* ret, uint8_t* args) const
   {
-      return variatic_call(Func, ret, args);
+      return variatic_call(F, ret, args);
   }
 };
 
-template<auto Func>
+template<auto F>
 void stack_call2(void* ret, uint8_t* args){
-	StackCallWrapper2<Func>{}(ret, args);
+	StackCallWrapper2<F>{}(ret, args);
 }
 
 
@@ -923,28 +1068,28 @@ inline Arg read_arg_generic(Item* args) {
 // }
 
 
-template<auto Func>
+template<auto F>
 struct StackCallFuncGeneric final
 {
 	template <typename RT, typename... Args, std::size_t... I>
 	inline Item variatic_call_w_indicies(RT (* )(Args...),
 	 	Item* args, std::index_sequence<I...>) const {
-	    return Item(Func(read_arg_generic<Args, I>(args)...));
+	    return Item(F(read_arg_generic<Args, I>(args)...));
 	}	
 
 	template <typename RT, typename... Args>
 	inline Item variatic_call(RT (* )(Args...), Item* args) const {
-	    return variatic_call_w_indicies(Func, args, std::index_sequence_for<Args...>{});
+	    return variatic_call_w_indicies(F, args, std::index_sequence_for<Args...>{});
 	}	
     
   Item operator()(Item* args) const {
-      return variatic_call(Func, args);
+      return variatic_call(F, args);
   }
 };
 
-template<auto Func>
+template<auto F>
 Item stack_call_generic(Item* args){
-	return StackCallFuncGeneric<Func>{}(args);
+	return StackCallFuncGeneric<F>{}(args);
 }
 
 // ------------------------------------------------------
@@ -955,6 +1100,7 @@ ref<Func> new_func(
 	StackCallFunc stack_call_func,
 	StackCallFunc2 stack_call_func2,
 	PtrToItemFunc ptr_to_item_func,
+	CallRecursiveFunc call_recursive_fc,
 	size_t n_args, OriginData* origin_data, AllocBuffer* buffer=nullptr
 );
 
@@ -963,6 +1109,7 @@ FuncRef define_func(
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
 		PtrToItemFunc ptr_to_item_func,
+		CallRecursiveFunc call_recursive_fc,
 		size_t stack_size,
 		const std::vector<uint16_t>& offsets,
 		CRE_Type* ret_type,
@@ -1009,7 +1156,7 @@ struct FuncToCRETypes<RT(*)(Args...)> {
 template <typename T>
 inline Item _ptr_to_item(void* ret){
 	if constexpr(std::is_same_v<T, std::string>){
-		return Item(std::string(*((std::string_view*) ret)));
+		return Item( std::string(((StrBlock*) ret)->view) );
 	}else{
 		return Item(*((T*) ret));		
 	}
@@ -1021,8 +1168,8 @@ struct PtrToItem;
 template <typename RT, typename... Args>
 struct PtrToItem<RT(*)(Args...)> {
     static Item as_item(void* ret){
-			return _ptr_to_item<RT>(ret);
-		}
+		return _ptr_to_item<RT>(ret);
+	}
 };
 
 template<typename T>
@@ -1036,37 +1183,45 @@ Item ptr_to_item(void* ret){
 } 
 
 
-template <auto Func>
+template <auto F>
 FuncRef define_func(
 		const std::string_view& name, 
 		const std::string_view& expr_template = "",
 		const std::string_view& shorthand_template = ""){
 
   auto stack_call_lambda = [](void* ret, void** args) {
-      stack_call<Func>(ret, args);
+      stack_call<F>(ret, args);
   };
 
   auto stack_call_lambda2 = [](void* ret, uint8_t* args) {
-      stack_call2<Func>(ret, args);
+      stack_call2<F>(ret, args);
   };
 
   auto ptr_to_item_func_lambda = [](void* ret) {
-      return PtrToItem<decltype(Func)>::as_item(ret);
+      return PtrToItem<decltype(F)>::as_item(ret);
   };
+
+  auto call_recursive_fc_lambda = [](Func* self, void* ret_ptr, void** head_val_ptrs) {
+      // call_recursive_fc<decltype(F)>(self, ret, args);
+      RecursiveCallWrapper<F>{}(self, ret_ptr, head_val_ptrs);
+  };
+
 
 	// void (*cfunc_ptr)(void* ret, void** args) = stack_call_lambda;
 	StackCallFunc stack_call_func = stack_call_lambda;
 	StackCallFunc2 stack_call_func2 = stack_call_lambda2;
 	PtrToItemFunc ptr_to_item_func = ptr_to_item_func_lambda;
+	CallRecursiveFunc call_recursive_func = call_recursive_fc_lambda;
 	auto [ret_type, arg_types, stack_size, offsets] =
-	 			FuncToCRETypes<decltype(Func)>::get();
+	 			FuncToCRETypes<decltype(F)>::get();
 
 	// cout << offsets << endl;
 
 
 
 	return define_func(name, 
-		stack_call_func, stack_call_func2, ptr_to_item_func, stack_size, offsets, ret_type, arg_types, expr_template, shorthand_template);
+		stack_call_func, stack_call_func2, ptr_to_item_func, call_recursive_func,
+		 stack_size, offsets, ret_type, arg_types, expr_template, shorthand_template);
 }
 
 
