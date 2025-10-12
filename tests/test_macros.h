@@ -9,7 +9,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::microseconds;
 // If parameter is not true, test fails
 // This check function would be provided by the test framework
-#define IS_TRUE(x) { if (!(x)) cout << __FUNCTION__ << " failed on line " << __LINE__ << endl; }
+#define IS_TRUE(x) { if (!((x))) cout << __FUNCTION__ << " failed on line " << __LINE__ << endl; }
 
 
 #define time_it(descr, a) \

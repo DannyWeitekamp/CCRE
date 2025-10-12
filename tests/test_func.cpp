@@ -19,6 +19,10 @@ using namespace cre;
 // 	}
 // };
 
+bool bin_and(bool a, bool b){
+	return a & b;
+}
+
 int64_t add(int64_t a, int64_t b){
 	return a+b;
 }
@@ -33,7 +37,7 @@ std::string concat(const StrBlock& _a, const StrBlock& _b){
 	std::string_view b = _b.view;
 	std::stringstream ss;
 	ss << a << b;
-	cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
+	// cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
 	return ss.str();
 	// return a+b;
 }
@@ -45,6 +49,10 @@ std::string paren(const StrBlock& _x){
 	ss << "(" << x << ")";
 	return ss.str();
 	// return a+b;
+}
+
+double add_money(Fact* a, Fact* b){
+	return a->get("money").as<double>()+b->get("money").as<double>();
 }
 
 
@@ -182,20 +190,24 @@ void test_basic_str(){
 	FuncRef paren_f = define_func<paren>("paren");
 
 	Item val;
-	val = concat_f("A","B");
-	cout << "---------" << endl;
-	cout << val << endl;
+	// val = concat_f("A","B");
+	IS_TRUE(concat_f("A","B").as<std::string>() == "AB");
+	// cout << "---------" << endl;
+	// cout << val << endl;
 	
 	FuncRef cat_paren = concat_f(paren_f(A), paren_f(B));
-	val = cat_paren("x","y");
-	cout << "---------" << endl;
-	cout << val << endl;
+	IS_TRUE(cat_paren("x","y").as<std::string>() == "(x)(y)");
+	// cout << "cat_paren: " << cat_paren << endl;
+	// val = cat_paren("x","y");
+	// cout << "---------" << endl;
+	// cout << val << endl;
 
 	FuncRef neg_cat_paren = concat_f("-",paren_f(cat_paren));
-	cout << neg_cat_paren << endl;
-	val = neg_cat_paren("x","y");
-	cout << "---------" << endl;
-	cout << val << endl;
+	IS_TRUE(neg_cat_paren("x","y").as<std::string>() == "-((x)(y))");
+	// cout << neg_cat_paren << endl;
+	// val = neg_cat_paren("x","y");
+	// cout << "---------" << endl;
+	// cout << val << endl;
 
 	// IS_TRUE(cat_paren("x","y") == "(x)(y)");
 }
@@ -216,15 +228,17 @@ void test_compose_derefs(){
 	ref<Fact> olpops = make_fact(Person, "Ol'Pops", 3.50);
 	ref<Fact> pops = make_fact(Person, "Pops", 100.0, nullptr, olpops, nullptr);
 	ref<Fact> ma = make_fact(Person, "Ma", 0.0, pops);
-	ref<Fact> ricky = make_fact(Person, "Ricky", 7.11);
-	ref<Fact> thedude = make_fact(Person, "TheDude", 23131.73, ricky, pops, ma);
+	ref<Fact> rickys_dad = make_fact(Person, "Ricky's Dad", 70.0);
+	ref<Fact> ricky = make_fact(Person, "Ricky", 7.11, nullptr, rickys_dad);
+	ref<Fact> thedude = make_fact(Person, "TheDude", 23131.73, ma, pops, ricky);
 
-
-	cout << "Ol'Pops: " << olpops << endl;
-	cout << "Pops: " << pops << endl;
-	cout << "Ma: " << ma << endl;
-	cout << "Ricky: " << ricky << endl;
-	cout << "TheDude: " << thedude << endl;
+	cout << "Ol'Pops: " << olpops << uint64_t(olpops.get()) << endl;
+	cout << "Pops: " << pops << uint64_t(pops.get()) << endl;
+	cout << "Ma: " << ma << uint64_t(ma.get()) << endl;
+	cout << "Ricky: " << ricky << uint64_t(ricky.get()) <<  endl;
+	cout << "TheDude: " << thedude << uint64_t(thedude.get()) <<  endl;
+	cout << endl;
+	cout << "Pop's Dad: " << pops->get(3) << endl;
 
 	ref<Var> A = new_var("A", Person);
 	ref<Var> B = new_var("B", Person);
@@ -232,12 +246,101 @@ void test_compose_derefs(){
 	ref<Var> Ad = A->extend_attr("dad");
 	ref<Var> Bd = B->extend_attr("dad");
 
+	cout << "----------------" << endl;
+
 	FuncRef dadd_m = add_f(Ad->extend_attr("money"), Bd->extend_attr("money"));
-	cout << dadd_m;
+	cout << dadd_m << endl;
+
+	// cout << "-------V--------" << endl;
+	EXPECT_THROW(dadd_m(pops, olpops));
+
+	// cout << "-------V--------" << endl;
+	IS_TRUE(dadd_m(pops, pops) == 7.0);
 
 	cout << "--------------" << endl;
 	FuncRef bdadd_m = dadd_m(A->extend_attr("best_bud"), B->extend_attr("best_bud"));
-	cout << bdadd_m;
+	cout << bdadd_m << endl;
+
+	IS_TRUE(bdadd_m(thedude, thedude) == 140.0);
+}
+
+
+void test_type_check_and_casting(){
+	FactType* Person = define_fact("Person", 
+	    {{"id", cre_str, {{"unique_id", true}}},
+	     {"money", cre_float},
+	     {"mom", new DefferedType("Person")},
+	     {"dad", new DefferedType("Person")},
+	     {"best_bud", new DefferedType("Person")}
+	 	}
+	);
+
+	FuncRef and_f = define_func<bin_and>("and");
+	FuncRef add_f = define_func<add>("add");
+	FuncRef add_flt_f = define_func<add_flt>("add_flt");
+	FuncRef concat_f = define_func<concat>("concat");
+	FuncRef paren_f = define_func<paren>("paren");
+	FuncRef add_money_f = define_func<add_money>("add_money");
+
+	ref<Fact> olpops = make_fact(Person, "Ol'Pops", 3.50);
+	ref<Fact> pops = make_fact(Person, "Pops", 100.0, nullptr, olpops, nullptr);
+
+	// Always throw an Error on Undefined 
+	EXPECT_THROW(and_f(Item(), Item()));
+	EXPECT_THROW(add_f(Item(), Item()));
+	EXPECT_THROW(add_flt_f(Item(), Item()));
+	EXPECT_THROW(concat_f(Item(), Item()));
+	EXPECT_THROW(paren_f(Item(), Item()));
+	EXPECT_THROW(add_money_f(Item(), Item()));
+
+	// And Bools
+	EXPECT_THROW(and_f(olpops, pops));
+	EXPECT_THROW(and_f("a", "b"));
+	EXPECT_THROW(and_f("a", 1));
+	IS_TRUE(and_f(1.0, 1.0) == true);
+	IS_TRUE(and_f(true, 3) == true);
+	IS_TRUE(and_f(true, false) == false);
+
+	// Add bools as Items
+	EXPECT_THROW(and_f(Item(olpops), Item(pops)));
+	EXPECT_THROW(and_f(Item("a"), Item("b")));
+	EXPECT_THROW(and_f(Item("a"), Item(1)));
+	IS_TRUE(and_f(Item(1.0), Item(0.0)) == false);
+	IS_TRUE(and_f(Item(true), Item(3)) == true);
+	IS_TRUE(and_f(Item(true), Item(false)) == false);
+
+	// Add integers
+	EXPECT_THROW(add_f(olpops, pops));
+	EXPECT_THROW(add_f("a", "b"));
+	EXPECT_THROW(add_f("a", 1));
+	IS_TRUE(add_f(1.0, 1.0) == 2);
+	IS_TRUE(add_f(true, 3) == 4);
+
+	// Add integers as Items
+	EXPECT_THROW(add_f(Item(olpops), Item(pops)));
+	EXPECT_THROW(add_f(Item("a"), Item("b")));
+	EXPECT_THROW(add_f(Item("a"), Item(1)));
+	IS_TRUE(add_f(Item(1.0), Item(1.0)) == 2);
+	IS_TRUE(add_f(Item(true), Item(3)) == 4);
+
+	// Add floats
+	EXPECT_THROW(add_flt_f(olpops, pops));
+	EXPECT_THROW(add_flt_f("a", "b"));
+	EXPECT_THROW(add_flt_f("a", 1.7));
+	IS_TRUE(add_flt_f(1.8, 1) == 2.8);
+	IS_TRUE(add_flt_f(true, 3.7) == 4.7);
+
+	// Add floats as Items
+	EXPECT_THROW(add_flt_f(Item(olpops), Item(pops)));
+	EXPECT_THROW(add_flt_f(Item("a"), Item("b")));
+	EXPECT_THROW(add_flt_f(Item("a"), Item(1)));
+	IS_TRUE(add_flt_f(Item(1.8), Item(1)) == 2.8);
+	IS_TRUE(add_flt_f(Item(true), Item(3.7)) == 4.7);
+
+
+	cout << add_money_f(olpops, pops) << endl;
+
+
 }
 
 
@@ -501,8 +604,10 @@ int main(){
 	// FuncRef concat_f = define_func<concat>("concat");
 	// call(concat_f, "A","B");
 	// cout << "CONCAT:" << concat_f("A","B") << endl;
-
-	test_basic_str();
+	// test_basic_int();
+	// test_basic_str();
+	// test_compose_derefs();
+	test_type_check_and_casting();
 	return 0;
 
 	// return 0;
@@ -531,9 +636,9 @@ int main(){
     // std::cout << "Max alignment (C++17): " << AlignedLayout<char, int, double>::max_align << std::endl;
 
 
-	// test_basic_int();
+
 	// return 0;
-	// test_compose_derefs();
+	
 
 	int64_t out = 0;
 

@@ -98,7 +98,7 @@ public:
 
 
     
-    if(member.is_sref() || member.is_raw_ptr()){
+    if(member.is_sref() || (member.is_raw_ptr() && member.get_t_id() > T_ID_STR)){
       // cout << "MEMBER: " << member.to_string() << endl; //<< "  VAL: " << val << endl; 
       // cout << "MM: R: " << member.get_refcount() << " W:" << member.get_wrefcount() << "VK: " << member.is_wref() << endl;
       // cout << "BEFORE" << endl;

@@ -310,11 +310,22 @@ Member* deref_once(CRE_Obj* obj, const DerefInfo& inf){
 }
 
 Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length){
-	Member* mbr_ptr = nullptr;
-	for(int i=0; i < length; i++){
+	// cout << "Length: " << length << endl;
+	// cout << "OBJ PTR: " << uint64_t(obj) << endl;
+	// cout << "OBJ 0 " << ((Fact*) obj)->get("id") << endl;
+	// cout << "REF COUNT: " << obj->get_refcount() << endl;
+	if(obj == nullptr) return nullptr;
+
+	Member* mbr_ptr = deref_once(obj, deref_infos[0]);
+	for(int i=1; i < length; i++){
+		obj = mbr_ptr->get_ptr();
+		
+		if(obj == nullptr) return nullptr;
+		// cout << "OBJ PTR: " << uint64_t(obj) << endl;
+		// cout << "REF COUNT: " << obj->get_refcount() << endl;
+		// cout << "OBJ " << i << " " << ((Fact*) obj)->get("id") << endl;
 		mbr_ptr = deref_once(obj, deref_infos[i]);
-		if(mbr_ptr == nullptr) break;
-		obj = (CRE_Obj*) mbr_ptr->val;
+		
 	}
 	return mbr_ptr;
 }

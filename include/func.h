@@ -183,29 +183,136 @@ std::string get_type_name() {
     #endif
 }
 
+template <typename T>
+inline void* _copy_convert_from_str(void* dest, const T& val, CRE_Type* type){
+	switch(type->t_id) {
+		case T_ID_STR:
+  	{
+  		// std::string_view* s = std::string_view(data, length);
+  		new (dest) StrBlock(val); // Construct string_view in buffer
+  		break;
+  	}
+  	// case T_ID_INT:
+  	// 	*((int64_t*) dest) = int64_t(std::stoi(val));
+  	// 	break;
+  	// case T_ID_FLOAT:
+  	// 	*((double *) dest) = double(std::stof(val));
+  	// 	break;
+    	
+  	default:
+  	{
+  		// Type error: No conversion from string to target type
+  		return nullptr;
+  	}
+  }
+  // cout << "END" << endl;
+  return dest;
+}
 
 template <typename T>
-bool copy_convert_arg(void* dest, T& val, CRE_Type* type){
+inline void* _copy_convert_from_numerical(void* dest, T&& val, CRE_Type* type){
+	// cout << "BEFORE DEST: " << uint64_t(dest) << endl;
+	// cout << "TYPE TID: " << uint64_t(type->t_id) << endl;
+	switch(type->t_id) {
+		case T_ID_BOOL:
+			new (dest) bool(val);
+			break;
+    	case T_ID_INT:
+    		new (dest) int64_t(val);
+    		break;
+    	case T_ID_FLOAT:
+    		new (dest) double(val);
+    		break;
+    	case T_ID_STR:
+    	{
+    		std::string* s = (std::string*) new(dest) std::string(""); // Construct string in buffer
+    		*s = std::to_string(val);
+    		break;
+    	}
+    	default:
+    	{
+    		// Type error: No conversion from numerical to target type
+    		return nullptr; 
+    	}
+  }
+  return dest;
+}
+
+inline bool _check_pointer_is_of_type(void* ptr, CRE_Type* type){
+	if(type->t_id == T_ID_PTR){
+		return true;
+	}else if(type->t_id >= T_ID_OBJ){
+		CRE_Obj* obj = (CRE_Obj*) ptr;
+		if(type->t_id > T_ID_OBJ && type->t_id != obj->get_t_id()){
+			// Type error: t_id mismatch 
+			return false; 
+		}
+		if(type->t_id == T_ID_FACT){
+			// TODO: Check for inheritance 
+		}
+	}else{
+		// Type error: Target type T_ID is not pointer type 
+		return false; 
+	}
+	return true;
+}
+
+template <typename T>
+void* copy_convert_arg(void* dest, T& val, CRE_Type* type){
 	using Tb = std::remove_cv_t<T>;
 
-	// if constexpr(std::is_same_v<Tb, std::string>){
-	if constexpr(std::is_convertible_v<const T&, std::string_view>){
-		return _copy_convert_from_str(dest, val, type);
-	// }else if constexpr(std::is_same_v<Tb, std::string>){
-	// 	return _copy_convert_from_str(dest, val.data(), val.size(), type);
-	// }else if constexpr(is_c_str<Tb>::value){
-		// return _copy_convert_from_str(dest, val, std:strlen(val), type);
+	// Reference Types 
+	if constexpr(std::is_pointer_v<Tb>){
+		if(!_check_pointer_is_of_type(val, type)) return nullptr;
+		new (dest) Tb(val);
+		return dest;
+	}else if constexpr(is_ref_v<Tb>){
+		if(!_check_pointer_is_of_type(val, type)) return nullptr;
+
+		new (dest) Tb::type*(val.get());
+		// return _copy_convert_from_ptr(dest, Tb::type*(val.get()), type);
+		return dest;
+
+	// Untyped Item 
+	}else if constexpr(std::is_same_v<Tb, Item>){
+		const Item& val_item = val;
+		switch(val.get_t_id()) {
+		case T_ID_BOOL:
+			return _copy_convert_from_numerical(dest, val_item.as<bool>(), type);
+		case T_ID_INT:
+			return _copy_convert_from_numerical(dest, val_item.as<int64_t>(), type);
+		case T_ID_FLOAT:
+			return _copy_convert_from_numerical(dest, val_item.as<double>(), type);
+		case T_ID_STR:
+			return _copy_convert_from_str(dest, val_item.as<std::string_view>(), type);
+		default:
+			if(val.is_ptr()){
+				if(!_check_pointer_is_of_type(val_item.get_ptr(), type)) return nullptr;
+				return val_item.get_ptr();	
+			}else{
+				return nullptr;
+			}
+		}
+
+	// Numerical Types
 	}else if constexpr(std::is_arithmetic_v<Tb>){
 		return _copy_convert_from_numerical(dest, std::move(val), type);
+
+	// String Types
+	}else if constexpr(std::is_convertible_v<const T&, std::string_view>){
+		return _copy_convert_from_str(dest, val, type);
 	}else{
 		// static_assert(0, );
-		std::stringstream ss;
-		ss << "Not Implemented for type: ";
-		ss << get_type_name<Tb>() << ".";
+		// std::stringstream ss;
+		// ss << "Not Implemented for type: ";
+		// ss << get_type_name<Tb>() << ".";
 		// ss << get_type_name<T>() << ", ";
 		// ss << ", " << std::is_arithmetic_v<Tb> << " " << std::is_arithmetic_v<T> << " " << std::is_arithmetic_v<int64_t> << endl;
 		// std::is_arithmetic_v<Tb>
-		throw std::runtime_error(ss.str());
+		// throw std::runtime_error(ss.str());
+
+		// Type Error: Template Type Not Implemented
+		return nullptr; 
 	}
 	// cout << "END_-" << endl;
 
@@ -230,6 +337,28 @@ struct StrBlock {
 	StrBlock(const std::string_view& view) : 
 		view(view) {};
 };
+
+
+// SFINAE-based trait to check for operator<<
+template <typename T, typename = void>
+struct has_ostream_operator_impl : std::false_type {};
+
+template <typename T>
+struct has_ostream_operator_impl<T,
+    std::void_t<decltype(std::declval<std::ostream&>() << std::declval<const T&>())>>
+    : std::true_type {};
+
+template <typename T>
+constexpr bool has_ostream_operator_v = has_ostream_operator_impl<T>::value;
+
+template <typename T>
+constexpr auto _throw_type_name_helper() {
+    if constexpr(std::is_same_v<T, Item>){
+		return "cre::Item";
+	}else{
+		return typeid(T).name();
+	}
+}
 
 
 void Func_dtor(const CRE_Obj* x);
@@ -408,12 +537,32 @@ struct Func : CRE_Obj{
 		throw std::runtime_error(ss.str());
 	}
 
+
 	template<typename T>
-	inline void throw_bad_arg(int i, CRE_Type* type){
+	inline void throw_bad_arg(int i, T&& arg, CRE_Type* type){
+		using DecayT = std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>;
+
 		std::stringstream ss;
-		ss << "Func Argument Error: No Conversion of Type:" << typeid(T).name() <<
-		 			" to argument type: " << type << "for argument i=" << i << 
-		 			" in Func: " << this << endl;
+		ss << "Bad cre::Func Argument. No Conversion of " ;
+		
+		if constexpr(has_ostream_operator_v<T>){
+			ss << "\033[1;31m" <<  arg <<"\033[0m " ;
+		}
+
+		if constexpr(std::is_base_of_v<CRE_Obj, DecayT>){
+			CRE_Type* inp_type = arg->get_type();			
+			if(inp_type->t_id == T_ID_FACT){
+				CRE_Type* f_type = arg->get_type();
+				ss << "with type \033[1m" << f_type << "\033[0m ";
+			}else{
+				ss << "with type \033[1m" << inp_type << "\033[0m ";	
+			}
+		}else{ 
+			ss << "with type " << "\033[1m" << _throw_type_name_helper<DecayT>() << "\033[0m ";
+		}
+		ss << "to type \033[1m" << type <<"\033[0m " <<
+			  "for parameter " << i << " " <<  			
+ 			  "in cre::Func: " << this << endl;
 		throw std::runtime_error(ss.str());
 	}
 
@@ -466,6 +615,35 @@ FuncRef Func::compose(Ts && ... args){
   return cf;
 }
 
+template <typename T>
+void* resolve_heads(void* dest, T&& input, const HeadInfo& hi){
+	using DecayT = std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>;
+
+	void* head_val_ptr = nullptr;
+	if(!hi.has_deref){
+		head_val_ptr = copy_convert_arg((void*) dest, input, hi.base_type);
+	}else{
+	if constexpr(std::is_base_of_v<CRE_Obj, DecayT>){
+		CRE_Obj* obj_ptr = nullptr;
+		if constexpr(is_ref_v<T>){
+			obj_ptr = (CRE_Obj*) input.get();	
+		}else{
+			obj_ptr = (CRE_Obj*) input;	
+		}
+
+		Var* var = hi.var_ptr;
+		const Item* deref_result = var->apply_deref(obj_ptr);
+
+		if(deref_result == nullptr or deref_result->get_t_id() == T_ID_UNDEF){
+			std::stringstream ss;
+			ss << "Var " << var << " de-reference failed from input " << input << "." << endl;
+			throw std::runtime_error(ss.str());
+		}
+		head_val_ptr = copy_convert_arg((void*) dest, *deref_result, hi.head_type);	    		}
+	}
+	return head_val_ptr;
+}
+
 template <class ... Ts>
 Item Func::call(Ts&& ... args){
 	void** head_val_ptrs = (void**) alloca(sizeof(void**)*head_infos.size());
@@ -479,49 +657,35 @@ Item Func::call(Ts&& ... args){
 	// cout << "STACK: " << uint64_t(stack) << endl;
 	// cout << "HEAD VAL PTRS SIZE: " << sizeof(void**)*head_infos.size() << endl;
 	// cout << "HEAD VAL ADDR: " << uint64_t(head_val_ptrs) << endl;
-	
-
 
 	int64_t ret = 0;
-	// void* ret_ptr = (void*) alloca(return_type->byte_width);
 	void* ret_ptr = (void*) (stack+outer_stack_size-return_type->byte_width);
-	// void* ret_ptr = (void*) (stack+outer_stack_size-return_type->byte_width);
-
-	// cout << "ret_ptr: " << uint64_t(ret_ptr) << endl;
 
 	if(sizeof...(args) != n_args){
-  	throw_bad_n_args(sizeof...(args));
-  }
+	  	throw_bad_n_args(sizeof...(args));
+	}
 
 	int i = 0;
   ([&]
     {	
-    		auto h_start = head_ranges[i].start;
-    		auto h_end = head_ranges[i].end;
+		auto h_start = head_ranges[i].start;
+		auto h_end = head_ranges[i].end;
 
-	    	// const HeadInfo& hi0 = head_infos[h_start];
+    	// const HeadInfo& hi0 = head_infos[h_start];
+    	// cout << "i=" << i << " h:" << head_ind << " V:" << args << " width=" << hi0.base_type->byte_width << " type=" << typeid(Ts).name() << endl;
 
-	    	// cout << "i=" << i << " h:" << head_ind << " V:" << args << " width=" << hi0.base_type->byte_width << " type=" << typeid(Ts).name() << endl;
+    	for(size_t head_ind=h_start; head_ind<h_end; ++head_ind){
+    		const HeadInfo& hi = head_infos[head_ind];
+    		void* head_val_ptr = resolve_heads(arg_head, args, hi);
 
-	    	for(size_t head_ind=h_start; head_ind<h_end; ++head_ind){
-	    	// size_t head_ind = h_start;
-	    		const HeadInfo& hi = head_infos[head_ind];
+	    	if(head_val_ptr == nullptr){ [[unlikely]]
+	    		throw_bad_arg(i, args, hi.base_type);	
+	    	}
+			
+			head_val_ptrs[head_ind] = head_val_ptr;	
+			arg_head += hi.base_type->byte_width;	    	
+		}
 
-		    	bool conv_error = copy_convert_arg((void*) arg_head, args, hi.base_type);
-
-		    	if(conv_error){ [[unlikely]]
-		    		throw_bad_arg<Ts>(i, hi.base_type);	
-		    	}
-
-    			
-    			head_val_ptrs[head_ind] = arg_head;	
-    			arg_head += hi.base_type->byte_width;	    	
-    		}
-
-	    	
-	    	// input_arg_ptrs[i] = &args;
-	    	
-	    	
         ++i;        
     } (), ...);
 
@@ -529,9 +693,6 @@ Item Func::call(Ts&& ... args){
  
   // call_recursive(ret_ptr, head_val_ptrs);
   call_recursive_fc(this, ret_ptr, head_val_ptrs);
-
-  // cout << "CALL END VAL: " << *((std::string_view*) ret_ptr) << endl;
-  // cout << "CALL END LEN: " << ((std::string_view*) ret_ptr)->size() << endl;
 
   // TODO: This needs to be dynamic
   return ptr_to_item_func(ret_ptr);
@@ -570,62 +731,7 @@ inline auto FuncRef::operator()(Ts && ... args){
 // 				endl;
 //     		throw std::runtime_error(ss.str());
 
-template <typename T>
-inline bool _copy_convert_from_str(void* dest, const T& val, CRE_Type* type){
-	switch(type->t_id) {
-		case T_ID_STR:
-  	{
-  		// std::string_view* s = std::string_view(data, length);
-  		new (dest) StrBlock(val); // Construct string_view in buffer
-  		break;
-  	}
-  	case T_ID_INT:
-  		*((int64_t*) dest) = int64_t(std::stoi(val));
-  		break;
-  	case T_ID_FLOAT:
-  		*((double *) dest) = double(std::stof(val));
-  		break;
-    	
-  	default:
-  	{
-  		return true;
-  	}
-  }
-  // cout << "END" << endl;
-  return false;
-}
 
-template <typename T>
-inline bool _copy_convert_from_numerical(void* dest, T&& val, CRE_Type* type){
-	// cout << "BEFORE DEST: " << uint64_t(dest) << endl;
-	switch(type->t_id) {
-    	case T_ID_INT:
-
-    		new (dest) int64_t(val);
-    		
-    		// *((int64_t*) dest) = int64_t(val);
-    		break;
-    	case T_ID_FLOAT:
-    		new (dest) double(val);
-    		// *((double *) dest) = double(val);
-    		break;
-    	case T_ID_STR:
-    	{
-    		// cout << "THIS" << endl;
-    		std::string* s = (std::string*) new(dest) std::string(""); // Construct string in buffer
-    		*s = std::to_string(val);
-
-    		// *((std::to_string *) dest) = std::to_string(val);
-    		break;
-    	}
-    	default:
-    	{
-    		return true;
-    	}
-  }
-  return false;
-
-}
 
 template<class T>
 struct is_c_str
@@ -637,7 +743,7 @@ struct is_c_str
 
 
 
-
+/*
 
 template <class ... Ts>
 Item call2(Func* self, Ts&& ... args){
@@ -706,7 +812,7 @@ Item call2(Func* self, Ts&& ... args){
 
 
 
-
+*/
 
 
 

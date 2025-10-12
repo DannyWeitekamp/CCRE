@@ -2,6 +2,7 @@
 
 #include <atomic> 
 #include "../include/ref.h"
+// #include "../include/types.h"
 // #include "../include/alloc_buffer.h"
 // #include "../include/context.h"
 // #include "../include/control_block.h"
@@ -14,6 +15,7 @@ using std::endl;
 // Forward Declarations
 // class ControlBlock;
 class CRE_Obj;
+class CRE_Type;
 struct AllocBuffer;
 // extern "C" void CRE_incref(const CRE_Obj* x);
 // extern "C" void CRE_addref(const CRE_Obj* x, size_t n);
@@ -307,6 +309,12 @@ public :
     inline void sub_wref(size_t n) const noexcept{
         this->control_block->sub_wref(n);
     }
+
+    inline uint16_t get_t_id() const noexcept{
+        return this->control_block->t_id;
+    }
+
+    CRE_Type* get_type() const noexcept; 
     // void operator delete(void * p);
 };
 

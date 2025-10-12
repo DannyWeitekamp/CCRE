@@ -211,7 +211,13 @@ extern CRE_Type* cre_Rule;
 
 extern vector<CRE_Type*> cre_builtins;
 
-vector<CRE_Type*> make_builtins();
+inline CRE_Type* get_cre_type(uint16_t t_id) {
+    return cre_builtins[t_id];
+}
+
+void ensure_builtins();
+
+// vector<CRE_Type*> global_builtins;
 // extern CRE_Context default_context;
 
 class CRE_Obj;
@@ -225,39 +231,41 @@ struct Conditions;
 struct Rule;
 struct StrBlock;
 
-template <typename _T>
+template <typename T>
 CRE_Type* to_cre_type() {
+    // using T = std::remove_cvref_t<_T>;
+    using DecayT = std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>;
 
-    using T = std::remove_cvref_t<_T>;
-
-
-    if constexpr (std::is_same_v<bool, T>) {
+    if constexpr (std::is_same_v<bool, DecayT>) {
         return cre_bool;
-    }else if constexpr (std::is_integral_v<T>) {
+    }else if constexpr (std::is_integral_v<DecayT>) {
         return cre_int;
-    } else if constexpr (std::is_floating_point_v<T>) {
+    } else if constexpr (std::is_floating_point_v<DecayT>) {
         return cre_float;
-    } else if constexpr (std::is_same_v<std::string, T> ||
-                         std::is_same_v<std::string_view, T> ||
-                         std::is_same_v<StrBlock, T>) {
+    } else if constexpr (std::is_same_v<std::string, DecayT> ||
+                         std::is_same_v<std::string_view, DecayT> ||
+                         std::is_same_v<StrBlock, DecayT>) {
         return cre_str;
-    } else if constexpr (std::is_same_v<CRE_Obj, T>){
+    } else if constexpr (std::is_same_v<CRE_Obj, DecayT>){
         return cre_obj;
-    } else if constexpr (std::is_same_v<Fact, T>){
+    } else if constexpr (std::is_same_v<Fact, DecayT>){
         return cre_Fact;
-    } else if constexpr (std::is_same_v<FactSet, T>){
+    } else if constexpr (std::is_same_v<FactSet, DecayT>){
         return cre_FactSet;
-    } else if constexpr (std::is_same_v<Var, T>){
+    } else if constexpr (std::is_same_v<Var, DecayT>){
         return cre_Var;
-    } else if constexpr (std::is_same_v<Func, T>){
+    } else if constexpr (std::is_same_v<Func, DecayT>){
         return cre_Func;
-    } else if constexpr (std::is_same_v<Literal, T>){
+    } else if constexpr (std::is_same_v<Literal, DecayT>){
         return cre_Literal;
-    } else if constexpr (std::is_same_v<Conditions, T>){
+    } else if constexpr (std::is_same_v<Conditions, DecayT>){
         return cre_Conditions;
-    } else if constexpr (std::is_same_v<Rule, T>){
+    } else if constexpr (std::is_same_v<Rule, DecayT>){
         return cre_Rule;
+    }else{
+        static_assert(!std::is_same<T,T>::value, "Unsupported type for to_cre_type()");
     }
+    
 }
 
 

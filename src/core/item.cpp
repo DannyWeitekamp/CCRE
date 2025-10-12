@@ -110,7 +110,7 @@ Item::Item(const std::string& arg) :
     char* data_ptr = (char*) malloc(sizeof(char) * ( arg.length()+1 ));
     strcpy(data_ptr, arg.c_str());
     data = data_ptr;
-    cout << "MALLOC: " << data_ptr << endl; 
+    // cout << "MALLOC: " << data_ptr << endl; 
     // length = uint32_t(arg.length());
     // t_id = T_ID_STR;
 };
@@ -263,7 +263,7 @@ void Item::release() const {
             ((CRE_Obj*) val)->dec_ref();
         }
     }else if(t_id == T_ID_STR and is_value() and data != nullptr){
-        cout << "-FREE: " << (char*) data << endl;
+        // cout << "-FREE: " << (char*) data << endl;
         // throw std::runtime_error("HI");
         free((char*) data);
     }
@@ -381,7 +381,7 @@ std::string item_to_string(const Item& item) {
             ss << flt_to_str(item.as_float());
             break;
         case T_ID_STR:
-            cout << "??: " << std::string(item.as_string()) << endl;
+            // cout << "??: " << std::string(item.as_string()) << endl;
             ss << "'" << std::string(item.as_string()) << "'";
             break;
         default:
@@ -457,7 +457,7 @@ std::string Item::to_string() const {
     return item_to_string(*this);
 }
 
-std::ostream& operator<<(std::ostream& out, Item item){
+std::ostream& operator<<(std::ostream& out, const Item& item){
     return out << item_to_string(item);
 }
 

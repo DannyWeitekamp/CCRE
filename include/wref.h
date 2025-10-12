@@ -50,6 +50,8 @@ template <typename T> class wref {
 private:
     ControlBlock* m_ptr = nullptr;
 public:
+    using type = T;
+    
     /// Create a null reference
     wref() = default;
 

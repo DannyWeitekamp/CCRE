@@ -47,6 +47,7 @@ template <typename T> class ref {
 private:
     T* m_ptr = nullptr;
 public:
+    using type = T;
     /// Create a null reference
     ref() = default;
 
@@ -213,5 +214,45 @@ template <typename T> struct type_caster<ref<T>> {
 NAMESPACE_END(detail)
 NAMESPACE_END(nanobind)
 #endif
+
+template <typename T>
+class wref;
+
+template <typename T>
+struct is_ref : std::false_type {};
+
+template <typename U>
+struct is_ref<ref<U>> : std::true_type {};
+
+template <typename U>
+struct is_ref<wref<U>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_ref_v = is_ref<T>::value;
+
+
+// remove_ref_t: removes ref<T> or wref<T> wrapper, otherwise returns T
+
+
+template <typename T>
+struct remove_ref {
+    using type = T;
+};
+
+template <typename T>
+struct remove_ref<ref<T>> {
+    using type = T;
+};
+
+template <typename T>
+struct remove_ref<wref<T>> {
+    using type = T;
+};
+
+template <typename T>
+using remove_ref_t = typename remove_ref<T>::type;
+
+
+
 
 

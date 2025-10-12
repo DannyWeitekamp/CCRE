@@ -21,7 +21,7 @@ struct InternStr;
 // CRE_Context declaration
 struct CRE_Context {
     std::string name;
-    std::vector<CRE_Type*> cre_builtins = {};
+    // std::vector<CRE_Type*> cre_builtins = {};
     std::vector<CRE_Type*> types = {};
     std::vector<CRE_Type*> overwritten_types = {};
     // std::unordered_map<std::string, uint16_t> type_name_map;

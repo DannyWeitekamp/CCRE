@@ -362,9 +362,10 @@ CRE_Type* cre_Rule;// = new CRE_Type("Rule",{}, 1);
 
 
 
+vector<CRE_Type*> cre_builtins;
 
-vector<CRE_Type*> make_builtins(){
-    vector<CRE_Type*> cre_builtins;// = {};
+void ensure_builtins(){
+    // vector<CRE_Type*> cre_builtins;// = {};
 
     if(cre_builtins.size() == 0){
         cre_undef = new CRE_Type("Undef", T_ID_UNDEF,
@@ -399,28 +400,46 @@ vector<CRE_Type*> make_builtins(){
                                 sizeof(void*), {}, 1);
 
         // cout << "INIT builtins";
-        cre_builtins = {
-            cre_undef,
-            cre_none,
-            cre_bool,
-            cre_int,
-            cre_float,
-            cre_ptr,
-            cre_str,
-            cre_obj,
-            cre_Fact,
-            cre_FactSet,
-            cre_Var,
-            cre_Func,
-            cre_Literal,
-            cre_Conditions,
-            cre_Rule,
-        };
+        cre_builtins.push_back(cre_undef);
+        cre_builtins.push_back(cre_none);
+        cre_builtins.push_back(cre_bool);
+        cre_builtins.push_back(cre_int);
+        cre_builtins.push_back(cre_float);
+        cre_builtins.push_back(cre_ptr);
+        cre_builtins.push_back(cre_str);
+        cre_builtins.push_back(cre_obj);
+        cre_builtins.push_back(cre_Fact);
+        cre_builtins.push_back(cre_FactSet);
+        cre_builtins.push_back(cre_Var);
+        cre_builtins.push_back(cre_Func);
+        cre_builtins.push_back(cre_Literal);
+        cre_builtins.push_back(cre_Conditions);
+        cre_builtins.push_back(cre_Rule);
+        
+        // cre_builtins = {
+        //    cre_builtins.push_back(cre_undef)
+        //    cre_builtins.push_back(cre_none)
+        //    cre_builtins.push_back(cre_bool)
+        //    cre_builtins.push_back(cre_int)
+        //    cre_builtins.push_back(cre_float)
+        //    cre_builtins.push_back(cre_ptr)
+        //    cre_builtins.push_back(cre_str)
+        //    cre_builtins.push_back(cre_obj)
+        //    cre_builtins.push_back(cre_Fact)
+        //    cre_builtins.push_back(cre_FactSet)
+        //    cre_builtins.push_back(cre_Var)
+        //    cre_builtins.push_back(cre_Func)
+        //    cre_builtins.push_back(cre_Literal)
+        //    cre_builtins.push_back(cre_Conditions)
+        //    cre_builtins.push_back(cre_Rule)
+        // };
 
 
     }
-    return cre_builtins;
+    // return cre_builtins;
 }
+
+
 
 // void destroy_builtins(){
 

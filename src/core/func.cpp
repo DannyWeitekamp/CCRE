@@ -924,8 +924,9 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 		case ARGINFO_VAR:
 		{
 			Var* var =  (*cf->get(i)).as_var();
+			Var* base_var =  var->base;
 
-			auto it = base_var_map.find((void *) var);
+			auto it = base_var_map.find((void *) base_var);
 			if(it == base_var_map.end()){
 				throw std::runtime_error("Var not found.");
 			}

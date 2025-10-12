@@ -259,6 +259,8 @@ public:
           t_id(other.t_id),
          meta_data(other.meta_data), val_kind(val_kind), length(other.length) 
     {
+        // cout << "VAL KIND:" << uint64_t(val_kind) << endl;
+        // cout << "OTHER:" << other.to_string() << endl;
         CRE_Obj* other_ptr = other.get_ptr();
         if(val_kind == WEAK_REF && other_ptr != nullptr){
             ptr = other_ptr->control_block;
@@ -395,16 +397,26 @@ public:
                 t_id <= T_ID_STR);
     }
 
+    inline bool is_numerical() const{
+        return (t_id >= T_ID_BOOL && 
+                t_id <= T_ID_FLOAT);
+    }
+
+    inline bool is_ptr() const{
+        return (t_id == T_ID_PTR || 
+                t_id >= T_ID_OBJ);
+    }
+
 
 
 
     template <std::integral T>
-    T as(){
+    T as() const{
         return T(std::bit_cast<int64_t>(val));
     }
 
     template <std::floating_point T>
-    T as(){
+    T as() const {
         return T(std::bit_cast<double>(val));
     }
     
@@ -429,13 +441,13 @@ public:
 
     template <typename T>
     requires std::is_same_v<T, std::string>
-    std::string as(){
+    std::string as() const {
         return std::string(this->data, this->length);
     }
 
     template <typename T>
     requires std::is_same_v<T, std::string_view>
-    std::string_view as(){
+    std::string_view as() const {
         return std::string_view(this->data, this->length);
     }
     
@@ -449,7 +461,7 @@ public:
             
             return std::bit_cast<CRE_Obj*>(cb->obj_ptr);
         }
-        // cout << "EENDL" << endl;
+        // cout << "EENDL: " << t_id << ", " << uint64_t(ptr) << endl;
         return std::bit_cast<CRE_Obj*>(ptr);
     }
 
@@ -495,7 +507,7 @@ public:
 
     template <typename T>
     requires std::is_pointer_v<T>
-    T as(){
+    T as() const{
         return std::bit_cast<T>(get_ptr());
     }
 
@@ -630,7 +642,7 @@ public:
 
 // Item to_item(Fact* arg);
 
-std::ostream& operator<<(std::ostream& out, Item item);
+std::ostream& operator<<(std::ostream& out, const Item& item);
 
 bool item_get_bool(Item item);
 int64_t item_get_int(Item item);

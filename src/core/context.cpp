@@ -74,11 +74,13 @@ CRE_Type* CRE_Context::get_type(const std::string_view& name) {
 
 // CRE_Context constructor implementation
 CRE_Context::CRE_Context(std::string _name) : name(_name) {
-    if(_name == "default"){
-        cre_builtins = make_builtins();    
-    }else{
-        cre_builtins = default_context->cre_builtins;
-    }
+    ensure_builtins();
+    // if(_name == "default"){
+
+    //     cre_builtins = make_builtins();    
+    // }else{
+    //     cre_builtins = default_context->cre_builtins;
+    // }
     
     // cout << "CRE_Context constructor " << cre_builtins.size() << endl;
     // cout << "WHATEVER";

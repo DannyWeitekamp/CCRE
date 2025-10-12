@@ -76,6 +76,10 @@ int64_t CRE_Obj::get_wrefcount() noexcept{
 	return this->control_block->get_wrefcount();
 }
 
+CRE_Type* CRE_Obj::get_type() const noexcept{
+    return get_cre_type(get_t_id());
+}
+
 
 
 void CRE_Obj::init_control_block(CRE_dtor_function _dtor, uint16_t t_id){
