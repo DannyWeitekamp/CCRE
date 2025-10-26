@@ -13,6 +13,7 @@
 #include <limits>
 #include "../include/intern.h"
 #include "../include/func.h"
+#include "../include/types.h"
 #include "../include/var.h"
 #include "../include/alloc_buffer.h"
 
@@ -495,6 +496,51 @@ std::ostream& operator<<(std::ostream& out, ref<Func> func){
 // 	}
 	
 // }
+
+
+
+// Checks if an 
+std::tuple<bool, Func*> check_cast_arg(uint16_t val_t_id, CRE_Type* target_type){
+	if(target_type->get_t_id() == val_t_id){
+		return {true, nullptr};
+	}
+
+	switch(target_type->get_t_id()) {
+		case T_ID_BOOL:
+			if(t_id_is_numerical(val_t_id)){
+				// cast to bool
+			}else if(val_t_id == T_ID_STR){
+				// cast from string
+			}
+			break;
+    	case T_ID_INT:
+			if(t_id_is_numerical(val_t_id)){
+				// cast to int
+			}else if(val_t_id == T_ID_STR){
+				// cast from string
+			}
+    		break;
+    	case T_ID_FLOAT:
+    		if(t_id_is_numerical(val_t_id)){
+				// cast to double	
+			}else if(val_t_id == T_ID_STR){
+				// cast from string
+			}
+    		break;
+    	case T_ID_STR:
+    	{
+    		if(val_t_id == T_ID_BOOL){
+    			// bool to str
+    		} else if(val_t_id == T_ID_INT){
+    			// int to str
+    		} else if(val_t_id == T_ID_FLOAT){
+    			// double to str
+    		}
+    		break;
+    	}
+  }
+  return {true, nullptr};
+}
 
 // Set a particular argument as part of the dynamic composition of a
 //  Func. For instance, set_arg() might set a constant, Var, or Func

@@ -20,4 +20,22 @@ const uint16_t T_ID_LITERAL =     12;
 const uint16_t T_ID_CONDITIONS =  13;
 const uint16_t T_ID_RULE =        14;
 
+
+inline bool t_id_is_primitive(uint16_t t_id){
+	return (t_id >= T_ID_BOOL && 
+            t_id <= T_ID_STR);
+}
+
+inline bool t_id_is_numerical(uint16_t t_id){
+	return (t_id >= T_ID_BOOL && 
+            t_id <= T_ID_FLOAT);
+}
+
+
+inline bool t_id_is_ptr(uint16_t t_id){
+	return (t_id == T_ID_PTR || 
+            t_id >= T_ID_OBJ);
+}
+
+
 } // NAMESPACE_END(cre)

@@ -104,6 +104,10 @@ struct CRE_Type : CRE_Obj{
         CRE_Context* context = nullptr
     );    
 
+    inline uint16_t get_t_id() noexcept{
+        return t_id;
+    }
+
     // ~CRE_Type();
 };
 
@@ -306,7 +310,9 @@ struct has_var_or_func : std::false_type {};
 
 template<typename T, typename... Rest>
 struct has_var_or_func<T, Rest...> : std::bool_constant<
-    is_var_or_func<std::remove_cvref_t<T>>::value || has_var_or_func<Rest...>::value
+    is_var_or_func<
+        std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>
+    >::value || has_var_or_func<Rest...>::value
 > {};
 
 } // NAMESPACE_END(cre)

@@ -338,7 +338,27 @@ void test_type_check_and_casting(){
 	IS_TRUE(add_flt_f(Item(true), Item(3.7)) == 4.7);
 
 
+	// ---- START COMPOSE CHECKS ----
 	cout << add_money_f(olpops, pops) << endl;
+
+
+	ref<Var> P0 = new_var("P0", Person);
+	ref<Var> P1 = new_var("P1", Person);
+	ref<Var> F0 = new_var("F0", cre_float);
+	ref<Var> F1 = new_var("F1", cre_float);
+	ref<Var> I0 = new_var("I0", cre_int);
+	ref<Var> I1 = new_var("I1", cre_int);
+	ref<Var> S0 = new_var("S0", cre_str);
+	ref<Var> S1 = new_var("S1", cre_str);
+
+
+	// add_flt(P0, P0)
+	ref<Func> fn0 = add_flt_f(F0, F1);
+	ref<Func> fn1 = add_flt_f(P0, P1);
+	cout << fn0 << endl; 
+	cout << fn1 << endl; 
+
+
 
 
 }

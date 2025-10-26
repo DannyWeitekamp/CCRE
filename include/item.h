@@ -393,21 +393,16 @@ public:
 
 
     inline bool is_primitive() const{
-        return (t_id >= T_ID_BOOL && 
-                t_id <= T_ID_STR);
+        return t_id_is_primitive(t_id);
     }
 
     inline bool is_numerical() const{
-        return (t_id >= T_ID_BOOL && 
-                t_id <= T_ID_FLOAT);
+        return t_id_is_numerical(t_id);
     }
 
     inline bool is_ptr() const{
-        return (t_id == T_ID_PTR || 
-                t_id >= T_ID_OBJ);
+        return t_id_is_ptr(t_id);
     }
-
-
 
 
     template <std::integral T>
