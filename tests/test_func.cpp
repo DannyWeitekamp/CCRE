@@ -20,6 +20,7 @@ using namespace cre;
 // };
 
 bool bin_and(bool a, bool b){
+	// cout << "AND: " << a << ", " << b << endl; 
 	return a & b;
 }
 
@@ -37,7 +38,7 @@ std::string concat(const StrBlock& _a, const StrBlock& _b){
 	std::string_view b = _b.view;
 	std::stringstream ss;
 	ss << a << b;
-	// cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
+	cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
 	return ss.str();
 	// return a+b;
 }
@@ -294,17 +295,17 @@ void test_type_check_and_casting(){
 	EXPECT_THROW(add_money_f(Item(), Item()));
 
 	// And Bools
-	EXPECT_THROW(and_f(olpops, pops));
-	EXPECT_THROW(and_f("a", "b"));
-	EXPECT_THROW(and_f("a", 1));
+	IS_TRUE(and_f(olpops, pops) == true);
+	IS_TRUE(and_f("a", "b") == true);
+	IS_TRUE(and_f("a", 1) == true);		
 	IS_TRUE(and_f(1.0, 1.0) == true);
 	IS_TRUE(and_f(true, 3) == true);
 	IS_TRUE(and_f(true, false) == false);
 
 	// Add bools as Items
-	EXPECT_THROW(and_f(Item(olpops), Item(pops)));
-	EXPECT_THROW(and_f(Item("a"), Item("b")));
-	EXPECT_THROW(and_f(Item("a"), Item(1)));
+	IS_TRUE(and_f(Item(olpops), Item(pops)) == true);
+	IS_TRUE(and_f(Item("a"), Item("b")) == true);
+	IS_TRUE(and_f(Item("a"), Item(1)) == true);
 	IS_TRUE(and_f(Item(1.0), Item(0.0)) == false);
 	IS_TRUE(and_f(Item(true), Item(3)) == true);
 	IS_TRUE(and_f(Item(true), Item(false)) == false);
@@ -337,37 +338,133 @@ void test_type_check_and_casting(){
 	IS_TRUE(add_flt_f(Item(1.8), Item(1)) == 2.8);
 	IS_TRUE(add_flt_f(Item(true), Item(3.7)) == 4.7);
 
+	// Concat Strings 
+	EXPECT_THROW(concat_f(Item(olpops), Item(pops)));
+	IS_TRUE(concat_f("a", "b") == "ab");
+	cout << "--BEFORE--" << endl;
+	cout << concat_f("a", 1) << endl;
+	cout << "--AFTER--" << endl;
+	IS_TRUE(concat_f("a", 1) == "a1");
+	IS_TRUE(concat_f(1.8, 1) == "1.81");
+	IS_TRUE(concat_f(true, 3.7) == "true3.7");
+
+	// Concat Strings as Items
+	EXPECT_THROW(concat_f(Item(olpops), Item(pops)));
+	IS_TRUE(concat_f(Item("a"), Item("b")) == "ab");
+	IS_TRUE(concat_f(Item("a"), Item(1)) == "a1");
+	IS_TRUE(concat_f(Item(1.8), Item(1)) == "1.81");
+	IS_TRUE(concat_f(Item(true), Item(3.7)) == "true3.7");
+
+	// Add Objects 
+	IS_TRUE(add_money_f(olpops, pops)==103.5);
+	EXPECT_THROW(add_money_f("a", "b"));
+	EXPECT_THROW(add_money_f("a", 1.7));
+	EXPECT_THROW(add_money_f(1.8, 1.7));
+	EXPECT_THROW(add_money_f(true, 1.7));
+
+	// Add Objects as Items
+	IS_TRUE(add_money_f(Item(olpops), Item(pops))==103.5);
+	EXPECT_THROW(add_money_f(Item("a"), Item("b")));
+	EXPECT_THROW(add_money_f(Item("a"), Item(1.7)));
+	EXPECT_THROW(add_money_f(Item(1.8), Item(1.7)));
+	EXPECT_THROW(add_money_f(Item(true), Item(1.7)));
+
+
 
 	// ---- START COMPOSE CHECKS ----
-	cout << add_money_f(olpops, pops) << endl;
-
-
+	// cout <<  << endl;
 	ref<Var> P0 = new_var("P0", Person);
 	ref<Var> P1 = new_var("P1", Person);
-	ref<Var> F0 = new_var("F0", cre_float);
-	ref<Var> F1 = new_var("F1", cre_float);
+	ref<Var> B0 = new_var("B0", cre_bool);
+	ref<Var> B1 = new_var("B1", cre_bool);
 	ref<Var> I0 = new_var("I0", cre_int);
 	ref<Var> I1 = new_var("I1", cre_int);
+	ref<Var> F0 = new_var("F0", cre_float);
+	ref<Var> F1 = new_var("F1", cre_float);
+	
 	ref<Var> S0 = new_var("S0", cre_str);
 	ref<Var> S1 = new_var("S1", cre_str);
 
-
 	// add_flt(P0, P0)
 	ref<Func> fn0 = add_flt_f(F0, F1);
-	ref<Func> fn1 = add_flt_f(P0, P1);
-	cout << fn0 << endl; 
-	cout << fn1 << endl; 
+	EXPECT_THROW(add_flt_f(P0, P1));
+	add_flt_f(B0, B1); // OK
+	add_flt_f(I0, I1); // OK
+	add_flt_f(S0, S1); // OK if strs can be cast to float
 
 
+	/// Compose And Bool
+	IS_TRUE(and_f(P0, P1)(olpops, pops) == true);
+	IS_TRUE(and_f(S0, S1)("a","b") == true);
+	IS_TRUE(and_f(S0, S1)("a","") == false);
+	IS_TRUE(and_f(S0, 1)("a") == true);
+	IS_TRUE(and_f(1.0, B0)(1.0) == true);
+	IS_TRUE(and_f(1.0, F0)(1.0) == true);
+	IS_TRUE(and_f(true, I1)(true) == true);
+	IS_TRUE(and_f(true, B0)(0) == false);
 
+	/// Compose Add Integers
+	EXPECT_THROW(add_f(P0, P1)(olpops, pops));
+	EXPECT_THROW(add_f(S0, S1)("a","b"));
+	EXPECT_THROW(add_f(S0, S1)("a",""));
+	EXPECT_THROW(add_f(S0, 1)("a"));
+	IS_TRUE(add_f(S0, S1)("12","1cm") == 13);
+	IS_TRUE(add_f(S0, S1)("2.0","4.0cm") == 6);
+	IS_TRUE(add_f(S0, 1)("8.0") == 9);
+	IS_TRUE(add_f(1.0, B0)(1.0) == 2);
+	IS_TRUE(add_f(1.0, F0)(1.0) == 2);
+	IS_TRUE(add_f(true, I1)(true) == 2);
+	IS_TRUE(add_f(true, B0)(0) == 1);
+
+	/// Compose Add Floats
+	EXPECT_THROW(add_flt_f(P0, P1)(olpops, pops));
+	EXPECT_THROW(add_flt_f(S0, S1)("a","b"));
+	EXPECT_THROW(add_flt_f(S0, S1)("a",""));
+	EXPECT_THROW(add_flt_f(S0, 1)("a"));
+	IS_TRUE(add_flt_f(S0, S1)("12","1cm") == 13);
+	IS_TRUE(add_flt_f(S0, S1)("2.0","4.0cm") == 6);
+	IS_TRUE(add_flt_f(S0, 1)("8.0") == 9);
+	IS_TRUE(add_flt_f(1.0, B0)(1.0) == 2);
+	IS_TRUE(add_flt_f(1.0, F0)(1.0) == 2);
+	IS_TRUE(add_flt_f(true, I1)(true) == 2);
+	IS_TRUE(add_flt_f(true, B0)(0) == 1);
+
+	/// Compose Concat Strs
+	EXPECT_THROW(concat_f(P0, P1)(olpops, pops));
+	IS_TRUE(concat_f(S0, S1)("a","b") == "ab");
+	IS_TRUE(concat_f(S0, S1)("a","") == "a");
+	IS_TRUE(concat_f(S0, 1)("a") == "a1");
+	IS_TRUE(concat_f(S0, S1)("12","1cm") == "121cm");
+	IS_TRUE(concat_f(S0, S1)("2.0","4.0cm") == "2.04.0cm");
+	IS_TRUE(concat_f(S0, 1)("8.0") == "8.01");
+	IS_TRUE(concat_f(1.0, B0)(1.0) == "1.01.0");
+	IS_TRUE(concat_f(1.0, F0)(1) == "1.01");
+	IS_TRUE(concat_f(true, I1)(true) == "TrueTrue");
+	IS_TRUE(concat_f(true, B0)(0) == "True0");
+
+	/// Compose Add Objects
+	IS_TRUE(add_money_f(P0, P1)(olpops, pops) == 103.5);
+	EXPECT_THROW(add_money_f(S0, S1)("a","b"));
+	EXPECT_THROW(add_money_f(S0, S1)("a",""));
+	EXPECT_THROW(add_money_f(S0, 1)("a"));
+	EXPECT_THROW(add_money_f(S0, S1)("12","1cm"));
+	EXPECT_THROW(add_money_f(S0, S1)("2.0","4.0cm"));
+	EXPECT_THROW(add_money_f(S0, 1)("8.0") );
+	EXPECT_THROW(add_money_f(1.0, B0)(1.0));
+	EXPECT_THROW(add_money_f(1.0, F0)(1) );
+	EXPECT_THROW(add_money_f(true, I1)(true));
+	EXPECT_THROW(add_money_f(true, B0)(0));
+
+	cout << add_money_f << endl;
+	EXPECT_THROW(add_money_f(1,P1));
 
 }
 
 
 
 Item add_items(Item* args){
-	int a = args[0].as_int();
-	int b = args[1].as_int();
+	int a = args[0].as<int64_t>();
+	int b = args[1].as<int64_t>();
 	return Item(a + b);
 }
 
@@ -386,7 +483,7 @@ int64_t add_alloca(int64_t a, int64_t b){
 	// stack[1] = Item(a);
 	// stack[2] = Item(b);
 	// stack[0] =
-	return stack[0].as_int();
+	return stack[0].as<int64_t>();
 }
 
 int64_t add_item_no_stack(int64_t a, int64_t b){
@@ -394,7 +491,7 @@ int64_t add_item_no_stack(int64_t a, int64_t b){
 	auto func = (*add_items_ptr);
 	auto ia = Item(a);
 	auto ib = Item(b);
-	return (*add_ptr)(ia.as_int(), ib.as_int());
+	return (*add_ptr)(ia.as<int64_t>(), ib.as<int64_t>());
 }
 
 void add_ptrs(uint8_t* ret, uint16_t* arg_offsets){

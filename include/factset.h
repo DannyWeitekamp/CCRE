@@ -433,7 +433,7 @@ struct ToFactSetTranslator {
         }
 
         if(uid_item.get_t_id() != 0){
-            std::string_view uid = uid_item.as_string();
+            std::string_view uid = uid_item._as<std::string_view>();
             if(key_id != uid){
                 auto [it, inserted] = fact_map.insert({uid, index});
                 if(!inserted){
@@ -501,7 +501,7 @@ struct ToFactSetTranslator {
 
         int64_t index = -1;
         if(item.get_t_id() == T_ID_STR){
-            std::string_view item_str = item.as_string();
+            std::string_view item_str = item._as<std::string_view>();
 
             // Reference to another fact
             size_t ref_len = ref_prefix.size();
@@ -547,7 +547,7 @@ struct ToFactSetTranslator {
             
         }else if(item.get_t_id() == T_ID_INT){
             if(mbr_type && mbr_type->t_id == T_ID_FACT){
-                index = item.as_int();
+                index = item._as<int64_t>();
                 if(index < 0 || index >= fact_infos.size()){
                     throw std::invalid_argument(
                         "Cannot resolve integer indentifier \"" + std::to_string(index) + "\" for Fact reference." 

@@ -560,7 +560,7 @@ void FlagGroup::assign_flag(std::string_view key, Item value){
         if(value.get_t_id() != T_ID_BOOL and value.get_t_id() != T_ID_INT){
             throw std::runtime_error("Bad value type for builtin flag `" + std::string(key) + "`.");
         } 
-        uint64_t val = value.as_int();
+        uint64_t val = value.as<uint64_t>();
         set_builtin_flag(&this->builtin_flags,      flag_id, val);
         set_builtin_flag(&this->builtin_flags_mask, flag_id, ~0);    
         // cout << "IS BUILTIN:" << key << endl; 
@@ -644,6 +644,12 @@ bool FlagGroup::has_flags(const FlagGroup& other) const{
         }
     }
     return true;
+}
+
+NoneType None = NoneType();
+std::ostream& operator<<(std::ostream& outs, 
+                         [[maybe_unused]] const NoneType& none){
+    return outs << "None";
 }
 
 } // NAMESPACE_END(cre)

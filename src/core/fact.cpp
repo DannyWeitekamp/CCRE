@@ -185,7 +185,7 @@ void _fill_fact_slice_copy(Fact* src, Fact* dest,
 			 (!item.is_ref() || copy_kind == COPY_DEEP_REFS) ){
 			 // (item_fact = item.as_fact())->immutable){
 
-				Fact* item_fact = item.as_fact();
+				Fact* item_fact = item._as<Fact*>();
 				ref<Fact> fact_copy = item_fact->copy(copy_kind, buffer);
 
 				// cout << "BREF COUNT" << fact_copy->get_refcount() << endl;
@@ -515,16 +515,16 @@ bool item_eq(const Item& ia, const Item& ib){
 	switch (ia.get_t_id()) {
 		case T_ID_FLOAT:
 			{
-				double da = ia.as_float();
-				double db = ib.as_float();
+				double da = ia._as<double>();
+				double db = ib._as<double>();
 				if(da != db) return false;
 				break;
 			}
 		case T_ID_FACT:
-			if(*ia.as_fact() != *ib.as_fact()) return false;
+			if(*ia._as<Fact*>() != *ib._as<Fact*>()) return false;
 			break;
 		case T_ID_VAR:
-			if(*ia.as_var() != *ib.as_var()) return false;
+			if(*ia._as<Var*>() != *ib._as<Var*>()) return false;
 			break;
 		case T_ID_FUNC:
 			// TODO

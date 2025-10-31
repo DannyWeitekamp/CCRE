@@ -6,6 +6,7 @@
 #include "../include/fact.h"
 #include "../include/var.h"
 #include "../include/func.h"
+#include "../include/objs_hash_eq.h"
 #include <bit>
 #include <sstream>
 #include <functional>
@@ -119,6 +120,40 @@ Item::Item(const std::string_view& arg) :
     data(arg.data()), length(arg.length()), t_id(T_ID_STR),
     meta_data(0), val_kind(RAW_PTR) 
  {};
+
+ Item::Item(const InternStr& arg) :
+    data(arg.data()), length(arg.length()), t_id(T_ID_STR),
+    meta_data(0), val_kind(INTERNED) 
+ {};
+
+ bool Item::operator==(const Item& other) const{
+    uint16_t t_id = get_t_id();
+    uint16_t other_t_id = other.get_t_id();
+
+    // This should handle Undef, None, IternStr
+    if(t_id == other_t_id && val == other.val){
+        return true;
+    }else{
+        if(t_id_is_numerical(t_id) && t_id_is_numerical(other_t_id)){
+            if(t_id == T_ID_FLOAT || other_t_id == T_ID_FLOAT){
+                return as<double>() == other.as<double>();
+            }else{
+                return this->val == other.val;
+            }
+        }else if(t_id == T_ID_STR && other_t_id == T_ID_STR){
+            // cout << "L0: " << length << " L1: " << other.length << endl;
+            // cout << "strcmp:" << std::strcmp((char*) data, (char*) other.data) << endl;
+            return (length == other.length &&
+                    std::strcmp((char*) data, (char*) other.data) == 0);
+        }else{
+            if(t_id != other_t_id){
+                return false;
+            }
+            // Defined in seperate translation unit
+            return CRE_Objs_equal(_as<CRE_Obj*>(), other._as<CRE_Obj*>());                
+        }
+    }
+ }
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
@@ -238,6 +273,10 @@ Item::Item(const char* data, size_t _length) :
 // Item::Item(ref<Func> x) : Item((Func*) x)
 // {};
 
+
+CRE_Type* Item::get_type() const {
+    return get_cre_type(get_t_id());   
+}
 
 void Item::borrow() const {
     if(is_ref()){
@@ -372,17 +411,17 @@ std::string item_to_string(const Item& item) {
             ss << "None";
             break;
         case T_ID_BOOL:
-            ss << std::boolalpha << item.as_bool();
+            ss <<  (item._as<bool>() ? "True" : "False");
             break;
         case T_ID_INT:
-            ss << item.as_int();
+            ss << int_to_str(item._as<int64_t>());
             break;
         case T_ID_FLOAT:
-            ss << flt_to_str(item.as_float());
+            ss << flt_to_str(item._as<double>());
             break;
         case T_ID_STR:
             // cout << "??: " << std::string(item.as_string()) << endl;
-            ss << "'" << std::string(item.as_string()) << "'";
+            ss << "'" << item._as<std::string>() << "'";
             break;
         default:
             known_type = false;
@@ -403,7 +442,7 @@ std::string item_to_string(const Item& item) {
 
         case T_ID_FACT:
             {
-                Fact* fact = item.as_fact();
+                Fact* fact = item._as<Fact*>();
                         
                 if(fact->type != nullptr){
                     std::string unq_id = fact->get_unique_id();
@@ -431,10 +470,10 @@ std::string item_to_string(const Item& item) {
                 break;
             }
         case T_ID_VAR:
-            ss << item.as_var();
+            ss << item._as<Var*>();
             break;
         case T_ID_FUNC:
-            ss << item.as_func();
+            ss << item._as<Func*>();
             break;
         default:
             known_type = false;
@@ -449,9 +488,9 @@ std::string item_to_string(const Item& item) {
 
 
 
-std::string to_string(Item& item){
-    return std::string(item.as_string());
-}
+// std::string to_string(Item& item){
+//     return item_to_string();//std::string(item.as_string());
+// }
 
 std::string Item::to_string() const {
     return item_to_string(*this);
@@ -477,16 +516,16 @@ uint64_t hash_item(const Item& x){
         case T_ID_NONE:
             hash = 0; break;
         case T_ID_BOOL:
-            hash = CREHash{}(x.as_bool()); break;
+            hash = CREHash{}(x._as<bool>()); break;
         case T_ID_INT:
-            hash = CREHash{}(x.as_int()); break;
+            hash = CREHash{}(x._as<int64_t>()); break;
         case T_ID_FLOAT:
-            hash = CREHash{}(x.as_float()); break;
+            hash = CREHash{}(x._as<double>()); break;
         case T_ID_STR:
-            hash = CREHash{}(x.as_string()); break;
+            hash = CREHash{}(x._as<std::string_view>()); break;
         case T_ID_FACT:
             {
-                Fact* fact = x.as_fact();
+                Fact* fact = x._as<Fact*>();
                 if(fact != nullptr && !x.is_ref()){
                     hash = CREHash{}(fact); 
                 }else{
@@ -496,7 +535,7 @@ uint64_t hash_item(const Item& x){
             break;
         case T_ID_VAR:
             {
-                Var* var = x.as_var();
+                Var* var = x._as<Var*>();
                 if(var != nullptr){
                     hash = CREHash{}(var); 
                 }else{
@@ -513,11 +552,21 @@ uint64_t hash_item(const Item& x){
     return hash;
 }
 
-bool Item::operator==(const Item& other) const{
-    return (
-        this->val == other.val && 
-        this->t_id == other.get_t_id()
-    );
-}
+// explicit operator bool() const {
+//     if(t_id == T_ID_UNDEF || t_id == T_ID_NONE){
+//         return false
+//     }else if(t_id == T_ID_STR){
+//         return length == 0;
+//     }else{
+//         return val == 0;
+//     }
+// }
+
+// bool Item::operator==(const Item& other) const{
+//     return (
+//         this->val == other.val && 
+//         this->t_id == other.get_t_id()
+//     );
+// }
 
 } // NAMESPACE_END(cre)

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "../include/helpers.h"
 #include "../include/types.h"
 #include "../include/hash.h"
 #include "../include/context.h"
@@ -30,8 +31,79 @@ using std::cout;
 using std::endl;
 using namespace cre;
 
+void test_float_str(){
+	IS_TRUE(flt_to_str(1.0) == "1.0")
+	IS_TRUE(flt_to_str(1.0000001) == "1.0000001")
+	IS_TRUE(flt_to_str(1.0/3) == "0.3333333333333333")
+	IS_TRUE(flt_to_str(1e26) == "1e+26")
+	IS_TRUE(flt_to_str(-1e+26) == "-1e+26")
+	IS_TRUE(flt_to_str(1.0786500e+26) == "1.07865e+26")
+
+	IS_TRUE(int_to_str(7) == "7")
+	IS_TRUE(int_to_str(-7) == "-7")
+	IS_TRUE(int_to_str(9223372036854775807) == "9223372036854775807")
+	IS_TRUE(int_to_str(-9223372036854775807) == "-9223372036854775807")
+}
+
+
 void test_item_size(){
 	IS_TRUE(sizeof(Item) == 16);
+}
+
+void test_item_truthiness(){
+	IS_TRUE(bool(Item()) == false);
+	IS_TRUE(bool(Item(None)) == false);
+	IS_TRUE(bool(Item(false)) == false);
+	IS_TRUE(bool(Item(0)) == false);
+	IS_TRUE(bool(Item(0.0)) == false);
+	IS_TRUE(bool(Item("")) == false);
+	IS_TRUE(bool(Item(true)) == true);
+	IS_TRUE(bool(Item(1)) == true);
+	IS_TRUE(bool(Item(1.0)) == true);
+	IS_TRUE(bool(Item("a")) == true);
+}
+
+void test_item_eq(){
+
+	IS_TRUE(Item() == Item());
+	IS_TRUE(Item() != false);
+
+	IS_TRUE(Item(None) == Item(None));
+	IS_TRUE(Item(None) != false);
+
+	std::string s1 = "ab";
+	std::string s2 = "ac";
+	IS_TRUE(Item("ab") == Item("ab"));
+	IS_TRUE(Item("ab") == "ab");
+	IS_TRUE(Item("ab") == intern("ab"));
+	IS_TRUE(Item("ab") == std::string_view(s1));
+	IS_TRUE(Item("ab") != Item("ac"));
+	IS_TRUE(Item("ab") != "ac");
+	IS_TRUE(Item("ab") != intern("ac"));
+	IS_TRUE(Item("ab") != std::string_view(s2));
+
+	IS_TRUE(Item(true) == Item(true));
+	IS_TRUE(Item(true) == true);
+	IS_TRUE(Item(true) == Item(1));
+	IS_TRUE(Item(true) == 1);
+	IS_TRUE(Item(true) == Item(1.0));
+	IS_TRUE(Item(true) == 1.0);
+	IS_TRUE(Item(1) == Item(true));
+	IS_TRUE(Item(1) == true);
+	IS_TRUE(Item(1) == Item(1));
+	IS_TRUE(Item(1) == 1);
+	IS_TRUE(Item(1) == Item(1.0));
+	IS_TRUE(Item(1) == 1.0);
+	IS_TRUE(Item(1.0) == Item(true));
+	IS_TRUE(Item(1.0) == true);
+	IS_TRUE(Item(1.0) == Item(1));
+	IS_TRUE(Item(1.0) == 1);
+	IS_TRUE(Item(1.0) == Item(1.0));
+	IS_TRUE(Item(1.0) == 1.0);
+
+	IS_TRUE(Item("1") != Item(1));
+	IS_TRUE(Item("1.0") != Item(1.0));
+
 }
 
 
@@ -257,7 +329,7 @@ void test_copy(){
 	IS_TRUE(snowball->to_string() == snowball_copy->to_string());
 	
 	// SHALLOW copies should just copy pointers 
-	ref<Fact> Jeff_copy_cat = Jeff_copy->get("cat").as_fact(); 
+	ref<Fact> Jeff_copy_cat = Jeff_copy->get("cat").as<Fact*>(); 
 	IS_TRUE(Jeff->to_string() == Jeff_copy->to_string());
 	IS_TRUE(uint64_t(Jeff_copy_cat.get()) == uint64_t(snowball.get()));
 
@@ -527,7 +599,7 @@ void test_weakref(){
 
 	// cout << snowball_wref.get_wrefcount() << endl;
 
-	// auto Jeffs_cat = Jeff->get("cat").as_fact();
+	// auto Jeffs_cat = Jeff->get("cat").as<Fact*>();
 	// cout << Jeffs_cat << "," << Jeffs_cat->get_refcount() << endl;
 
 	// cout << "END"<< endl;
@@ -561,7 +633,7 @@ void bench_deref(){
 	// 		Fact* person = people[N-1];	
 	// 		for(int i=0; i < N-1; i++){
 	// 			// cout << person->get("id") << endl;
-	// 			person = person->get(1).as_fact_slow();
+	// 			person = person->get(1).as<Fact*>_slow();
 	// 		}
 	// 	}
 	// );
@@ -570,7 +642,7 @@ void bench_deref(){
 		for(int j=0; j < M; j++){
 			Fact* person = people[N-1];	
 			for(int i=0; i < N-1; i++){
-				person = person->get(1).as_fact();
+				person = person->get(1).as<Fact*>();
 			}
 		}
 	);
@@ -588,7 +660,10 @@ void bench_deref(){
 
 
 int main() {
+	test_float_str();
 	// test_item_size();
+	// test_item_eq();
+	// test_item_truthiness();
     // test_errors();
     // test_flags();
     // test_iterate_fact();
@@ -597,7 +672,7 @@ int main() {
     // test_copy();
     // test_pool_alloc();
     // bench_pool_alloc();
-    test_weakref();
+    // test_weakref();
 	// bench_deref();
     return 0;
 }

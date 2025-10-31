@@ -31,10 +31,19 @@ inline bool t_id_is_numerical(uint16_t t_id){
             t_id <= T_ID_FLOAT);
 }
 
+inline bool t_id_is_integral(uint16_t t_id){
+	return (t_id == T_ID_BOOL || 
+            t_id == T_ID_INT);
+}
+
 
 inline bool t_id_is_ptr(uint16_t t_id){
 	return (t_id == T_ID_PTR || 
             t_id >= T_ID_OBJ);
+}
+
+inline bool t_id_is_obj(uint16_t t_id){
+	return (t_id >= T_ID_OBJ);
 }
 
 

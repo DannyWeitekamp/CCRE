@@ -4,25 +4,21 @@
 #include <fmt/ranges.h>
 #include <random>
 
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <sstream>
+#include <iterator>
+
+
 namespace cre {
 
 #define rand_flt() (double(std::rand()) / RAND_MAX) 
 
-template <std::floating_point T>
-std::string flt_to_str(T x){
-	std::string flt_str = fmt::format("{:.4f}", x);
-	size_t r_nonzero = flt_str.length()-1;
-	for(size_t j=flt_str.length()-1; j >= 1; j--){
-		if(flt_str[j] != '0'){
-			r_nonzero = j;
-			break;
-		}
-	}
-	if(flt_str[r_nonzero] == '.'){
-		r_nonzero += 1;
-	}
-	return flt_str.substr(0, r_nonzero+1);
-}
+
+std::string flt_to_str(double x);
+std::string int_to_str(int64_t x);
+
 
 template <std::floating_point T>
 std::ostream& operator<<(std::ostream& out, std::vector<T> vec){

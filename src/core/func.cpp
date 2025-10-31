@@ -266,7 +266,7 @@ FuncRef Func::copy_deep(){
 		ArgInfo arg_info = cf->root_arg_infos[i];
 		if(arg_info.kind == ARGINFO_FUNC){
 			stack.push_back(stack_tuple(cf, i+1, func_copies));
-			cf = (Func*) cf->get(i)->as_func();
+			cf = (Func*) cf->get(i)->_as<Func*>();
 			func_copies = new std::vector<ref<Func>>;
 			i =0;
 		}else{
@@ -383,7 +383,7 @@ std::string Func::to_string(uint8_t verbosity){
 				stack.emplace_back(stack_tuple(cf, i+1, arg_strs));
 
 				// cf = cf->get(i).as_func(); 
-				cf = (*cf->get(i)).as_func();
+				cf = (*cf->get(i))._as<Func*>();
 				// cout << "FUNC  :" << uint64_t(cf) << endl;
 				arg_strs = new fmt_args_t();
 				i =0;
@@ -391,7 +391,7 @@ std::string Func::to_string(uint8_t verbosity){
 				// Terminal Case: Var/Const
 				if(arg_info.kind == ARGINFO_VAR){
 					// cout << "VAR:" << uint64_t(cf->get(i)) << endl;
-					Var* var =  (*cf->get(i)).as_var();
+					Var* var =  (*cf->get(i))._as<Var*>();
 					// Var* var = (*arg_info.ptr).as_var();
 					// cout << "VAR:" << uint64_t(arg_info.ptr) << endl;
 					
@@ -542,6 +542,48 @@ std::tuple<bool, Func*> check_cast_arg(uint16_t val_t_id, CRE_Type* target_type)
   return {true, nullptr};
 }
 
+bool cast_allowed(CRE_Type* src, CRE_Type* target){
+	uint16_t src_t_id = src->get_t_id();
+	uint16_t t_id = target->get_t_id();
+	switch(src->get_t_id()){
+
+	case T_ID_UNDEF:
+		return false;
+
+	case T_ID_NONE:
+		return any_of(t_id, T_ID_NONE, T_ID_BOOL, T_ID_STR);
+
+	case T_ID_BOOL:
+		return any_of(t_id, T_ID_BOOL, T_ID_INT, T_ID_FLOAT, T_ID_STR);
+
+	case T_ID_INT:
+		return any_of(t_id, T_ID_BOOL, T_ID_INT, T_ID_FLOAT, T_ID_STR);
+
+	case T_ID_FLOAT:
+		return any_of(t_id, T_ID_BOOL, T_ID_INT, T_ID_FLOAT, T_ID_STR);
+
+	case T_ID_PTR:
+		return any_of(t_id, T_ID_OBJ);
+
+	case T_ID_STR:{ 
+		return any_of(t_id, T_ID_STR, T_ID_NONE, T_ID_FLOAT, T_ID_INT, T_ID_BOOL);
+	}
+
+	// Rest handles objects
+	default:
+		if(any_of(t_id, src_t_id, T_ID_BOOL)){
+			return true;
+		}else if(t_id_is_obj(t_id) and any_of(t_id, T_ID_OBJ)){
+			return true;	
+		}
+		
+	}
+	return false;
+}
+
+
+
+
 // Set a particular argument as part of the dynamic composition of a
 //  Func. For instance, set_arg() might set a constant, Var, or Func
 //	as part of a composition. For instance if we have:
@@ -596,11 +638,21 @@ void Func::set_arg(size_t i, const Item& val){
 		switch(kind) {
         	case ARGINFO_VAR:
         	{
-        		Var* var = val.as_var();
+        		Var* var = val._as<Var*>();
         		// TODO: Check output Type
         		// if(head_info.base_t_id != var->head_t_id && !this->is_ptr_func){
             	// 	throw std::invalid_argument("Var's head_type doesn't match composing CREFunc's argument type.");
         		// }
+
+        		if(not cast_allowed(var->head_type, head_info.base_type)){
+        			throw_bad_arg(i, var, head_info.base_type, var->head_type, false);
+
+        			// std::stringstream ss;
+        			// ss << "No cast from " << var->head_type << 
+        			// 	  " to " << head_info.base_type << " in Func composition," <<
+        			// 	  " when passing argument " << var << " to i=" << i << " of " << this << endl;
+        			// throw std::runtime_error(ss.str());
+        		}
 
             	ref<Var> head_var;
         		if(head_info.has_deref){
@@ -625,18 +677,28 @@ void Func::set_arg(size_t i, const Item& val){
 		    }
         		break;
         	case ARGINFO_FUNC:
+        	{
+        		Func* func = val._as<Func*>();
+        		if(not cast_allowed(func->return_type, head_info.base_type)){
+        			throw_bad_arg(i, func, head_info.base_type, func->return_type, false);
+        		}
         		// TODO check func return type
         		head_info.kind = ARGINFO_FUNC_UNEXPANDED;
-        		head_info.cf_ptr = val.as_func();
+        		head_info.cf_ptr = func;
         		cf->set(arg_ind, val);
         		break;
+        	}
         	default:
+        		CRE_Type* val_type = val.get_type();
+
+        		if(not cast_allowed(val_type, head_info.base_type)){
+        			throw_bad_arg(i, val, head_info.base_type, val_type, false);
+        		}
+
         		cf->set(arg_ind, val);
         		// Do nothing
        	}
 		head_info.has_deref = has_deref;
-
-		
 
 		// cout << "set j=" << j << ", arg_ind=" << arg_ind << endl;
 
@@ -830,7 +892,7 @@ uint16_t _calc_bytecode_length(Func* cf){
 
 		case ARGINFO_FUNC:
 		{
-			Func* func =  (*cf->get(i)).as_func();
+			Func* func =  (*cf->get(i))._as<Func*>();
 			bytecode_len += _calc_bytecode_length(func);
 			break;
 		}
@@ -839,7 +901,7 @@ uint16_t _calc_bytecode_length(Func* cf){
 			break;
 		case ARGINFO_VAR:
 		{
-			Var* var =  (*cf->get(i)).as_var();
+			Var* var =  (*cf->get(i))._as<Var*>();
 			if(var->size() > 0){
 				bytecode_len += sizeof_deref_var(var);
 			}
@@ -944,7 +1006,7 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 
 		case ARGINFO_FUNC:
 		{
-			Func* func =  (*cf->get(i)).as_func();
+			Func* func =  (*cf->get(i))._as<Func*>();
 
 			
 			// Recurse... should reserve offsets 
@@ -969,7 +1031,7 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 			break;
 		case ARGINFO_VAR:
 		{
-			Var* var =  (*cf->get(i)).as_var();
+			Var* var =  (*cf->get(i))._as<Var*>();
 			Var* base_var =  var->base;
 
 			auto it = base_var_map.find((void *) base_var);
@@ -1309,6 +1371,10 @@ void Func::write_bytecode(
 // 	}
 // }
 
+
+std::ostream& operator<<(std::ostream& out, const StrBlock& sb){
+	return out << sb.view;
+}
 
 // ---------------------------------------------------------------
 // reinitialize()
@@ -1670,7 +1736,7 @@ void Func::_call_recursive2(void* ret_ptr,
 
 		case ARGINFO_FUNC:
 		{
-			Func* func =  (*this->get(i)).as_func();
+			Func* func =  (*this->get(i))._as<Func*>();
 			uint8_t* _args_stack = (uint8_t*) alloca(func->stack_size);
 			void* _ret_ptr = (void*) &args_stack[arg_info.offset];
 			func->_call_recursive2(_ret_ptr, _args_stack, input_args);
@@ -1684,7 +1750,7 @@ void Func::_call_recursive2(void* ret_ptr,
 		}
 		case ARGINFO_VAR:
 		{
-			Var* var =  (*get(i)).as_var();
+			Var* var =  (*get(i))._as<Var*>();
 			if(var->size() == 0){
 				break;
 				// memcpy(&args_stack[arg_info.offset],
@@ -1733,7 +1799,7 @@ void Func::_call_recursive(void* ret_ptr,
 
 		case ARGINFO_FUNC:
 		{
-			Func* func = this->get(i)->as_func();
+			Func* func = this->get(i)->_as<Func*>();
 			// cout << "Func: " << uint64_t(func) << endl;
 			// uint8_t* _args_stack = (uint8_t*) alloca(func->args_size);
 			// void* _ret_ptr = alloca()//(void*) &args_stack[arg_info.offset];

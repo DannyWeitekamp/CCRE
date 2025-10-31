@@ -3,11 +3,15 @@
 #include <string>
 #include <cstdint>
 #include <iostream>
+#include <sstream>
 #include <string_view>
+#include <fmt/format.h>
+#include "../include/helpers.h"
 #include "../include/cre_obj.h"
 #include "../include/t_ids.h"
 #include "../include/ref.h"
 #include "../include/wref.h"
+#include "../include/types.h"
 
 namespace cre {
 
@@ -19,12 +23,15 @@ struct Var;
 struct Func;
 class CRE_Obj;
 struct ControlBlock;
+struct CRE_Type;
+struct InternStr;
 
 // enum class ValueKind : uint8_t {
 const uint8_t VALUE =      uint8_t(0);
 const uint8_t WEAK_REF =   uint8_t(1);
 const uint8_t RAW_PTR =    uint8_t(2);
 const uint8_t STRONG_REF = uint8_t(3);
+const uint8_t INTERNED = RAW_PTR | uint8_t(4);
 // };
 
 
@@ -52,6 +59,8 @@ const uint8_t STRONG_REF = uint8_t(3);
 //     uint8_t borrows;
 //     uint16_t pad[2];
 // };
+
+
 
 struct Item{
     // [Bytes 0-8]
@@ -99,7 +108,6 @@ public:
 //     uint8_t borrows;
 //     uint16_t pad[2];
 
-    bool operator==(const Item& other) const;
 
 
     inline bool is_ref() const {
@@ -114,6 +122,10 @@ public:
         return (val_kind & 3) == RAW_PTR;
     }
 
+    inline bool is_interned() const {
+        return val_kind == INTERNED;
+    }
+
     inline bool is_sref() const {
         return ptr != nullptr && (val_kind & 3) == STRONG_REF;
     }
@@ -121,6 +133,8 @@ public:
     inline bool is_wref() const {
         return ptr != nullptr && (val_kind & 3) == WEAK_REF;   
     }
+
+
 
     // inline ControlBlock* get_ctrl_block() const {
     //     return (ControlBlock*) ((uint64_t(ctrl_block)>>3)<<3);
@@ -139,6 +153,8 @@ public:
     inline uint16_t get_t_id() const {
         return t_id;   
     }
+
+    CRE_Type* get_type() const;
         // if(is_wref()){
         //     // cout << "get_t_id" << endl;
         //     ControlBlock* cb = (ControlBlock*) ptr;
@@ -169,25 +185,53 @@ public:
         return length;
     }
 
+    bool operator==(const Item& other) const;
 
     template<class T>
-    bool operator==(const T& other) const {        
-        Item other_item = Item(other);
-        if(this->get_t_id() == other_item.get_t_id()){
-            if(!is_value()){
-                return this->get_ptr() == other_item.get_ptr();
-            }else{
-                return this->val == other_item.val;
-            }
-        }
-        return false;
+    bool operator==(const T& _other) const {
+        return operator==(Item(_other));
     }
+
+    //     // if(t_id == T_ID_UNDEF && other_t_id == T_ID_UNDEF){
+    //     //     return true;
+    //     // }else if(t_id == T_ID_NONE && other_t_id == T_ID_NONE){
+    //     //     return true;
+    //     if(is_numerical(t_id) && is_numerical(other_t_id)){
+    //         if(t_id == T_ID_FLOAT || other_t_id == T_ID_FLOAT){
+    //             return as<double> == other.as<double>;
+    //         }else{
+    //             return this->val == other.val;
+    //         }
+    //     }else if(t_id == T_ID_STR && other_t_id == T_ID_STR){
+    //         if(is_raw_ptr() || other.is_raw_ptr()){
+
+    //         }else{
+
+    //         }
+    //     }else{
+    //         return val == other.val;
+    //     }
+
+    //     if(this->get_t_id() == other.get_t_id()){
+    //         if(!is_value()){
+    //             return this->get_ptr() == other.get_ptr();
+    //         }else{
+    //             return this->val == other.val;
+    //         }
+    //     }
+    //     return false;
+    // }
 
     
 
 
     Item() : val(0), t_id(T_ID_UNDEF),
              meta_data(0), val_kind(VALUE), pad(0) 
+    {};
+
+    Item([[maybe_unused]] const NoneType& none) :
+         val(0), t_id(T_ID_NONE),
+         meta_data(0), val_kind(VALUE), pad(0) 
     {};
 
     // void _force_strong() {
@@ -364,6 +408,7 @@ public:
 
     Item(const std::string& arg);
     Item(const std::string_view& arg);
+    Item(const InternStr& arg);
     Item(const char* data, size_t _length=-1);
 
     // Item(Fact* x, uint8_t _is_ref=0xFF);
@@ -400,52 +445,15 @@ public:
         return t_id_is_numerical(t_id);
     }
 
+    inline bool is_integral() const{
+        return t_id_is_integral(t_id);
+    }
+
     inline bool is_ptr() const{
         return t_id_is_ptr(t_id);
     }
 
 
-    template <std::integral T>
-    T as() const{
-        return T(std::bit_cast<int64_t>(val));
-    }
-
-    template <std::floating_point T>
-    T as() const {
-        return T(std::bit_cast<double>(val));
-    }
-    
-
-
-    inline bool as_bool() const {
-        return bool(val);
-    }
-
-    inline int64_t as_int() const {
-        return std::bit_cast<int64_t>(val);
-    }
-
-    inline double as_float() const {
-        return std::bit_cast<double>(val);
-    }
-
-    inline std::string_view as_string() const {
-        // UnicodeItem* ut = std::bit_cast<UnicodeItem*>(this);
-        return std::string_view(this->data, this->length);
-    }
-
-    template <typename T>
-    requires std::is_same_v<T, std::string>
-    std::string as() const {
-        return std::string(this->data, this->length);
-    }
-
-    template <typename T>
-    requires std::is_same_v<T, std::string_view>
-    std::string_view as() const {
-        return std::string_view(this->data, this->length);
-    }
-    
 
     inline CRE_Obj* get_ptr() const{
         if(is_wref()){
@@ -472,10 +480,140 @@ public:
         // return std::bit_cast<CRE_Obj*>(ptr);
     }
 
-    inline Fact* as_fact() const {
-        // cout << "as fact: " << uint64_t(get_ptr()) << endl; 
-        return std::bit_cast<Fact*>(get_ptr());
+
+    template <std::integral T>
+    T _as() const noexcept{
+        return T(std::bit_cast<int64_t>(val));
     }
+
+    template <std::floating_point T>
+    T _as() const noexcept{
+        return T(std::bit_cast<double>(val));
+    }
+    
+    template <typename T>
+    requires std::is_same_v<T, std::string>
+    std::string _as() const noexcept{
+        return std::string(this->data, this->length);
+    }
+
+    template <typename T>
+    requires std::is_same_v<T, std::string_view>
+    std::string_view _as() const noexcept{
+        return std::string_view(this->data, this->length);
+    }
+
+    template <typename T>
+    requires std::is_pointer_v<T>
+    T _as() const noexcept{
+        return std::bit_cast<T>(get_ptr());
+    }
+
+
+    template <std::integral T>
+    T as() const{
+        if(is_integral()){
+            return _as<T>();
+        }else if(t_id == T_ID_FLOAT){
+            return T(_as<double>());
+        }else{
+            std::stringstream ss;
+            ss << "Item cast to integer type failed for Item with type ";
+            ss << get_type() << ".";
+            throw std::runtime_error(ss.str());
+        }        
+    }
+
+    template <std::floating_point T>
+    T as() const {
+        if(t_id == T_ID_FLOAT){
+            return _as<T>();
+        }else if(is_integral()){
+            return T(_as<int64_t>());
+        }else{
+            std::stringstream ss;
+            ss << "Item cast to float type failed for Item with type ";
+            ss << get_type() << ".";
+            throw std::runtime_error(ss.str());
+        }
+    }
+
+    template <typename T>
+    requires std::is_pointer_v<T>
+    T as() const{
+        if(is_ptr()){
+            return _as<T>();    
+        }else{
+            std::stringstream ss;
+            ss << "Item cast to pointer type failed for Item with type ";
+            ss << get_type() << ".";
+            throw std::runtime_error(ss.str());
+        }
+    }    
+
+    template <typename T>
+    requires std::is_same_v<T, std::string>
+    std::string as() const {
+        switch(t_id){
+        case T_ID_STR: 
+            return std::string(this->data, this->length);
+        case T_ID_UNDEF:
+            return "Undef";
+        case T_ID_NONE: 
+            return "None";
+        case T_ID_BOOL: 
+            return val ? "True" : "False";
+        case T_ID_INT: 
+            return int_to_str(_as<int64_t>());
+        case T_ID_FLOAT: 
+            return flt_to_str(_as<double>());
+        case T_ID_PTR:
+            return fmt::format("{:#x}", uintptr_t(_as<void*>()));
+        default:
+            break;
+        }
+        std::stringstream ss;
+        ss << fmt::format("{:#x}", uintptr_t(get_ptr()));
+        return ss.str();
+    }
+
+    template <typename T>
+    requires std::is_same_v<T, std::string_view>
+    std::string_view as() const {
+        if(t_id == T_ID_STR){
+            return std::string_view(this->data, this->length);
+        }else{
+            std::stringstream ss;
+            ss << "Item cast to string_view failed for Item with type ";
+            ss << get_type() << ".";
+            throw std::runtime_error(ss.str());
+        }
+    }
+    
+
+    
+
+    // inline bool as_bool() const {
+    //     return bool(val);
+    // }
+
+    // inline int64_t as_int() const {
+    //     return std::bit_cast<int64_t>(val);
+    // }
+
+    // inline double as_float() const {
+    //     return std::bit_cast<double>(val);
+    // }
+
+    // inline std::string_view as_string() const {
+    //     // UnicodeItem* ut = std::bit_cast<UnicodeItem*>(this);
+    //     return std::string_view(this->data, this->length);
+    // }
+
+    // inline Fact* as_fact() const {
+    //     // cout << "as fact: " << uint64_t(get_ptr()) << endl; 
+    //     return std::bit_cast<Fact*>(get_ptr());
+    // }
 
     // Keeping this purely for benchmarking to justify the 
     //   use of the bitpacking trickery in fast method
@@ -487,24 +625,20 @@ public:
     //     return std::bit_cast<Fact*>(cb->obj_ptr);
     // }
 
-    inline Var* as_var() const {
-        return std::bit_cast<Var*>(get_ptr());
-    }
+    // inline Var* as_var() const {
+    //     return std::bit_cast<Var*>(get_ptr());
+    // }
 
-    inline Func* as_func() const {
-        return std::bit_cast<Func*>(get_ptr());
-    }
+    // inline Func* as_func() const {
+    //     return std::bit_cast<Func*>(get_ptr());
+    // }
 
     // template <std::derived_from<T, CRE_Obj> ref<T>>
     // ref<T> as(){
     //     return std::bit_cast<T*>(get_ptr());
     // }
 
-    template <typename T>
-    requires std::is_pointer_v<T>
-    T as() const{
-        return std::bit_cast<T>(get_ptr());
-    }
+    
 
     // inline void to_weak() {    
     //     Item copy = *this;
@@ -605,8 +739,23 @@ public:
     // }
 
     std::string to_string() const;
+
+    // Truthiness 
+    explicit operator bool() const {
+        if(t_id == T_ID_UNDEF || t_id == T_ID_NONE){
+            return false;
+        }else if(t_id == T_ID_STR){
+            return length != 0;
+        }else{
+            return val != 0;
+        }
+    }
         
 };
+
+
+
+
 
 
 

@@ -3,7 +3,7 @@
 #include "../include/t_ids.h"
 #include "../include/hash.h"
 #include "../include/cre_obj.h"
-#include "../include/item.h"
+// #include "../include/item.h"
 // #include "../include/context.h"
 #include <iostream>
 #include <string>
@@ -235,7 +235,11 @@ struct Conditions;
 struct Rule;
 struct StrBlock;
 
-template <typename T>
+
+
+
+
+template <typename T, auto ExceptF>
 CRE_Type* to_cre_type() {
     // using T = std::remove_cvref_t<_T>;
     using DecayT = std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>;
@@ -246,7 +250,9 @@ CRE_Type* to_cre_type() {
         return cre_int;
     } else if constexpr (std::is_floating_point_v<DecayT>) {
         return cre_float;
-    } else if constexpr (std::is_same_v<std::string, DecayT> ||
+    } else if constexpr (std::is_same_v<typename std::decay<T>::type, const char*> ||
+                         std::is_same_v<typename std::decay<T>::type, char*> ||
+                         std::is_same_v<std::string, DecayT> ||
                          std::is_same_v<std::string_view, DecayT> ||
                          std::is_same_v<StrBlock, DecayT>) {
         return cre_str;
@@ -267,9 +273,61 @@ CRE_Type* to_cre_type() {
     } else if constexpr (std::is_same_v<Rule, DecayT>){
         return cre_Rule;
     }else{
-        static_assert(!std::is_same<T,T>::value, "Unsupported type for to_cre_type()");
+        return ExceptF();     
     }
-    
+}
+
+inline CRE_Type* _unsupported_type(){
+    throw std::runtime_error("Unsupported type for to_cre_type()");
+    return nullptr;
+}
+
+
+template <typename T>
+CRE_Type* to_cre_type() {
+    return to_cre_type<T,_unsupported_type>();
+}
+
+inline CRE_Type* _return_null(){
+    return nullptr;
+}
+
+template <typename T>
+CRE_Type* to_cre_type_or_null() {
+    return to_cre_type<T,_return_null>();
+
+    // // using T = std::remove_cvref_t<_T>;
+    // using DecayT = std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>;
+
+    // if constexpr (std::is_same_v<bool, DecayT>) {
+    //     return cre_bool;
+    // }else if constexpr (std::is_integral_v<DecayT>) {
+    //     return cre_int;
+    // } else if constexpr (std::is_floating_point_v<DecayT>) {
+    //     return cre_float;
+    // } else if constexpr (std::is_same_v<std::string, DecayT> ||
+    //                      std::is_same_v<std::string_view, DecayT> ||
+    //                      std::is_same_v<StrBlock, DecayT>) {
+    //     return cre_str;
+    // } else if constexpr (std::is_same_v<CRE_Obj, DecayT>){
+    //     return cre_obj;
+    // } else if constexpr (std::is_same_v<Fact, DecayT>){
+    //     return cre_Fact;
+    // } else if constexpr (std::is_same_v<FactSet, DecayT>){
+    //     return cre_FactSet;
+    // } else if constexpr (std::is_same_v<Var, DecayT>){
+    //     return cre_Var;
+    // } else if constexpr (std::is_same_v<Func, DecayT>){
+    //     return cre_Func;
+    // } else if constexpr (std::is_same_v<Literal, DecayT>){
+    //     return cre_Literal;
+    // } else if constexpr (std::is_same_v<Conditions, DecayT>){
+    //     return cre_Conditions;
+    // } else if constexpr (std::is_same_v<Rule, DecayT>){
+    //     return cre_Rule;
+    // }else{
+    //     return (CRE_Type*) nullptr;
+    // }   
 }
 
 
@@ -314,5 +372,18 @@ struct has_var_or_func<T, Rest...> : std::bool_constant<
         std::remove_pointer_t<remove_ref_t<std::remove_cvref_t<T>>>
     >::value || has_var_or_func<Rest...>::value
 > {};
+
+
+struct NoneType {
+    // Truthiness of None is false
+    explicit operator bool() const {
+        return false;
+    }
+};
+
+extern NoneType None;
+
+std::ostream& operator<<(std::ostream& outs, const NoneType& none);
+
 
 } // NAMESPACE_END(cre)
