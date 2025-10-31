@@ -251,7 +251,8 @@ public :
             
             // this->control_block->wref_count = this->control_block->wref_count & ~1;
             // Call the CRE_Obj's destructor
-            ControlBlock* cb = this->control_block;
+            ControlBlock* cb = this->control_block;            
+            
             if(cb->dtor){
                 cb->dtor(this);    
             }

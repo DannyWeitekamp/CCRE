@@ -230,26 +230,31 @@ public:
 
     inline ref<Fact> alloc_fact(FactType* type,
                                uint32_t length=0){
-        length = _resolve_fact_len(type, length);
-        bool did_malloc = false;
-        Fact* fact_addr = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(length), did_malloc);
-        ref<Fact> fact = new (fact_addr) Fact(type, length);
+        return cre::alloc_fact(type, length, alloc_buffer);
+        // length = _resolve_fact_len(type, length);
 
-        if(!did_malloc){
-            fact->control_block->alloc_buffer = alloc_buffer;
-            fact->control_block->alloc_buffer->inc_ref();
-        }
 
-        // fact->hash = ;
+        // cre::alloc_fact()
+        // bool did_malloc = false;
+        // Fact* fact_addr = (Fact*) alloc_buffer->alloc_bytes(SIZEOF_FACT(length), did_malloc);
+        // ref<Fact> fact = new (fact_addr) Fact(type, length);
 
-        return fact;
+        // if(!did_malloc){
+        //     fact->control_block->alloc_buffer = alloc_buffer;
+        //     fact->control_block->alloc_buffer->inc_ref();
+        // }
+
+        // // fact->hash = ;
+
+        // return fact;
     }
 
     inline ref<Fact> empty_fact(FactType* type,
                                size_t length=0){
-        ref<Fact> fact = this->alloc_fact(type, length);
-        _zfill_fact(fact, 0, fact->length);
-        return fact;
+        return cre::empty_fact(type, length, alloc_buffer);
+        // ref<Fact> fact = this->alloc_fact(type, length);
+        // _zfill_fact(fact, 0, fact->length);
+        // return fact;
     }
 
     // inline ref<Fact> new_fact
@@ -259,13 +264,13 @@ public:
                           const ItemOrMbr* __restrict items,
                           uint32_t n_items,
                           bool immutable=false){
-
+        return cre::new_fact(type, items, n_items, immutable, alloc_buffer);
         // uint32_t length = n_items;//_resolve_fact_len(n_items, type);
-        ref<Fact> fact = this->alloc_fact(type, n_items);
+        // ref<Fact> fact = this->alloc_fact(type, n_items);
 
-        _fill_fact(fact, items, n_items);
-        fact->immutable = immutable;
-        return fact;
+        // _fill_fact(fact, items, n_items);
+        // fact->immutable = immutable;
+        // return fact;
     }
 
     template<std::derived_from<Item> ItemOrMbr>

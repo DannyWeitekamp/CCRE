@@ -446,17 +446,17 @@ struct FactSetJSONWriter {
 		rapidjson::Value item_val;
 		switch(item.get_t_id()) {
 	        case T_ID_BOOL:
-	            item_val = rapidjson::Value(item.as_bool());
+	            item_val = rapidjson::Value(item._as<bool>());
 	            break;
 	        case T_ID_INT:
-				item_val = rapidjson::Value(item.as_int());
+				item_val = rapidjson::Value(item._as<int>());
 	            break;
 	        case T_ID_FLOAT:
-				item_val = rapidjson::Value(item.as_float());
+				item_val = rapidjson::Value(item._as<float>());
 	            break;
 	        case T_ID_STR:
 				{
-					std::string_view item_str = item.as_string();
+					std::string_view item_str = item._as<std::string>();
 					item_val = rapidjson::Value(item_str.data(), item_str.size(), alloc);
 				}
 	            break;

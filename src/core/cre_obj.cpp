@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "../include/context.h"
+#include "../include/types.h"
 #include "../include/cre_obj.h"
 #include "../include/alloc_buffer.h"
 
@@ -87,7 +88,7 @@ void CRE_Obj::init_control_block(CRE_dtor_function _dtor, uint16_t t_id){
 
 	
     ControlBlock* data = global_cb_pool.alloc();
-    // cout << "INIT CONTROL BLOCK: " << uint64_t(data) << ", " << uint64_t(this) << endl;
+    // cout << "INIT CONTROL BLOCK: CB=" << uint64_t(data) << ", THIS=" << uint64_t(this) << endl;
     this->control_block = new (data) ControlBlock(this, _dtor, t_id);
 
     // cout << "INIT: " << get_wrefcount(); 

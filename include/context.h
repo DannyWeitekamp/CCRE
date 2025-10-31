@@ -2,7 +2,7 @@
 
 
 #include "../include/ref.h"
-#include "../include/types.h"
+// #include "../include/types.h"
 #include "../include/hash.h"
 #include "../include/pool_allocator.h"
 // #include "../include/control_block.h"
@@ -10,12 +10,12 @@
 
 namespace cre {
 
-extern PoolAllocator<ControlBlock> global_cb_pool; 
 
-// using CRE_Type_ref = ref<CRE_Type>;
 
 // Forward Declare
 struct InternStr;
+struct CRE_Type;
+struct FactType;
 // struct ControlBlock;
 
 // CRE_Context declaration
@@ -53,10 +53,18 @@ CRE_Context* set_current_context(CRE_Context* context);
 CRE_Context* set_current_context(std::string_view context);
 
 
-extern HashMap<std::string, std::unique_ptr<CRE_Context>> __all_CRE_contexts;
+extern HashMap<std::string, std::unique_ptr<CRE_Context>>& __all_CRE_contexts;
 extern CRE_Context* default_context;
 extern CRE_Context* current_context;
 
+
+// -- Schwarzt Counter To Gate Initialization / Teardown of Context--
+extern PoolAllocator<ControlBlock>& global_cb_pool; 
+static struct ContextInitializer {
+  ContextInitializer ();
+  ~ContextInitializer ();
+} dc_pool_initializer;
+// END -- Schwarzt Counter To Initialization / Teardown of Context--
 
 
 } // NAMESPACE_END(cre)

@@ -27,10 +27,12 @@ CRE_Type::CRE_Type(
            uint16_t _byte_width,
            vector<CRE_Type*> _sub_types, 
            uint8_t _builtin,
-           CRE_Context* context) : 
+           DynamicDtor dynamic_dtor,
+           CRE_Context* context
+           ) : 
     name(std::string(_name)), t_id(_t_id),
     byte_width(_byte_width), sub_types(_sub_types), builtin(_builtin),
-    context(context), type_index(-1) {
+    dynamic_dtor(dynamic_dtor), context(context), type_index(-1)  {
 
     // CRE_Obj(&CRE_Type_dtor)
     this->init_control_block(&CRE_Type_dtor);
@@ -186,6 +188,19 @@ uint64_t MemberSpec::get_flag(uint64_t flag) const{
 }
 
 
+
+/// Dynamic Dtors
+void str_dynamic_dtor(void* ptr){
+    using string = std::string;
+    ((std::string*) ptr)->~string();
+}
+
+void cre_obj_dynamic_dtor(void* ptr){
+    ((CRE_Obj*) ptr)->dec_ref();
+}
+
+
+
 void FactType_dtor(const CRE_Obj* ptr){
     // cout << "Type_dtor: " << ((FactType* ) ptr)->name << endl;
     delete ((FactType* ) ptr);
@@ -196,7 +211,7 @@ FactType::FactType(std::string_view _name,
            const vector<MemberSpec>& _members,
            const HashMap<std::string, Item>& _flags,
            CRE_Context* _context)
-    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, _context), 
+    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, cre_obj_dynamic_dtor, _context), 
       members(_members), flags(_flags) {
 
     control_block->dtor = &FactType_dtor; 
@@ -237,13 +252,14 @@ FactType::FactType(std::string_view _name,
 CRE_Type* define_type(std::string_view name,
                   const vector<CRE_Type*>& sub_types,
                   uint16_t byte_width,
+                  DynamicDtor dynamic_dtor,
                   CRE_Context* context) {
     if(context == nullptr){
         context = current_context;
     };
 
     // TODO: What is the T_ID of a user defined type
-    CRE_Type* t = new CRE_Type(name, 0, byte_width, sub_types, 0, context);
+    CRE_Type* t = new CRE_Type(name, 0, byte_width, sub_types, 0, dynamic_dtor, context);
     // cout << "DEFINE TYPE" << t->name << endl;
     uint16_t index = context->_add_type(t);
     // t->type_index = index;
@@ -343,6 +359,7 @@ extern "C" size_t FactType_get_attr_index(FactType* type, char* key){
 
 
 
+
 // Global variable definitions
 CRE_Type* cre_undef;// = new CRE_Type("undefined",{}, 1);
 CRE_Type* cre_none;// = new CRE_Type("bool",{}, 1);
@@ -381,23 +398,23 @@ void ensure_builtins(){
         cre_ptr = new CRE_Type("ptr", T_ID_PTR,
                                 sizeof(double), {}, 1);
         cre_str = new CRE_Type("str", T_ID_STR,      
-                                sizeof(StrBlock), {}, 1);
+                                sizeof(StrBlock), {}, 1, str_dynamic_dtor);
         cre_obj = new CRE_Type("obj", T_ID_OBJ,      
-                                sizeof(double), {}, 1);
+                                sizeof(double), {}, 1, cre_obj_dynamic_dtor);
         cre_Fact = new CRE_Type("Fact", T_ID_FACT, 
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_FactSet = new CRE_Type("FactSet", T_ID_FACTSET,
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Var = new CRE_Type("Var", T_ID_VAR,      
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Func = new CRE_Type("Func", T_ID_FUNC,   
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Literal = new CRE_Type("Literal", T_ID_LITERAL,
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Conditions = new CRE_Type("Conditions", T_ID_CONDITIONS,
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Rule = new CRE_Type("Rule", T_ID_RULE,
-                                sizeof(void*), {}, 1);
+                                sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
 
         // cout << "INIT builtins";
         cre_builtins.push_back(cre_undef);

@@ -1,3 +1,4 @@
+#include "../include/context.h"
 #include "../include/helpers.h"
 #include "../include/fact.h"
 #include "../include/func.h"
@@ -19,6 +20,7 @@ using namespace cre;
 // 	}
 // };
 
+
 bool bin_and(bool a, bool b){
 	// cout << "AND: " << a << ", " << b << endl; 
 	return a & b;
@@ -38,7 +40,7 @@ std::string concat(const StrBlock& _a, const StrBlock& _b){
 	std::string_view b = _b.view;
 	std::stringstream ss;
 	ss << a << b;
-	cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
+	// cout << "CONCAT A=" << a << " B="<< b << " A+B=" << ss.str() << endl;
 	return ss.str();
 	// return a+b;
 }
@@ -54,6 +56,21 @@ std::string paren(const StrBlock& _x){
 
 double add_money(Fact* a, Fact* b){
 	return a->get("money").as<double>()+b->get("money").as<double>();
+}
+
+
+FactType* Candy = define_fact("Candy", 
+    {{"cost", cre_float},
+     {"flavor", cre_str},
+ 	}
+);
+
+Fact* combine_candy(Fact* a, Fact* b){
+	double new_cost = a->get("cost").as<double>()+b->get("cost").as<double>();
+	std::stringstream ss;
+	ss << a->get("flavor").as<std::string_view>() << " ";
+	ss << b->get("flavor").as<std::string_view>();
+	return make_fact(Candy, new_cost, ss.str());
 }
 
 
@@ -282,6 +299,7 @@ void test_type_check_and_casting(){
 	FuncRef concat_f = define_func<concat>("concat");
 	FuncRef paren_f = define_func<paren>("paren");
 	FuncRef add_money_f = define_func<add_money>("add_money");
+	FuncRef combine_candy_f = define_func<combine_candy>("combine_candy");
 
 	ref<Fact> olpops = make_fact(Person, "Ol'Pops", 3.50);
 	ref<Fact> pops = make_fact(Person, "Pops", 100.0, nullptr, olpops, nullptr);
@@ -341,19 +359,16 @@ void test_type_check_and_casting(){
 	// Concat Strings 
 	EXPECT_THROW(concat_f(Item(olpops), Item(pops)));
 	IS_TRUE(concat_f("a", "b") == "ab");
-	cout << "--BEFORE--" << endl;
-	cout << concat_f("a", 1) << endl;
-	cout << "--AFTER--" << endl;
 	IS_TRUE(concat_f("a", 1) == "a1");
 	IS_TRUE(concat_f(1.8, 1) == "1.81");
-	IS_TRUE(concat_f(true, 3.7) == "true3.7");
+	IS_TRUE(concat_f(true, 3.7) == "True3.7");
 
 	// Concat Strings as Items
 	EXPECT_THROW(concat_f(Item(olpops), Item(pops)));
 	IS_TRUE(concat_f(Item("a"), Item("b")) == "ab");
 	IS_TRUE(concat_f(Item("a"), Item(1)) == "a1");
 	IS_TRUE(concat_f(Item(1.8), Item(1)) == "1.81");
-	IS_TRUE(concat_f(Item(true), Item(3.7)) == "true3.7");
+	IS_TRUE(concat_f(Item(true), Item(3.7)) == "True3.7");
 
 	// Add Objects 
 	IS_TRUE(add_money_f(olpops, pops)==103.5);
@@ -455,8 +470,14 @@ void test_type_check_and_casting(){
 	EXPECT_THROW(add_money_f(true, I1)(true));
 	EXPECT_THROW(add_money_f(true, B0)(0));
 
-	cout << add_money_f << endl;
-	EXPECT_THROW(add_money_f(1,P1));
+	/// Test Big Strings For Potential Leaks
+	concat_f(S0, S1)(-9223372036854775807,
+					 -9223372036854775807);
+	concat_f(S0, S1)("Lorem ipsum dolor sit amet, consectetur",
+					 "consectetur adipiscing elit.");
+
+
+	// combine_candy_f()
 
 }
 

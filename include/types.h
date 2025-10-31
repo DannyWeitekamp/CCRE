@@ -1,10 +1,11 @@
 #pragma once
 
+#include "../include/context.h"
 #include "../include/t_ids.h"
 #include "../include/hash.h"
 #include "../include/cre_obj.h"
 // #include "../include/item.h"
-// #include "../include/context.h"
+
 #include <iostream>
 #include <string>
 #include <inttypes.h>
@@ -22,6 +23,10 @@ namespace cre {
 // Forward declarations
 struct CRE_Context;
 struct Item;
+struct FactType;
+
+template <class ... Ts>
+ref<Fact> make_fact(FactType* type, const Ts& ... inputs);
 
 // ------------------------------------------------------------
 // : FlagGroup
@@ -83,11 +88,14 @@ const uint8_t TYPE_KIND_BUILTIN = 1;
 const uint8_t TYPE_KIND_FACT = 2;
 const uint8_t TYPE_KIND_DEFFERED = 3;
 
+typedef void (*DynamicDtor)(void*);
+
 
 struct CRE_Type : CRE_Obj{
     std::string name;
     vector<CRE_Type*> sub_types;
     CRE_Context* context;
+    DynamicDtor dynamic_dtor;
     int32_t type_index;
     uint16_t t_id;
     uint16_t byte_width;
@@ -101,6 +109,7 @@ struct CRE_Type : CRE_Obj{
         uint16_t byte_width,
         vector<CRE_Type*> _sub_types = {},
         uint8_t _builtin = 0,
+        DynamicDtor dynamic_dtor = nullptr,
         CRE_Context* context = nullptr
     );    
 
@@ -139,6 +148,7 @@ struct MemberSpec {
     // CRE_Type* get_type();
 };
 
+
 // Type declaration
 struct FactType : public CRE_Type{
     vector<MemberSpec> members;
@@ -164,6 +174,11 @@ struct FactType : public CRE_Type{
     bool try_finalized();
     inline size_t size(){return members.size();}
 
+    template <class ... Ts>
+    ref<Fact> operator()(const Ts& ... inputs){
+        return make_fact(this, inputs...);
+    }
+
 };
 
 // Function declarations
@@ -184,6 +199,7 @@ HashMap<std::string, Item> parse_builtin_flags(
 CRE_Type* define_type(std::string_view name, 
                   const vector<CRE_Type*>& sub_type={},
                   uint16_t byte_width = 0,
+                  DynamicDtor dynamic_dtor = nullptr,
                   CRE_Context* context = nullptr);
 
 FactType* define_fact(std::string_view name, 

@@ -126,6 +126,7 @@ private:
     // void* write_head;
 
     Block* alloc_block(size_t _block_size){
+    	// cout << "ALLOC BLOCK" << endl;
     	void* data = (void*) malloc(_block_size);
     	// void* data = (void*) aligned_alloc(block_size, DEFUALT_BLOCKSIZE);
     	Block* new_block = new (data) Block(_block_size, items_per_block, end_offset);
@@ -159,12 +160,20 @@ public:
     	// cout << (block_size-sizeof(Block)) / sizeof(Chunk) << endl;
 
     	// A PoolAllocator has an empty block at instantiation
+
     	curr_block = alloc_block(block_size);
+    	// cout << "START POOL ALLOC" << uint64_t(curr_block) << endl;
     };
 
     ~PoolAllocator(){
+    	// cout << "DESTROY POOL ALLOC" << uint64_t(curr_block) << endl;
+    	// cout << "DESTROY POOL ALLOC:" << vacant_block_list.size() << endl;
+    	cout << "DESTROY POOL ALLOC:" << block_list.size() << endl;
     	if(curr_block != nullptr){
     		free(curr_block);	
+    	}
+    	for(auto block : vacant_block_list){
+    		free(block);
     	}
     }
 
@@ -172,6 +181,7 @@ public:
     
 
     T* alloc(){
+    	// cout << "Alloc" << endl;
     	// auto& free_list = curr_block->free_list;
 
     	// If current block's free_list is not empty

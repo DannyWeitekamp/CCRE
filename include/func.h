@@ -423,9 +423,16 @@ struct StrBlock {
 		_copy_other(other);
 		return *this;
 	}
+
+	// // Move Assignment To String So Can Cannibalize StrBlock resources 
+	// std::string& operator=(const StrBlock&& other) noexcept {
+
+	// }
 };
 
 std::ostream& operator<<(std::ostream& out, const StrBlock& sb);
+
+
 
 
 // SFINAE-based trait to check for operator<<
@@ -575,10 +582,8 @@ struct Func : CRE_Obj{
   uint16_t depth = 1;
   uint16_t return_stack_offset=0;
 
-
-    
-
-  bool has_any_derefs;
+  bool has_any_derefs=false;
+  bool has_outer_cleanup=false;
 
   bool is_composed;
   bool is_origin=false;
@@ -870,6 +875,17 @@ Item Func::call(Ts&& ... args){
  
   // call_recursive(ret_ptr, head_val_ptrs);
   call_recursive_fc(this, ret_ptr, head_val_ptrs);
+
+  // Cleanup any head values
+  if(has_outer_cleanup){
+  	for(size_t head_ind=0; head_ind<head_infos.size(); ++head_ind){
+	  	const HeadInfo& hi = head_infos[head_ind];
+	  	if(hi.head_type->dynamic_dtor != nullptr){
+	  		hi.head_type->dynamic_dtor(head_val_ptrs[head_ind]);
+	  	}
+	}	
+  }
+  
 
   // TODO: This needs to be dynamic
   return ptr_to_item_func(ret_ptr);
@@ -1185,12 +1201,12 @@ struct RecursiveCallWrapper final
 						new (&std::get<I>(temp)) StrBlock(const_val->as<std::string>());
 						// std::get<I>(temp) = StrBlock(ts);
 
-						cout << "STRBLOCK view: " << std::get<I>(temp).view << endl;
-						cout << "STRBLOCK str: " << std::get<I>(temp).str << endl;
+						// cout << "STRBLOCK view: " << std::get<I>(temp).view << endl;
+						// cout << "STRBLOCK str: " << std::get<I>(temp).str << endl;
 					}
 					arg_ptrs[I] = &std::get<I>(temp);
 
-					cout << "STRBLOCK: " << std::get<I>(temp) << endl;
+					// cout << "STRBLOCK: " << std::get<I>(temp) << endl;
 				}else{
 					std::get<I>(temp) = const_val->as<DecayArg>();
 					arg_ptrs[I] = &std::get<I>(temp);
@@ -1501,9 +1517,19 @@ struct FuncToCRETypes<RT(*)(Args...)> {
 template <typename T>
 inline Item _ptr_to_item(void* ret){
 	if constexpr(std::is_same_v<T, std::string>){
+		StrBlock* sb = (StrBlock*) ret;
+		if(sb->str.length() != 0){
+			// Cannibalize the string in the StrBlock
+			std::string s;
+			std::swap(s, sb->str);
+			return s;
+		}else{
+			return std::string(sb->view);
+		}
+
 		return Item( std::string(((StrBlock*) ret)->view) );
 	}else{
-		return Item(*((T*) ret));		
+		return Item(*((T*) ret));
 	}
 }
  

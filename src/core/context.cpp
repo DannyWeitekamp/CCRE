@@ -6,7 +6,24 @@ using std::endl;
 
 namespace cre {
 
-PoolAllocator<ControlBlock> global_cb_pool = {};
+
+
+// -- Schwarzt Counter To Gate Initialization of ControlBlock Pool --
+// static int cb_pool_nifty_counter;
+// static typename std::aligned_storage
+//     <sizeof (PoolAllocator<ControlBlock>),
+//      alignof (PoolAllocator<ControlBlock>)
+//     >::type
+//   cb_pool_buffer;
+
+// PoolAllocator<ControlBlock>& global_cb_pool = (PoolAllocator<ControlBlock>&) cb_pool_buffer;
+// CBPoolInitializer::CBPoolInitializer () {
+//   if (cb_pool_nifty_counter++ == 0) new (&global_cb_pool) PoolAllocator<ControlBlock>();
+// }
+// CBPoolInitializer::~CBPoolInitializer () {
+//   if (--cb_pool_nifty_counter == 0) global_cb_pool.~PoolAllocator<ControlBlock> ();
+// }
+// END -- Schwarzt Counter To Gate Initialization of ControlBlock Pool --
 
 // CRE_Context::_add_type implementation
 size_t CRE_Context::_add_type(CRE_Type* t) {
@@ -148,15 +165,53 @@ CRE_Context* set_current_context(std::string_view name) {
     return set_current_context(context);
 }
 
-HashMap<std::string, std::unique_ptr<CRE_Context>> __all_CRE_contexts = {};
+
+
+
+// // Special lambda initializer before 
+// CRE_Context* default_context = []()
+// {   
+//     set_current_context("default");
+//     return get_context("default");
+// }();
+// static int cb_pool_nifty_counter;
+
+
+
 CRE_Context* current_context = nullptr;
 
-// Special lambda initializer before 
-CRE_Context* default_context = []()
-{   
-    set_current_context("default");
-    return get_context("default");
-}();
+// -- Schwarzt Counter To Gate Initialization / Teardown of Context--
+typedef HashMap<std::string, std::unique_ptr<CRE_Context>> ContextMapType;
+static typename std::aligned_storage
+  <sizeof (ContextMapType), alignof (ContextMapType)>::type
+  all_context_buffer;
+ContextMapType& __all_CRE_contexts = (ContextMapType&) all_context_buffer ;
+
+typedef PoolAllocator<ControlBlock> CBPoolType;
+static typename std::aligned_storage
+  <sizeof (CBPoolType), alignof (CBPoolType)>::type
+  cb_pool_buffer;
+PoolAllocator<ControlBlock>& global_cb_pool = (PoolAllocator<ControlBlock>&) cb_pool_buffer;
+
+
+static int ctx_nifty_counter;
+ContextInitializer::ContextInitializer () {
+    if (ctx_nifty_counter++ == 0){
+        new (&global_cb_pool) PoolAllocator<ControlBlock>();
+        new (&__all_CRE_contexts) ContextMapType();
+        set_current_context("default");
+    }
+}
+ContextInitializer::~ContextInitializer () {
+    if (--ctx_nifty_counter == 0){
+        // __all_CRE_contexts.~ContextMapType();
+        // global_cb_pool.~PoolAllocator<ControlBlock>();
+    }
+}
+// END -- Schwarzt Counter To Initialization / Teardown of Context--
+
+
+
 
 
 

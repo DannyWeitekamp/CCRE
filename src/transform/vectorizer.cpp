@@ -157,7 +157,7 @@ void Vectorizer::_map_fact(Fact* fact){
 	}else{
 		// cout << "Map float" << last_mbr->as_float() << endl;
 		size_t slot = this->_get_flt_slot(fact);
-		flt_vec[slot] = last_mbr_ptr->as_float();
+		flt_vec[slot] = last_mbr_ptr->_as<double>();
 	}
 }
 

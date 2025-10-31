@@ -646,12 +646,6 @@ void Func::set_arg(size_t i, const Item& val){
 
         		if(not cast_allowed(var->head_type, head_info.base_type)){
         			throw_bad_arg(i, var, head_info.base_type, var->head_type, false);
-
-        			// std::stringstream ss;
-        			// ss << "No cast from " << var->head_type << 
-        			// 	  " to " << head_info.base_type << " in Func composition," <<
-        			// 	  " when passing argument " << var << " to i=" << i << " of " << this << endl;
-        			// throw std::runtime_error(ss.str());
         		}
 
             	ref<Var> head_var;
@@ -1602,6 +1596,10 @@ void Func::reinitialize(){
 			HeadInfo hi = base_head_info;
 			hi.base_type = base_var->base_type;
 			head_stack_size += hi.head_type->byte_width;
+
+			if(hi.head_type->dynamic_dtor != nullptr){
+    		   	has_outer_cleanup = true;
+    		}
 
 			ArgInfo& root_arg_info = hi.cf_ptr->root_arg_infos[hi.arg_ind];
 			root_arg_info.head_ind = head_ind;
