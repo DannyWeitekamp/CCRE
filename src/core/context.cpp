@@ -204,8 +204,8 @@ ContextInitializer::ContextInitializer () {
 }
 ContextInitializer::~ContextInitializer () {
     if (--ctx_nifty_counter == 0){
-        // __all_CRE_contexts.~ContextMapType();
-        // global_cb_pool.~PoolAllocator<ControlBlock>();
+        __all_CRE_contexts.~ContextMapType();
+        global_cb_pool.~PoolAllocator<ControlBlock>();
     }
 }
 // END -- Schwarzt Counter To Initialization / Teardown of Context--

@@ -325,7 +325,7 @@ public:
     // NOTE: Default copy constructor okay
     // Item(const Item& item) : val(item.val), t_id(item.t_id),
     //          is_ref(item.is_ref), borrows(item.borrows), pad(item.pad) 
-    // {};
+    // ;
 
 
     Item(bool arg) : val(static_cast<uint64_t>(arg)),

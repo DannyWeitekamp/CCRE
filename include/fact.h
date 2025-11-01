@@ -85,6 +85,16 @@ public:
       InternStr intern_str(intern(val));
       member = Member(intern_str, intern_str.hash);
 
+    }else if constexpr (std::is_same_v<T, Item>) {
+      if(val.get_t_id() == T_ID_STR){
+        const Item& val_item = val;
+        InternStr intern_str(intern(val_item._as<std::string_view>()));
+        member = Member(intern_str, intern_str.hash);  
+      }else{
+        uint64_t hash = CREHash{}(val); 
+        member = Member(val, hash);  
+      }
+
     }else{
       uint64_t hash = CREHash{}(val); 
       // if constexpr (std::is_base_of_v<T, Fact>) {  

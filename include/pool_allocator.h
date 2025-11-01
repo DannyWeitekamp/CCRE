@@ -168,7 +168,7 @@ public:
     ~PoolAllocator(){
     	// cout << "DESTROY POOL ALLOC" << uint64_t(curr_block) << endl;
     	// cout << "DESTROY POOL ALLOC:" << vacant_block_list.size() << endl;
-    	cout << "DESTROY POOL ALLOC:" << block_list.size() << endl;
+    	// cout << "DESTROY POOL ALLOC:" << block_list.size() << endl;
     	if(curr_block != nullptr){
     		free(curr_block);	
     	}

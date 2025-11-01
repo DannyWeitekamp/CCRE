@@ -112,6 +112,7 @@ public:
 		}else if(x.IsString()){
 			std::string_view item_str = std::string_view(x.GetString(), x.GetStringLength());
 			item = Item(item_str);
+			// item = Item(std::string(x.GetString(), x.GetStringLength()));
 		}
 		return item;
 	}
@@ -444,7 +445,7 @@ struct FactSetJSONWriter {
 
     rapidjson::Value item_to_value(Item item){
 		rapidjson::Value item_val;
-		switch(item.get_t_id()) {
+	switch(item.get_t_id()) {
 	        case T_ID_BOOL:
 	            item_val = rapidjson::Value(item._as<bool>());
 	            break;
@@ -456,7 +457,7 @@ struct FactSetJSONWriter {
 	            break;
 	        case T_ID_STR:
 				{
-					std::string_view item_str = item._as<std::string>();
+					std::string_view item_str = item._as<std::string_view>();
 					item_val = rapidjson::Value(item_str.data(), item_str.size(), alloc);
 				}
 	            break;

@@ -437,7 +437,7 @@ struct ToFactSetTranslator {
             }    
         }
 
-        if(uid_item.get_t_id() != 0){
+        if(uid_item.get_t_id() != T_ID_UNDEF){
             std::string_view uid = uid_item._as<std::string_view>();
             if(key_id != uid){
                 auto [it, inserted] = fact_map.insert({uid, index});
@@ -529,7 +529,7 @@ struct ToFactSetTranslator {
             }
 
             if(ref_str.size() > 0){
-                cout << std::string(ref_str) << endl;
+                // cout << std::string(ref_str) << endl;
 
                 auto itr = fact_map.find(ref_str);
                 
