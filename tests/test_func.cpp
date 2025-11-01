@@ -60,17 +60,17 @@ double add_money(Fact* a, Fact* b){
 
 
 FactType* Candy = define_fact("Candy", 
-    {{"cost", cre_float},
-     {"flavor", cre_str},
+    {{"flavor", cre_str},
+     {"cost", cre_float},
  	}
 );
 
-Fact* combine_candy(Fact* a, Fact* b){
-	double new_cost = a->get("cost").as<double>()+b->get("cost").as<double>();
+ref<Fact> combine_candy(ref<Fact> a, ref<Fact> b){
 	std::stringstream ss;
 	ss << a->get("flavor").as<std::string_view>() << " ";
 	ss << b->get("flavor").as<std::string_view>();
-	return make_fact(Candy, new_cost, ss.str());
+	double new_cost = a->get("cost").as<double>()+b->get("cost").as<double>();
+	return make_fact(Candy, ss.str(), new_cost);
 }
 
 
@@ -466,7 +466,7 @@ void test_type_check_and_casting(){
 	EXPECT_THROW(add_money_f(S0, S1)("2.0","4.0cm"));
 	EXPECT_THROW(add_money_f(S0, 1)("8.0") );
 	EXPECT_THROW(add_money_f(1.0, B0)(1.0));
-	EXPECT_THROW(add_money_f(1.0, F0)(1) );
+	EXPECT_THROW(add_money_f(1.0, F0)(1));
 	EXPECT_THROW(add_money_f(true, I1)(true));
 	EXPECT_THROW(add_money_f(true, B0)(0));
 
@@ -476,9 +476,10 @@ void test_type_check_and_casting(){
 	concat_f(S0, S1)("Lorem ipsum dolor sit amet, consectetur",
 					 "consectetur adipiscing elit.");
 
-
-	// combine_candy_f()
-
+	cout << "-----------" << endl;
+	Item candy_item = combine_candy_f(make_fact(Candy,"mint", .25), make_fact(Candy,"strawberry", .25));
+	ref<Fact> candy = candy_item.as<ref<Fact>>();
+	cout << "R CNT: " << candy->get_refcount() << endl;
 }
 
 

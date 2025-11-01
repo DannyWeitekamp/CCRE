@@ -250,7 +250,7 @@ public:
          meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
     {
         if(other.t_id == T_ID_STR and other.is_value() and other.data != nullptr){
-            char* data_ptr = (char*) malloc(sizeof(char) * ( length+1 ));
+            char* data_ptr = (char*) malloc(sizeof(char) * ( other.length+1 ));
             strcpy(data_ptr, other.data);
             data = data_ptr;
         }else{
@@ -261,24 +261,14 @@ public:
         
     };
 
-    Item& operator=(Item&& other) {    
-        release();// Note: Valgrind Doesn't like this 
-        val = other.val;
-        t_id = other.t_id;
-        meta_data = other.meta_data;
-        val_kind = other.val_kind;
-        length = other.length;
-
-        // Release from other
-        other.ptr = nullptr;
-        other.t_id = T_ID_UNDEF;
-        other.val_kind = VALUE;
-        return *this;
-    };
+    Item(const Item&& other) :
+         val(other.val), t_id(other.t_id),
+         meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
+    {};
 
     Item& operator=(const Item& other) {
         if(other.t_id == T_ID_STR and other.is_value() and other.data != nullptr){
-            char* data_ptr = (char*) malloc(sizeof(char) * ( length+1 ));
+            char* data_ptr = (char*) malloc(sizeof(char) * ( other.length+1 ));
             strcpy(data_ptr, other.data);
             release();
             data = data_ptr;
@@ -293,6 +283,21 @@ public:
         meta_data = other.meta_data;
         val_kind = other.val_kind;
         length = other.length;
+        return *this;
+    };
+
+    Item& operator=(Item&& other) {    
+        release();// Note: Valgrind Doesn't like this 
+        val = other.val;
+        t_id = other.t_id;
+        meta_data = other.meta_data;
+        val_kind = other.val_kind;
+        length = other.length;
+
+        // Release from other
+        other.ptr = nullptr;
+        other.t_id = T_ID_UNDEF;
+        other.val_kind = VALUE;
         return *this;
     };
 
@@ -317,8 +322,9 @@ public:
 
     
 
-    // Item& operator=(Item&&) = default;
-    Item(Item&&) = default;
+
+
+    // Item(Item&&) = default;
 
     // Item(uint64_t _val, uint16_t _t_id, uint32_t length,  uint8_t meta_data, uint8_t)
 
@@ -397,13 +403,27 @@ public:
       meta_data(0), 
       val_kind(WEAK_REF),
       pad(0)
-      // meta_data(0), 
-      // val_kind(WEAK_REF),
-      // ctrl_block((ControlBlock*) (uint64_t(x.get_cb()) | WEAK_REF) )
     {
-        // cout << "ITEM CTRL BLOCK" << x.get_cb() << endl;
         x->inc_wref(); 
     }
+
+    template <class T>
+    explicit Item(const ref<T>&& x) : 
+      ptr((void *) x.get()),
+      t_id(T::T_ID),
+      meta_data(0), 
+      val_kind(STRONG_REF),
+      pad(0)
+    {}
+
+    template <class T>
+    explicit Item(const wref<T>&& x) : 
+      ptr((void *) x.get_cb()),
+      t_id(T::T_ID),
+      meta_data(0), 
+      val_kind(WEAK_REF),
+      pad(0)
+    {}
 
 
     Item(const std::string& arg);
@@ -509,6 +529,12 @@ public:
         return std::bit_cast<T>(get_ptr());
     }
 
+    template <typename T>
+    requires is_ref_v<T>
+    T _as() const noexcept{
+        using innerT = remove_ref_t<T>;
+        return T( (innerT*) get_ptr());
+    }
 
     template <std::integral T>
     T as() const{
@@ -549,7 +575,21 @@ public:
             ss << get_type() << ".";
             throw std::runtime_error(ss.str());
         }
-    }    
+    }
+
+    template <typename T>
+    requires is_ref_v<T>
+    T as() const {
+        // TODO: should check that t_id is okay.
+        if(is_ptr()){
+            return _as<T>();    
+        }else{
+            std::stringstream ss;
+            ss << "Item cast to pointer type failed for Item with type ";
+            ss << get_type() << ".";
+            throw std::runtime_error(ss.str());
+        }
+    }
 
     template <typename T>
     requires std::is_same_v<T, std::string>

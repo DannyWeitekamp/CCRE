@@ -877,10 +877,12 @@ Item Func::call(Ts&& ... args){
   call_recursive_fc(this, ret_ptr, head_val_ptrs);
 
   // Cleanup any head values
+  cout << "has_outer_cleanup: " << has_outer_cleanup << endl;
   if(has_outer_cleanup){
   	for(size_t head_ind=0; head_ind<head_infos.size(); ++head_ind){
 	  	const HeadInfo& hi = head_infos[head_ind];
 	  	if(hi.head_type->dynamic_dtor != nullptr){
+	  		cout << ":::" << uint64_t(hi.head_type->dynamic_dtor) << endl;
 	  		hi.head_type->dynamic_dtor(head_val_ptrs[head_ind]);
 	  	}
 	}	
@@ -1528,8 +1530,13 @@ inline Item _ptr_to_item(void* ret){
 		}
 
 		return Item( std::string(((StrBlock*) ret)->view) );
+	// }else if constexpr(is_ref_v<T>){
+	// 	T& ref = *((T*) ret);
+	// 	Item ret_item = Item(ref);
+	// 	// ref->dec_ref();
+	// 	return ret_item;
 	}else{
-		return Item(*((T*) ret));
+		return Item(std::move(*((T*) ret)));
 	}
 }
  
