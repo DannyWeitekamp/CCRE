@@ -168,7 +168,7 @@ size_t Flattener::_fact_to_var_pairs(
 	// Make stub like (varname,)
 	if(add_exist_stubs){
 		ref<Fact> subj_fact = builder.alloc_fact(nullptr, 1);
-		cout << "BEFORE add_exist_stubs:" << subj_var << endl;
+		// cout << "BEFORE add_exist_stubs:" << subj_var << endl;
 		subj_fact->set_unsafe(0, subj_var);	
 		subj_fact->immutable = true;
 		// cout << "VERB SUBJ VAR REFCOUNT:" << subj_var->get_refcount() << endl;
@@ -206,15 +206,16 @@ size_t Flattener::_fact_to_var_pairs(
 
 		}
 
-		Var* verb_addr = verb_var.get();
+		// Var* verb_addr = verb_var.get();
 		// verb_var->inc_ref();
 		// verb_var->inc_ref();
-		
+			
+		// cout << "-VERB VAR REFCOUNT:" << verb_addr->get_refcount() << endl;
 		// Item verb_var_item = Item(verb_var);
 		out_fact->set_unsafe(0, std::move(verb_var));
 		// out_fact->set_unsafe(0, verb_var);
 
-		cout << "-VERB VAR REFCOUNT:" << verb_addr->get_refcount() << endl;
+
 
 		// cout << "+VERB VAR REFCOUNT:" << verb_addr->get_refcount() << endl;
 		// if(type != nullptr && ind < type->members.size()){
@@ -226,16 +227,16 @@ size_t Flattener::_fact_to_var_pairs(
 		// }
 
 		// If 'value' is another fact then (varname.attr, other_varname)
-		Item obj_item = in_fact->get(mbr_ind);
+		const Member& obj_item = in_fact->get(mbr_ind);
 		if(obj_item.get_t_id() == T_ID_FACT && obj_item.val != 0){
 			Fact* obj_fact = obj_item._as<Fact*>();
 			ref<Var> obj_var = fact_vars[obj_fact->f_id];
 
-			cout << "OBJ VAR REFCOUNT:" << obj_var->get_refcount() << endl;
-			out_fact->set_unsafe(1, obj_var);	
+			// cout << "OBJ VAR REFCOUNT:" << obj_var->get_refcount() << endl;
+			out_fact->set_unsafe(1, std::move(obj_var));	
 			
 		}else{
-			out_fact->set_unsafe(1, obj_item);		
+			out_fact->set_unsafe(1, std::move(obj_item));		
 		}
 
 

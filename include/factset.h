@@ -684,7 +684,7 @@ struct ToFactSetTranslator {
                 } catch (const std::exception& e) {
                     _zfill_fact(fact, index, fact_info.length);
                     throw;
-                }
+                };
 
                 index++;
             }

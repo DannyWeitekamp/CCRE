@@ -19,7 +19,6 @@ struct Member : public Item {
 
     template<typename T>
     inline uint64_t ensure_hash(T&& value, uint64_t _hash=0){
-        // cout << "MEMBER :" << value;
         if(_hash == 0){
             _hash = CREHash{}(value); 
         }
@@ -34,14 +33,20 @@ struct Member : public Item {
     //     cout << " COPY" << endl;
     // }
 
+    
+
     template<typename T>
     // requires NotMember<T>
-    Member(T&& value, uint64_t _hash=0) :
-            hash(ensure_hash(value, _hash)), 
-            Item(std::forward<T>(value))
-    {
-        // cout << " MOVE" << endl;
-    }
+    Member(T&& value, uint64_t _hash) :
+            Item(std::forward<T>(value)),
+            hash(_hash)
+    {}
+
+    template<typename T>
+    // requires NotMember<T>
+    Member(T&& value) :
+            Member(std::forward<T>(value), ensure_hash(value))  
+    {}
 
     Member(const Member& other) :
         Item(other), hash(other.hash)
@@ -53,7 +58,6 @@ struct Member : public Item {
 
     Member& operator=(const Member&) = default;
     Member& operator=(Member&&) = default;
-    Member(Member&&) = default;
 
     inline Member to_weak(){
         // cout << "AAAH" << this->get_wrefcount() << endl;

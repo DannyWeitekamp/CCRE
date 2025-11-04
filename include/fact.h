@@ -77,7 +77,7 @@ public:
   template<class T>
   inline Member borrow_val_as_member(T&& val){
     // Convert to Member, always intern strings, always hash on assignment;
-    // cout << "L81" << endl;
+    cout << "borrow_val_as_member: " << val << endl;
     Member member;
     if constexpr (std::is_same_v<T, Member>) {
       member = val;
@@ -85,9 +85,12 @@ public:
     }else if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
       InternStr intern_str(intern(val));
       member = Member(intern_str);
+      cout << "MEMBER: " << member << endl;
 
     }else if constexpr (std::is_same_v<T, Item>) {
       if(val.get_t_id() == T_ID_STR){
+
+        cout << "MEMBER: " << member << endl;
         const Item& val_item = val;
         InternStr intern_str(intern(val_item._as<std::string_view>()));
         member = Member(intern_str);  
@@ -102,7 +105,7 @@ public:
       //   // Fact reference members are always weak
       //   member = Member(wref<Fact>(val), hash);
       // }else{
-
+      cout << "Before: " << val << endl;
       member = Member(std::forward<T>(val));
       // }
     }
@@ -150,7 +153,7 @@ public:
     if(ind >= length){
       throw std::out_of_range("Setting fact member [" + std::to_string(ind) + "] beyond its length (" + std::to_string(length) + ").");
     }
-    Member member = borrow_val_as_member(std::forward<T>(val));
+    Member&& member = borrow_val_as_member(std::forward<T>(val));
 
     // Handle type checking against the fact's type   
     verify_member_type(ind, member);
@@ -197,9 +200,9 @@ public:
     hash ^= MBR_HASH(member.hash, ind);
 
     // Emplacement new with Undef member to make valgrind happy
-    new (data_ptr + ind) Member();
+    new (data_ptr + ind) Member(member);
     // Assign to the ind'th item
-    data_ptr[ind] = member;
+    // data_ptr[ind] = member;
   }
 
   template<class T>

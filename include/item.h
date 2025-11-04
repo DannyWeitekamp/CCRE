@@ -241,6 +241,8 @@ public:
          val(other.val), t_id(other.t_id),
          meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
     {
+        // cout << "ITEM COPY" << other.to_string() << endl;
+
         if(other.t_id == T_ID_STR and other.is_value() and other.data != nullptr){
             char* data_ptr = (char*) malloc(sizeof(char) * ( other.length+1 ));
             strcpy(data_ptr, other.data);
@@ -253,10 +255,16 @@ public:
         
     };
 
-    Item(const Item&& other) :
+    Item(Item&& other) :
          val(other.val), t_id(other.t_id),
          meta_data(other.meta_data), val_kind(other.val_kind), length(other.length) 
-    {};
+    {
+
+        // cout << "ITEM MOVE" << other.to_string() << endl;
+        other.ptr = nullptr;
+        other.t_id = T_ID_UNDEF;
+        other.val_kind = VALUE;
+    };
 
     Item& operator=(const Item& other) {
         if(other.t_id == T_ID_STR and other.is_value() and other.data != nullptr){
@@ -279,7 +287,7 @@ public:
     };
 
     Item& operator=(Item&& other) {
-        release();// Note: Valgrind Doesn't like this 
+        release();
         val = other.val;
         t_id = other.t_id;
         meta_data = other.meta_data;
@@ -394,7 +402,7 @@ public:
       val_kind(STRONG_REF),
       pad(0)
     {
-        cout << "MOVE STRONG REF:" << x << endl;
+        // cout << "MOVE STRONG REF:" << x << endl;
         x->inc_ref(); 
         x.invalidate();
         
@@ -408,7 +416,7 @@ public:
       val_kind(STRONG_REF),
       pad(0)
     {
-        cout << "COPY STRONG REF:" << x << endl;
+        // cout << "COPY STRONG REF:" << x << endl;
         x->inc_ref();
     }
 
