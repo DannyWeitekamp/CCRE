@@ -13,3 +13,4 @@ Makefile
 *.cmake
 *.vcxproj*
 *.sln
+__pycache__
