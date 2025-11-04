@@ -1,5 +1,6 @@
 #include "../include/ref.h"
 #include "../include/func.h"
+#include <cmath>
 
 namespace cre {
 // std::string _bool_to_str(bool x){
@@ -80,6 +81,62 @@ double _Add(double a, double b){
 	return a+b;
 }
 ref<Func> Add = define_func<_Add>("Add", "Add({},{})", "({} + {})");
+
+// Subtraction
+int64_t _SubtractInts(int64_t a, int64_t b){
+	return a-b;
+}
+ref<Func> SubtractInts = define_func<_SubtractInts>("SubtractInts", "SubtractInts({},{})", "({} - {})");
+
+double _Subtract(double a, double b){
+	return a-b;
+}
+ref<Func> Subtract = define_func<_Subtract>("Subtract", "Subtract({},{})", "({} - {})");
+
+// Multiplication
+int64_t _MultiplyInts(int64_t a, int64_t b){
+	return a*b;
+}
+ref<Func> MultiplyInts = define_func<_MultiplyInts>("MultiplyInts", "MultiplyInts({},{})", "({} * {})");
+
+double _Multiply(double a, double b){
+	return a*b;
+}
+ref<Func> Multiply = define_func<_Multiply>("Multiply", "Multiply({},{})", "({} * {})");
+
+// Division
+int64_t _DivideInts(int64_t a, int64_t b){
+	return a/b;
+}
+ref<Func> DivideInts = define_func<_DivideInts>("DivideInts", "DivideInts({},{})", "({} / {})");
+
+double _Divide(double a, double b){
+	return a/b;
+}
+ref<Func> Divide = define_func<_Divide>("Divide", "Divide({},{})", "({} / {})");
+
+// Modulo (integer only)
+int64_t _ModInts(int64_t a, int64_t b){
+	return a%b;
+}
+ref<Func> ModInts = define_func<_ModInts>("ModInts", "ModInts({},{})", "({} % {})");
+
+// Power/Exponentiation
+double _Pow(double a, double b){
+	return std::pow(a, b);
+}
+ref<Func> Pow = define_func<_Pow>("Pow", "Pow({},{})", "({} ** {})");
+
+// Unary Negation
+int64_t _NegInt(int64_t a){
+	return -a;
+}
+ref<Func> NegInt = define_func<_NegInt>("NegInt", "NegInt({})", "(-{})");
+
+double _Neg(double a){
+	return -a;
+}
+ref<Func> Neg = define_func<_Neg>("Neg", "Neg({})", "(-{})");
 
 } // NAMESPACE_END(cre)
 

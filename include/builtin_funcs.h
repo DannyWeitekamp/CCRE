@@ -21,5 +21,15 @@ namespace cre {
 extern ref<Func> And;
 extern ref<Func> AddInts;
 extern ref<Func> Add;
+extern ref<Func> SubtractInts;
+extern ref<Func> Subtract;
+extern ref<Func> MultiplyInts;
+extern ref<Func> Multiply;
+extern ref<Func> DivideInts;
+extern ref<Func> Divide;
+extern ref<Func> ModInts;
+extern ref<Func> Pow;
+extern ref<Func> NegInt;
+extern ref<Func> Neg;
 
 } // NAMESPACE_END(cre)
