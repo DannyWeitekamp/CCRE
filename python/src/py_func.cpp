@@ -79,6 +79,8 @@ void* py_resolve_heads(void* dest, nb::object py_obj, const HeadInfo& hi){
 
 
 nb::object py_Func_call(Func* func, nb::args args, nb::kwargs kwargs) {
+    cout << "call() " << endl;
+
     if(kwargs.size() > 0){
         throw std::runtime_error("Not implemented: keyword args (kwargs) e.g. f(arg0=1, arg2=7).");
     }
@@ -126,6 +128,50 @@ nb::object py_Func_call(Func* func, nb::args args, nb::kwargs kwargs) {
     return Item_to_py(func->ptr_to_item_func(ret_ptr));
 }
 
+ref<Func> py_Func_compose(Func* func, nb::args args) {
+    cout << "compose() "  << endl;
+    // Create a deep copy of the function
+    FuncRef cf = func->copy_deep();
+    
+    // Check argument count
+    if(args.size() != func->n_args){
+        func->throw_bad_n_args(args.size());
+    }
+    
+    // Convert each Python argument to Item and set it
+    for(size_t i = 0; i < args.size(); ++i){
+        Item arg_item = Item_from_py(args[i]);
+        cf->set_arg(i, arg_item);
+    }
+    
+    // Reinitialize the composed function
+    cf->reinitialize();
+    
+    // Return the composed function
+    return cf;
+}
+
+nb::object py_Func__call__(Func* func, nb::args args, nb::kwargs kwargs) {
+    // Check if any argument is Var or Func type
+    bool has_var_or_func = false;
+    for(size_t i = 0; i < args.size(); ++i){
+        if(nb::isinstance<Var>(args[i]) || nb::isinstance<Func>(args[i])){
+            has_var_or_func = true;
+            break;
+        }
+    }
+
+    cout << "__call__ " << has_var_or_func << endl;
+    
+    // If any argument is Var or Func, call compose
+    if(has_var_or_func){
+        return nb::cast(py_Func_compose(func, args));
+    } else {
+        // Otherwise, call the function directly
+        return py_Func_call(func, args, kwargs);
+    }
+}
+
 void init_func(nb::module_ & m){
 	nb::class_<Func, CRE_Obj>(m, "Func", nb::type_slots(cre_obj_slots))
     // .def(nb::new_(&py_Func_ctor), nb::rv_policy::reference)
@@ -135,7 +181,9 @@ void init_func(nb::module_ & m){
 
     .def("__str__", &Func::to_string, "verbosity"_a=2)
     .def("__repr__", &Func::to_string, "verbosity"_a=2)
-    .def("__call__", &py_Func_call)
+    .def("__call__", &py_Func__call__)
+    .def("call", &py_Func_call)
+    .def("compose", &py_Func_compose, nb::rv_policy::reference)
 
     // .def("__len__", &Fact::size)
     

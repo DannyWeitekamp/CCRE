@@ -67,6 +67,12 @@ Item Item_from_py(nb::handle py_obj){
     } else if (nb::isinstance<Fact>(py_obj)) {
     	return Item(nb::cast<Fact*>(py_obj));
 
+    }else if (nb::isinstance<Var>(py_obj)) {
+        return Item(nb::cast<Var*>(py_obj));
+
+    }else if (nb::isinstance<Func>(py_obj)) {
+        return Item(nb::cast<Func*>(py_obj));
+
     }else if (py_obj.is_none()){
         return Item();
     } else {
@@ -124,6 +130,7 @@ CRE_Type* Type_from_py(nb::handle py_obj){
     std::string type_name = Type_name_from_py(py_obj);
     return current_context->get_type(type_name); // throws if not found
 }
+
 
 // ------------------------------------------------------------------
 // : Flag Group Conversion

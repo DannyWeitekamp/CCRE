@@ -13,6 +13,8 @@
 #include "../../include/intern.h"
 #include "../../include/item.h"
 #include "../../include/fact.h"
+#include "../../include/var.h"
+#include "../../include/func.h"
 
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
@@ -32,6 +34,7 @@ nb::object Item_to_py(Item item);
 std::string Type_name_from_py(nb::handle py_obj);
 FactType* FactType_from_py(nb::handle py_obj);
 CRE_Type* Type_from_py(nb::handle py_obj);
+CRE_Type* py_cls_to_CRE_Type(nb::handle py_obj);
 FlagGroup dict_to_flag_group(nb::dict py_dict);
 std::vector<FlagGroup> py_to_flag_groups(nb::handle py_obj);
 
