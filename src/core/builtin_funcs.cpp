@@ -1,6 +1,7 @@
 #include "../include/ref.h"
 #include "../include/func.h"
 #include <cmath>
+#include <sstream>
 
 namespace cre {
 // std::string _bool_to_str(bool x){
@@ -72,6 +73,22 @@ bool _And(bool a, bool b){
 }
 ref<Func> And = define_func<_And>("And", "And({},{})", "({} & {})");
 
+bool _Or(bool a, bool b){
+	return a | b;
+}
+ref<Func> Or = define_func<_Or>("Or", "Or({},{})", "({} | {})");
+
+bool _Xor(bool a, bool b){
+	return a ^ b;
+}
+ref<Func> Xor = define_func<_Xor>("Xor", "Xor({},{})", "({} ^ {})");
+
+bool _Not(bool a){
+	return !a;
+}
+ref<Func> Not = define_func<_Not>("Not", "Not({})", "(~{})");
+
+
 int64_t _AddInts(int64_t a, int64_t b){
 	return a+b;
 }
@@ -137,6 +154,33 @@ double _Neg(double a){
 	return -a;
 }
 ref<Func> Neg = define_func<_Neg>("Neg", "Neg({})", "(-{})");
+
+// String operations
+std::string _Concat(const StrBlock& _a, const StrBlock& _b){
+	std::string_view a = _a.view;
+	std::string_view b = _b.view;
+	std::stringstream ss;
+	ss << a << b;
+	return ss.str();
+}
+ref<Func> Concat = define_func<_Concat>("Concat", "Concat({},{})", "({} + {})");
+
+std::string _Slice(const StrBlock& _str, int64_t start, int64_t end){
+	std::string_view str = _str.view;
+	size_t len = str.length();
+	
+	// Handle negative indices
+	size_t s = (start < 0) ? (len + start >= 0 ? len + start : 0) : static_cast<size_t>(start);
+	size_t e = (end < 0) ? (len + end >= 0 ? len + end : 0) : static_cast<size_t>(end);
+	
+	// Clamp to bounds
+	if (s > len) s = len;
+	if (e > len) e = len;
+	if (s > e) s = e;
+	
+	return std::string(str.substr(s, e - s));
+}
+ref<Func> Slice = define_func<_Slice>("Slice", "Slice({},{},{})", "({}[{}:{}])");
 
 } // NAMESPACE_END(cre)
 

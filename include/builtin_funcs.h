@@ -19,6 +19,9 @@ namespace cre {
 
 
 extern ref<Func> And;
+extern ref<Func> Or;
+extern ref<Func> Xor;
+extern ref<Func> Not;
 extern ref<Func> AddInts;
 extern ref<Func> Add;
 extern ref<Func> SubtractInts;
@@ -31,5 +34,7 @@ extern ref<Func> ModInts;
 extern ref<Func> Pow;
 extern ref<Func> NegInt;
 extern ref<Func> Neg;
+extern ref<Func> Concat;
+extern ref<Func> Slice;
 
 } // NAMESPACE_END(cre)
