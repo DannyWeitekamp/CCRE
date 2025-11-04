@@ -1,5 +1,7 @@
 #include "../include/py_cre_core.h"
 #include "../../include/var.h"
+#include "../../include/builtin_funcs.h"
+#include "../../include/func.h"
 
 
 ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
@@ -83,10 +85,85 @@ ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
     return new_var(alias, type);
 }
 
+// Arithmetic operator helpers that compose functions with Var/Func arguments
+ref<Func> py_Var_equals(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Equals->compose(self, other_item);
+}
 
-void init_logical(nb::module_ & m){
+ref<Func> py_Var_not_equals(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Not->compose(Equals->compose(other_item, self));
+}
+
+ref<Func> py_Var_add(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Add->compose(self, other_item);
+}
+
+ref<Func> py_Var_radd(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Add->compose(other_item, self);
+}
+
+ref<Func> py_Var_sub(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Subtract->compose(self, other_item);
+}
+
+ref<Func> py_Var_rsub(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Subtract->compose(other_item, self);
+}
+
+ref<Func> py_Var_mul(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Multiply->compose(self, other_item);
+}
+
+ref<Func> py_Var_rmul(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Multiply->compose(other_item, self);
+}
+
+ref<Func> py_Var_truediv(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Divide->compose(self, other_item);
+}
+
+ref<Func> py_Var_rtruediv(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Divide->compose(other_item, self);
+}
+
+ref<Func> py_Var_mod(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return ModInts->compose(self, other_item);
+}
+
+ref<Func> py_Var_rmod(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return ModInts->compose(other_item, self);
+}
+
+ref<Func> py_Var_pow(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Pow->compose(self, other_item);
+}
+
+ref<Func> py_Var_rpow(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return Pow->compose(other_item, self);
+}
+
+ref<Func> py_Var_neg(Var* self) {
+    return Neg->compose(self);
+}
+
+
+void init_var(nb::module_ & m){
 	nb::class_<Var>(m, "Var", nb::type_slots(cre_obj_slots))
-
+    
     // .def(nb::new_(
     //     [](CRE_Type* _type, std::string_view _alias){
     //         return new_var(_alias, _type);
@@ -96,5 +173,19 @@ void init_logical(nb::module_ & m){
     .def("__str__", &Var::to_string)
     .def("__repr__", &Var::to_string)
     .def("__len__", &Var::size)
+    // Arithmetic operators
+    .def("__add__", &py_Var_add, nb::rv_policy::reference)
+    .def("__radd__", &py_Var_radd, nb::rv_policy::reference)
+    .def("__sub__", &py_Var_sub, nb::rv_policy::reference)
+    .def("__rsub__", &py_Var_rsub, nb::rv_policy::reference)
+    .def("__mul__", &py_Var_mul, nb::rv_policy::reference)
+    .def("__rmul__", &py_Var_rmul, nb::rv_policy::reference)
+    .def("__truediv__", &py_Var_truediv, nb::rv_policy::reference)
+    .def("__rtruediv__", &py_Var_rtruediv, nb::rv_policy::reference)
+    .def("__mod__", &py_Var_mod, nb::rv_policy::reference)
+    .def("__rmod__", &py_Var_rmod, nb::rv_policy::reference)
+    .def("__pow__", &py_Var_pow, nb::rv_policy::reference)
+    .def("__rpow__", &py_Var_rpow, nb::rv_policy::reference)
+    .def("__neg__", &py_Var_neg, nb::rv_policy::reference)
     ;
 }

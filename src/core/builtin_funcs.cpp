@@ -67,6 +67,19 @@ namespace cre {
 // }
 // float_to_int = define_func<_float_to_int>("int");
 
+bool _Equals(double a, double b){
+	return a == b;
+}
+FuncRef Equals = define_func<_Equals>("Equals", "Equals({},{})", "({} == {})");
+bool _EqualsInt(int64_t a, int64_t b){
+	return a == b;
+}
+FuncRef EqualsInt = define_func<_EqualsInt>("EqualsInt", "EqualsInt({},{})", "({} == {})");
+bool _EqualsStr(const StrBlock& a, const StrBlock& b){
+	return a.view == b.view;
+}
+FuncRef EqualsStr = define_func<_EqualsStr>("EqualsStr", "EqualsStr({},{})", "({} == {})");
+
 
 bool _And(bool a, bool b){
 	return a & b;

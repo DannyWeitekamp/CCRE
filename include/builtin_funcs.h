@@ -18,6 +18,9 @@ namespace cre {
 // ref<Func> float_to_int;
 
 
+extern FuncRef Equals;
+extern FuncRef EqualsInt;
+extern FuncRef EqualsStr;
 extern FuncRef And;
 extern FuncRef Or;
 extern FuncRef Xor;
