@@ -149,6 +149,7 @@ Item::Item(const std::string_view& arg) :
             if(t_id != other_t_id){
                 return false;
             }
+            cout << "t_id:" << t_id << ", other_t_id:" << other_t_id << endl;
             // Defined in seperate translation unit
             return CRE_Objs_equal(_as<CRE_Obj*>(), other._as<CRE_Obj*>());                
         }

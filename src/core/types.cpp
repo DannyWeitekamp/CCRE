@@ -195,7 +195,7 @@ void str_dynamic_dtor(void* ptr){
     ((std::string*) ptr)->~string();
 }
 
-void cre_obj_dynamic_dtor(void* ptr){
+void cre_obj_dynamic_dtor([[maybe_unused]] void* ptr){
     // cout << "RCNT:" << ((ref<CRE_Obj>*) ptr)->get_refcount() << endl;
     // (*((ref<CRE_Obj>*) ptr))->dec_ref();
 }

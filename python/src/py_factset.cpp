@@ -101,7 +101,7 @@ Item _resolve_possible_ref(Item item,
 						   const FactSetBuilder& builder 
 	){
 	if(item.get_t_id() == T_ID_STR){
-        std::string_view item_str = item.as_string();
+        std::string_view item_str = item._as<std::string_view>();
 
         // Reference to another fact
         size_t ref_len = ref_prefix.size();

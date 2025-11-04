@@ -29,20 +29,43 @@ ref<Fact> NewFact(nb::args args, nb::kwargs kwargs) {
     return _py_new_fact(fact_type, args.size()-1, it, args.end(), kwargs, false);  
 }
 
-nb::object py_fact_getitem(Fact* fact, int64_t index) {
+nb::object py_fact_getitem_index(Fact* fact, int64_t index) {
     if(index < 0) index += fact->length;
     if(index < 0 || index >= fact->length){
-        throw std::invalid_argument("Index ["+ std::to_string(index) +
-            "] out of bounds for Fact with length=" + std::to_string(fact->length) + "."
+        throw nb::index_error(("Index ["+ std::to_string(index) +
+            "] out of bounds for Fact with length=" + std::to_string(fact->length) + ".").c_str()
         );
     }
     return Item_to_py(fact->get(index));
 }
 
-nb::object py_fact_getattr(Fact* fact, std::string_view attr) {
-    
-    return Item_to_py(fact->get(attr));
+// bool py_fact_hasattr(Fact* fact, std::string_view attr) {
+//     cout << "HAS ATTR" << endl;
+//     try {
+//         fact->get(attr);
+//     } catch (const std::exception& e) {
+//         return false;
+//     } 
+//     return true;
+// }
+
+nb::object py_fact_getitem_str(Fact* fact, std::string_view attr) {
+    try {
+        return Item_to_py(fact->get(attr));
+    } catch (const std::exception& ex) {
+        throw nb::key_error(ex.what());
+    }     
 }
+
+nb::object py_fact_getattr(Fact* fact, std::string_view attr) {
+    try {
+        return Item_to_py(fact->get(attr));
+    } catch (const std::exception& ex) {
+        throw nb::attribute_error(ex.what());
+    }     
+}
+
+
 
 void py_fact_setitem(Fact* fact, int64_t index, nb::handle py_val) {
     if(index < 0) index += fact->length;
@@ -68,24 +91,29 @@ class py_fact_iterator {
     using reference         = nb::object&;
 
     private:
-        Item* current;
+        Fact* fact;
+        size_t ind;
     public:
-        explicit py_fact_iterator(Item* item_ptr) : current(item_ptr) {}
-        nb::object operator*() const { return Item_to_py(*current); }
+        explicit py_fact_iterator(Fact* fact, size_t ind=0) : 
+            fact(fact), ind(ind) 
+        {};
+        nb::object operator*() const { return Item_to_py(fact->get(ind)); }
         // pointer operator->() const { return &Item_to_py(*current); }
-        py_fact_iterator& operator++() { ++current; return *this; }
-        bool operator!=(const py_fact_iterator& other) const { return current != other.current; }
-        bool operator==(const py_fact_iterator& other) const { return current == other.current; }
+        py_fact_iterator& operator++() { ++ind; return *this; }
+        bool operator!=(const py_fact_iterator& other) const { return ind != other.ind; }
+        bool operator==(const py_fact_iterator& other) const { return ind == other.ind; }
 };
 
 py_fact_iterator py_fact_iter_begin(Fact* self){
     uint8_t* data = (uint8_t*) self;
-    return py_fact_iterator((Item*) (data + sizeof(Fact)));
+    // return py_fact_iterator((Member*) (data + sizeof(Fact)));
+    return py_fact_iterator(self, 0);
 }
 
 py_fact_iterator py_fact_iter_end(Fact* self){
     uint8_t* data = (uint8_t*) self;
-    return py_fact_iterator((Item*) (data + sizeof(Fact) + self->length*sizeof(Item)));
+    return py_fact_iterator(self, self->length);
+    // return py_fact_iterator((Member*) (data + sizeof(Fact) + self->length*sizeof(Member)));
 }
 
 
@@ -98,10 +126,8 @@ void init_fact(nb::module_ & m){
     .def("__repr__", &Fact::to_string, "verbosity"_a=2)
     .def("__len__", &Fact::size)
     
-    .def("__getitem__", &py_fact_getitem)
-
-    // .def("__getitem__", &py_fact_getattr)
-
+    .def("__getitem__", &py_fact_getitem_index)
+    .def("__getitem__", &py_fact_getitem_str)
     .def("__getattr__", &py_fact_getattr)
 
     .def("__setitem__", &py_fact_setitem)

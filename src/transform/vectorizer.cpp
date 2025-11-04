@@ -129,6 +129,7 @@ void Vectorizer::_map_fact(Fact* fact){
 	size_t nom_enc = 1; 
 	bool val_is_nominal = true;
 
+	cout << "FACT: " << fact << endl;
 	Member* last_mbr_ptr = nullptr;
 	if(fact->length > 1){
 		last_mbr_ptr = fact->get_ptr(fact->length-1);

@@ -879,10 +879,10 @@ Item Func::call(Ts&& ... args){
   // Cleanup any head values
   cout << "has_outer_cleanup: " << has_outer_cleanup << endl;
   if(has_outer_cleanup){
-  	for(size_t head_ind=0; head_ind<head_infos.size(); ++head_ind){
+  	for(size_t head_ind=0; head_ind < head_infos.size(); ++head_ind){
 	  	const HeadInfo& hi = head_infos[head_ind];
 	  	if(hi.head_type->dynamic_dtor != nullptr){
-	  		cout << ":::" << uint64_t(hi.head_type->dynamic_dtor) << endl;
+	  		// cout << ":::" << uint64_t(hi.head_type->dynamic_dtor) << endl;
 	  		hi.head_type->dynamic_dtor(head_val_ptrs[head_ind]);
 	  	}
 	}	

@@ -313,12 +313,30 @@ struct ToFactSetTranslator {
     using attr_getter_t = T::attr_getter_t;
     // using container_prefix = T::container_prefix;
 
-    using fact_info_t = std::tuple<obj_ptr_t, FactType*, size_t, size_t>;
+    struct FactInfo {
+        obj_ptr_t obj;
+        FactType* type;
+        size_t length;
+        size_t byte_offset;
+        ref<Fact> fact=nullptr;
+        bool in_main_buffer = false;
+        bool is_alloced = false;
+        bool is_initialized = false;
+        bool immutable = false;
+
+        FactInfo(obj_ptr_t obj, FactType* type, size_t length, size_t byte_offset,
+                 bool in_main_buffer=false, bool immutable=false) :
+            obj(obj), type(type), length(length), byte_offset(byte_offset), 
+            in_main_buffer(in_main_buffer), immutable(immutable)
+        {};
+    };
+
+    // using fact_info_t = std::tuple<obj_ptr_t, FactType*, size_t, size_t>;
 
     std::string_view type_attr;
     std::string_view ref_prefix;
     HashMap<std::string_view, size_t> fact_map;
-    vector<fact_info_t> fact_infos;
+    vector<FactInfo> fact_infos;
     FactSetBuilder builder;
     attr_getter_t type_attr_ref;
 
@@ -423,17 +441,17 @@ struct ToFactSetTranslator {
                 // }
             }
         }else{
-            throw std::runtime_error("Fact item with key " + std::string(key_id) + " is not a dict.");
+            throw std::domain_error("Fact item with key " + std::string(key_id) + " is not a dict.");
         }
 
         // Make a fact_info tuple, and insert into fact_map
-        fact_infos.push_back({val_ptr, type, length, byte_offset});
+        fact_infos.push_back(FactInfo(val_ptr, type, length, byte_offset, true));
 
         // Insert whatever key_id is
         if(key_id.size() > 0){
             auto [it, inserted] = fact_map.insert({key_id, index});
             if(!inserted){
-                throw std::runtime_error("Duplicate fact identifier: " + std::string(key_id));
+                throw std::domain_error("Duplicate fact identifier: " + std::string(key_id));
             }    
         }
 
@@ -442,7 +460,7 @@ struct ToFactSetTranslator {
             if(key_id != uid){
                 auto [it, inserted] = fact_map.insert({uid, index});
                 if(!inserted){
-                    throw std::runtime_error("Duplicate fact identifier: " + std::string(key_id));
+                    throw std::domain_error("Duplicate fact identifier: " + std::string(key_id));
                 }          
             }            
         }
@@ -563,9 +581,15 @@ struct ToFactSetTranslator {
 
         // If reference was resolved then set item to the fact it resolves to 
         if(index != -1){
-            size_t offset = std::get<3>(fact_infos[index]);
-            Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
-            item = Item(fact_ptr);
+            // size_t offset = fact_infos[index].byte_offset;
+            // Fact* fact_ptr = (Fact*)(builder.alloc_buffer->data + offset);
+            FactInfo& info = fact_infos[index];
+            ref<Fact> fact = _alloc_fact(info);
+            if(info.immutable){
+                _init_fact(info);
+            }
+            // cout << "1REFCNT:" << fact->get_refcount() << endl;
+            return Item(fact);
         }
         return item;
     }
@@ -599,7 +623,7 @@ struct ToFactSetTranslator {
             std::string error_msg = "Key '" + std::string(key_str) +
                 "' is not an integer or named member of fact type '" +
                 type_str + "'.";
-            throw std::runtime_error(error_msg);
+            throw std::domain_error(error_msg);
         }
 
         CRE_Type* mbr_type = index == -1 || type == nullptr ? 
@@ -607,6 +631,98 @@ struct ToFactSetTranslator {
                             type->members[index].type;
 
         return std::make_tuple(index, mbr_type, false);
+    }
+
+    ref<Fact> _alloc_fact(FactInfo& fact_info){
+        if(!fact_info.is_alloced){
+            if(fact_info.in_main_buffer){
+                fact_info.fact = builder.alloc_fact(fact_info.type, fact_info.length);
+            }else{
+                fact_info.fact = alloc_fact(fact_info.type, fact_info.length);
+            }    
+            fact_info.is_alloced = true;
+        }
+
+        return fact_info.fact;
+    }
+
+    void _init_fact(FactInfo& fact_info){
+        if(fact_info.is_initialized){
+            return;
+        }
+
+        auto& fact_obj = T::deref_obj_ptr(fact_info.obj);
+        FactType* type = fact_info.type;
+        Fact* fact = fact_info.fact;
+        // fact->type = type;
+
+        if(T::is_dict(fact_obj)){
+            // Note: Dict instatiated facts must be zero filled
+            //  since there is no gaurentee that all of their fields
+            //  were provided. 
+            _zfill_fact(fact, 0, fact_info.length);
+
+            auto fact_dict = T::to_dict(fact_obj);
+            for (auto itr = T::dict_itr_begin(fact_dict); itr != T::dict_itr_end(fact_dict); ++itr){
+                const auto& [key, val] = *itr;
+                auto [index, mbr_type, skip] = _resolve_mbr_index_type(key, type);          
+                if(skip) continue;
+                Item item = T::to_item(val);
+                item = this->_resolve_possible_fact_ref(item, mbr_type);
+                fact->set(index, std::move(item));
+            }
+        } else if(T::is_list(fact_obj)){
+            auto fact_list = T::to_list(fact_obj);
+            int64_t index = 0;
+            for (auto itr = T::list_itr_begin(fact_list); itr != T::list_itr_end(fact_list); ++itr){
+                // auto val_ptr = T::list_itr_val_ptr(itr);
+                try{
+                    const auto& val = *itr;
+                    Item item = T::to_item(val);
+                    item = this->_resolve_possible_fact_ref(item, nullptr);                    
+                    fact->set_unsafe(index, std::move(item));
+                } catch (const std::exception& e) {
+                    _zfill_fact(fact, index, fact_info.length);
+                    throw;
+                }
+
+                index++;
+            }
+            if(T::treat_lists_immutable){
+                fact->immutable = true;    
+            }
+
+        } else if(T::is_tuple(fact_obj)){
+
+        if constexpr(!std::is_same<typename T::list_t, typename T::tuple_t>::value){   
+            auto fact_tuple = T::to_tuple(fact_obj);
+            int64_t index = 0;
+            for (auto itr = T::tuple_itr_begin(fact_tuple); itr != T::tuple_itr_end(fact_tuple); ++itr){
+                // auto val_ptr = T::list_itr_val_ptr(itr);
+                try{
+                    const auto& val = *itr;
+                    Item item = T::to_item(val);
+                    item = this->_resolve_possible_fact_ref(item, nullptr);
+                    fact->set_unsafe(index, std::move(item));    
+                } catch (const std::exception& e) {
+                    _zfill_fact(fact, index, fact_info.length);
+                    throw;
+                }
+                
+                index++;
+            }
+            fact->immutable = true;
+        }
+
+        }else{
+            throw std::invalid_argument(T::container_prefix + 
+                " \"" + T::obj_to_str(fact_obj) + 
+                "\" cannot be converted to Fact.");
+        }
+        fact->ensure_unique_id();
+        builder.fact_set->_declare_back(fact);
+        fact_info.is_initialized = true;
+        // builder.alloc_buffer->add_ref(fact_infos.size());
     }
 
     /*!
@@ -617,69 +733,8 @@ struct ToFactSetTranslator {
         this->_collect_fact_infos(container);
         
         for(auto& fact_info : fact_infos){
-            auto& fact_obj_ptr = std::get<0>(fact_info);
-            auto& fact_obj = T::deref_obj_ptr(fact_obj_ptr);
-            FactType* type = std::get<1>(fact_info);
-            size_t length = std::get<2>(fact_info);
-            // size_t offset = std::get<3>(fact_info);
-
-            ref<Fact> fact = builder.alloc_fact(type, length);
-            fact->type = type;
-
-            if(T::is_dict(fact_obj)){
-                // Note: Dict instatiated facts must be zero filled
-                //  since there is no gaurentee that all of their fields
-                //  were provided. 
-                _zfill_fact(fact, 0, length);
-
-                auto fact_dict = T::to_dict(fact_obj);
-                for (auto itr = T::dict_itr_begin(fact_dict); itr != T::dict_itr_end(fact_dict); ++itr){
-                    const auto& [key, val] = *itr;
-                    auto [index, mbr_type, skip] = _resolve_mbr_index_type(key, type);          
-                    if(skip) continue;
-                    Item item = T::to_item(val);
-                    item = this->_resolve_possible_fact_ref(item, mbr_type);
-                    fact->set(index, item);
-                }
-            } else if(T::is_list(fact_obj)){
-                auto fact_list = T::to_list(fact_obj);
-                int64_t index = 0;
-                for (auto itr = T::list_itr_begin(fact_list); itr != T::list_itr_end(fact_list); ++itr){
-                    // auto val_ptr = T::list_itr_val_ptr(itr);
-                    const auto& val = *itr;
-                    Item item = T::to_item(val);
-                    item = this->_resolve_possible_fact_ref(item, nullptr);
-                    fact->set(index, item);
-                    index++;
-                }
-                if(T::treat_lists_immutable){
-                    fact->immutable = true;    
-                }
-
-            } else if(T::is_tuple(fact_obj)){
-
-            if constexpr(!std::is_same<typename T::list_t, typename T::tuple_t>::value){   
-                auto fact_tuple = T::to_tuple(fact_obj);
-                int64_t index = 0;
-                for (auto itr = T::tuple_itr_begin(fact_tuple); itr != T::tuple_itr_end(fact_tuple); ++itr){
-                    // auto val_ptr = T::list_itr_val_ptr(itr);
-                    const auto& val = *itr;
-                    Item item = T::to_item(val);
-                    item = this->_resolve_possible_fact_ref(item, nullptr);
-                    fact->set(index, item);
-                    index++;
-                }
-                fact->immutable = true;
-            }
-
-            }else{
-                throw std::invalid_argument(T::container_prefix + 
-                    " \"" + T::obj_to_str(fact_obj) + 
-                    "\" cannot be converted to Fact.");
-            }
-
-            builder.fact_set->_declare_back(fact);
-            // builder.alloc_buffer->add_ref(fact_infos.size());
+            _alloc_fact(fact_info);
+            _init_fact(fact_info);
         }
         
         return builder.fact_set;

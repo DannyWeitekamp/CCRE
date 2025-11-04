@@ -1,4 +1,7 @@
-from test_utils import *
+import faulthandler; faulthandler.enable()
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from t_utils import *
 import pytest
 
 
@@ -118,6 +121,8 @@ def test_fact_create():
 
     with pytest.raises(Exception):
         Cat("snowball", "white", 3, "blue", 1.0, 1.0)
+
+    hasattr(snowball, "__await__");
 
     return snowball
 
@@ -252,7 +257,8 @@ if __name__ == "__main__":
     # test_fact_create()
     # test_fact_getitem()
     # test_fact_getattr()
-    
+
+    test_fact_iter()
     # test_fact_eq()
     # test_fact_hash()
     # test_fact_copy()
@@ -262,4 +268,4 @@ if __name__ == "__main__":
     # test_protected_mutability()
     # test_as_conditions()
     
-    test_members_are_weakrefs()
+    # test_members_are_weakrefs()

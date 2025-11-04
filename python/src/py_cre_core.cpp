@@ -81,15 +81,16 @@ nb::object Item_to_py(Item item){
         case T_ID_NONE:
            	return nb::none();
         case T_ID_BOOL:
-            return nb::cast(item.as_bool());
+            return nb::cast(item._as<bool>());
         case T_ID_INT:
-        	return nb::cast(item.as_int());
+        	return nb::cast(item._as<int>());
         case T_ID_FLOAT:
-        	return nb::cast(item.as_float());
+        	return nb::cast(item._as<float>());
         case T_ID_STR:
-        	return nb::cast(item.as_string());
+        	return nb::cast(item._as<std::string_view>());
         case T_ID_FACT:
-            return nb::cast(ref<Fact>(std::bit_cast<Fact*>(item.val)));
+            return nb::cast(item._as<ref<Fact>>());
+            // return nb::cast(ref<Fact>(std::bit_cast<Fact*>(item.val)));
         default:
         	throw std::runtime_error("Conversion Not Implemented t_id="+std::to_string(t_id));    
     }
@@ -253,16 +254,17 @@ void init_core(nb::module_& m) {
     ;
 
     // -- CRE_Context --
-    nb::class_<CRE_Context>(m, "CRE_Context", nb::type_slots(cre_obj_slots))
+    nb::class_<CRE_Context>(m, "CRE_Context")//, nb::type_slots(cre_obj_slots))
+    .def(nb::new_([](){
+        return current_context;
+    }), nb::rv_policy::reference)
+    .def(nb::new_([](std::string_view name){
+        return get_context(name);
+    }), nb::rv_policy::reference)
     .def("get_type", &CRE_Context::get_type, nb::rv_policy::reference)
     .def("get_fact_type", &CRE_Context::get_fact_type, nb::rv_policy::reference)
     .def("__str__", &CRE_Context::to_string)
-    .def(nb::new_([](){
-    	return current_context;
-    }), nb::rv_policy::reference)
-    .def(nb::new_([](std::string_view name){
-    	return get_context(name);
-    }), nb::rv_policy::reference)
+    
 
     // .def_static("__call__", [](){
     // 	return current_context;
@@ -296,7 +298,10 @@ ref<Fact> _py_new_fact(FactType* type,
     int max_args = n_pos_args + kwargs.size();
     int items_len = n_pos_args;
     Item* items = (Item*) alloca(sizeof(Item) * max_args);
-    std::fill(items, items+max_args, Item());
+
+    for (int i=0; i < max_args; i++) {
+        new (&items[i]) Item();
+    }
 
     auto it = args_start;
     for (int i=0; it != args_end; ++it, i++) {

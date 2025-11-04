@@ -5,26 +5,49 @@
 
 namespace cre {
 
+
+// struct Member;
+
+// template<typename T>
+// concept NotMember = !std::is_same_v<T, Member>;
+
 struct Member : public Item {
     uint64_t hash;
 
     Member() : Item(), hash(0)
     {};
 
-    template<class T>
-    Member(const T& val, uint64_t _hash=0) :
-            Item(val), hash(_hash)
-    {
+    template<typename T>
+    inline uint64_t ensure_hash(T&& value, uint64_t _hash=0){
+        // cout << "MEMBER :" << value;
         if(_hash == 0){
-            hash = CREHash{}(val); 
+            _hash = CREHash{}(value); 
         }
+        return _hash;
+    }
+
+    // template<typename T>
+    // // requires NotMember<T>
+    // Member(const T& value, uint64_t _hash=0) :
+    //         hash(ensure_hash(value, _hash)), Item(value) 
+    // {
+    //     cout << " COPY" << endl;
+    // }
+
+    template<typename T>
+    // requires NotMember<T>
+    Member(T&& value, uint64_t _hash=0) :
+            hash(ensure_hash(value, _hash)), 
+            Item(std::forward<T>(value))
+    {
+        // cout << " MOVE" << endl;
     }
 
     Member(const Member& other) :
         Item(other), hash(other.hash)
     {};
 
-    Member(const Member& other, uint8_t val_kind) :
+    Member(const Member& other, uint8_t val_kind, [[maybe_unused]] bool _) :
         Item(other, val_kind), hash(other.hash)
     {};
 
@@ -34,15 +57,24 @@ struct Member : public Item {
 
     inline Member to_weak(){
         // cout << "AAAH" << this->get_wrefcount() << endl;
-        return Member(*this, WEAK_REF);
+        // Member m = Member(*this);
+        // m.val_kind = WEAK_REF;
+        // return m;
+        return Member(*this, WEAK_REF, true);
     }
 
     inline Item to_strong(){
-        return Member(*this, STRONG_REF);        
+        return Member(*this, STRONG_REF, true);        
+        // Member m = Member(*this);
+        // m.val_kind = STRONG_REF;
+        // return m;
     }
 
     inline Item to_raw_ptr(){
-        return Member(*this, RAW_PTR);
+        return Member(*this, RAW_PTR, true);
+        // Member m = Member(*this);
+        // m.val_kind = RAW_PTR;
+        // return m;
     }
 
     

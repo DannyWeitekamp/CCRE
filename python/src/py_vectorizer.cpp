@@ -20,11 +20,11 @@ nb::tuple py_Vectorizer_apply(nb::handle self, FactSet* input){
 
 void init_vectorizer(nb::module_ & m){
 	nb::class_<Vectorizer>(m, "Vectorizer", nb::type_slots(cre_obj_slots))
-    .def(nb::new_(
-        [](){
-            return ref<Vectorizer>(new Vectorizer());
-            }),
-        nb::rv_policy::reference)
+    // .def(nb::new_(
+    //     [](){
+    //         return ref<Vectorizer>(new Vectorizer());
+    //         }),
+    //     nb::rv_policy::reference)
 
     .def(nb::new_([](uint64_t max_heads, bool one_hot_nominals, bool encode_missing)->ref<Vectorizer>{
             return ref<Vectorizer>(new Vectorizer(max_heads, one_hot_nominals, encode_missing));

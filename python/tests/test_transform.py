@@ -1,4 +1,7 @@
-from test_utils import *
+import faulthandler; faulthandler.enable()
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from t_utils import *
 import pytest
 
 
@@ -78,6 +81,14 @@ def _do_flattener_tests(fs, n_vis):
         assert fact.get_refcount() == 2;
 
     
+    print(flat_fs0)
+    print("----------")
+    print(flat_fs1)
+    print("----------")
+    print(flat_fs2)
+    print("----------")
+    print(flat_fs3)
+
     assert len(flat_fs2) == (n_vis)*len(fs)
     assert len(flat_fs3) == (n_vis+1)*len(fs)
 
@@ -203,10 +214,10 @@ def test_b_pipeline_incr_change(benchmark):
 
 if __name__ == "__main__":
     import faulthandler; faulthandler.enable()
-    # test_Flattener_basic()
+    test_Flattener_basic()
     # test_Flattener_refs()
-    test_Vectorizer_basic()
-    test_Vectorizer_refs()
+    # test_Vectorizer_basic()
+    # test_Vectorizer_refs()
     # test_Vectorizer_invert()
     # test_RelativeEncoder()
     # test_Flattener_incr()

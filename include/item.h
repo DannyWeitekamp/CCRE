@@ -61,7 +61,6 @@ const uint8_t INTERNED = RAW_PTR | uint8_t(4);
 // };
 
 
-
 struct Item{
     // [Bytes 0-8]
     // The main value or pointer of the Item
@@ -225,14 +224,7 @@ public:
     
 
 
-    Item() : val(0), t_id(T_ID_UNDEF),
-             meta_data(0), val_kind(VALUE), pad(0) 
-    {};
-
-    Item([[maybe_unused]] const NoneType& none) :
-         val(0), t_id(T_ID_NONE),
-         meta_data(0), val_kind(VALUE), pad(0) 
-    {};
+    
 
     // void _force_strong() {
     //     if(is_wref() && !is_expired()){
@@ -274,7 +266,7 @@ public:
             data = data_ptr;
             // length = other.length;
         }else{
-            other.borrow();        
+            other.borrow();
             release();
             val = other.val;
         }
@@ -286,7 +278,7 @@ public:
         return *this;
     };
 
-    Item& operator=(Item&& other) {    
+    Item& operator=(Item&& other) {
         release();// Note: Valgrind Doesn't like this 
         val = other.val;
         t_id = other.t_id;
@@ -302,6 +294,15 @@ public:
     };
 
     
+
+    Item() : val(0), t_id(T_ID_UNDEF),
+             meta_data(0), val_kind(VALUE), pad(0) 
+    {};
+
+    Item([[maybe_unused]] const NoneType& none) :
+         val(0), t_id(T_ID_NONE),
+         meta_data(0), val_kind(VALUE), pad(0) 
+    {};
 
     Item(const Item& other, uint8_t val_kind) :
          // ptr(other.ptr),
@@ -386,6 +387,20 @@ public:
     {}
 
     template <class T>
+    explicit Item(ref<T>&& x) : 
+      ptr((void *) x.get()),
+      t_id(T::T_ID),
+      meta_data(0), 
+      val_kind(STRONG_REF),
+      pad(0)
+    {
+        cout << "MOVE STRONG REF:" << x << endl;
+        x->inc_ref(); 
+        x.invalidate();
+        
+    }
+
+    template <class T>
     explicit Item(const ref<T>& x) : 
       ptr((void *) x.get()),
       t_id(T::T_ID),
@@ -393,7 +408,20 @@ public:
       val_kind(STRONG_REF),
       pad(0)
     {
-        x->inc_ref(); 
+        cout << "COPY STRONG REF:" << x << endl;
+        x->inc_ref();
+    }
+
+    template <class T>
+    explicit Item(wref<T>&& x) : 
+      ptr((void *) x.get_cb()),
+      t_id(T::T_ID),
+      meta_data(0), 
+      val_kind(WEAK_REF),
+      pad(0)
+    {
+        x->inc_wref();
+        x.invalidate();
     }
 
     template <class T>
@@ -407,23 +435,9 @@ public:
         x->inc_wref(); 
     }
 
-    template <class T>
-    explicit Item(const ref<T>&& x) : 
-      ptr((void *) x.get()),
-      t_id(T::T_ID),
-      meta_data(0), 
-      val_kind(STRONG_REF),
-      pad(0)
-    {}
+    
 
-    template <class T>
-    explicit Item(const wref<T>&& x) : 
-      ptr((void *) x.get_cb()),
-      t_id(T::T_ID),
-      meta_data(0), 
-      val_kind(WEAK_REF),
-      pad(0)
-    {}
+    
 
 
     Item(const std::string& arg);
@@ -790,6 +804,8 @@ public:
             return val != 0;
         }
     }
+
+    friend struct Member;
         
 };
 

@@ -63,6 +63,7 @@ public:
     hash(FNV_BASIS ^ (_length * FNV_PRIME)),
     immutable(false)
 {
+  // NOTE: Don't need init_control_block because alloc_cre_obj is called in alloc_fact
   // this->init_control_block(&Fact_dtor, T_ID);
 }
 
@@ -74,7 +75,7 @@ public:
   // void operator delete(void * p);
     //
   template<class T>
-  inline Member borrow_val_as_member(const T& val){
+  inline Member borrow_val_as_member(T&& val){
     // Convert to Member, always intern strings, always hash on assignment;
     // cout << "L81" << endl;
     Member member;
@@ -83,25 +84,26 @@ public:
 
     }else if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
       InternStr intern_str(intern(val));
-      member = Member(intern_str, intern_str.hash);
+      member = Member(intern_str);
 
     }else if constexpr (std::is_same_v<T, Item>) {
       if(val.get_t_id() == T_ID_STR){
         const Item& val_item = val;
         InternStr intern_str(intern(val_item._as<std::string_view>()));
-        member = Member(intern_str, intern_str.hash);  
+        member = Member(intern_str);  
       }else{
-        uint64_t hash = CREHash{}(val); 
-        member = Member(val, hash);  
+        // uint64_t hash = CREHash{}(val); 
+        member = Member(std::forward<T>(val));  
       }
 
     }else{
-      uint64_t hash = CREHash{}(val); 
+      // uint64_t hash = CREHash{}(val); 
       // if constexpr (std::is_base_of_v<T, Fact>) {  
       //   // Fact reference members are always weak
       //   member = Member(wref<Fact>(val), hash);
       // }else{
-      member = Member(val, hash);
+
+      member = Member(std::forward<T>(val));
       // }
     }
     // cout << "L99" << endl;
@@ -144,11 +146,11 @@ public:
 
   // Executes type specific .set()
   template<class T>
-  inline void set(uint32_t ind, const T& val){
+  inline void set(uint32_t ind, T&& val){
     if(ind >= length){
       throw std::out_of_range("Setting fact member [" + std::to_string(ind) + "] beyond its length (" + std::to_string(length) + ").");
     }
-    Member member = borrow_val_as_member(val);
+    Member member = borrow_val_as_member(std::forward<T>(val));
 
     // Handle type checking against the fact's type   
     verify_member_type(ind, member);
@@ -184,8 +186,8 @@ public:
    * @return void 
    */
   template<class T>
-  inline void set_unsafe(uint32_t ind, const T& val){
-    Member member = borrow_val_as_member(val);
+  inline void set_unsafe(uint32_t ind, T&& val){
+    Member&& member = borrow_val_as_member(std::forward<T>(val));
 
     Member* data_ptr = std::bit_cast<Member*>(
         std::bit_cast<uint64_t>(this) + sizeof(Fact)
@@ -201,7 +203,7 @@ public:
   }
 
   template<class T>
-  inline void set(const std::string_view& attr, const T& val) {
+  inline void set(const std::string_view& attr, T&& val) {
     if(type == nullptr){
       throw std::invalid_argument("Attribute name [\"" + std::string(attr) +
           "\"] undefined for untyped Fact.");
@@ -213,7 +215,7 @@ public:
           "\"] in Fact of type \"" + type->name + "\".");
     }
 
-    set(index, val);
+    set(index, std::forward<T>(val));
 
     // Member* data_ptr = std::bit_cast<Member*>(
     //     std::bit_cast<uint64_t>(this) + sizeof(Fact)
@@ -656,32 +658,23 @@ inline void _zfill_fact(Fact* fact, uint32_t start, uint32_t end){
 template<std::derived_from<Item> ItemOrMbr>
 inline void _fill_fact(Fact* fact, const ItemOrMbr* items, size_t n_items){
   // Set items
-  try{
+  
     for(int i=0; i < n_items; i++){
+      try{
+        const ItemOrMbr& item = items[i];
+        fact->verify_member_type(i, item);
+        fact->set_unsafe(i, item);
 
-      // Note/Verify TODO: copy elision optimization should prevent copying
-      //   this temporary.
-      const ItemOrMbr& item = items[i];
-
-      
-      fact->verify_member_type(i, item);
-
-      // cout << "i=" << i << " t_id=" << item.get_t_id(); 
-      // cout << "item=" << item << endl; 
-
-      fact->set_unsafe(i, item);
-
-
-
-      // if(!item.is_primitive() && item.borrows){
-      //   ((CRE_Obj*) item.val)->inc_ref();
-      // }
+      } catch (const std::exception& e) {
+        // Make sure that fact is freed on error
+        //  NOTE: we z-fill to ensure dtor is applied on 
+        //        initialized values.
+        _zfill_fact(fact, i, fact->length);
+        // Fact_dtor(fact);
+        throw;
+      }
     }
-  } catch (const std::exception& e) {
-    // Make sure that fact is freed on error
-    Fact_dtor(fact);
-    throw;
-  }
+  
   
   // Zero-fill any trailing items
   _zfill_fact(fact, n_items, fact->length);

@@ -16,9 +16,8 @@
 #include <iostream>
 // #include "../include/cre_obj.h"
 
-#if defined(NB_VERSION_MAJOR)
-#include "../external/nanobind/src/nb_internals.h"
-#endif
+// Note: nb_internals.h is included later, just before the type caster section,
+// to avoid issues with the 'check' macro definition
 // #include "counter.h"
 
 // namespace cre {
@@ -109,6 +108,10 @@ public:
         m_ptr = nullptr;
     }
 
+    void invalidate() {
+        m_ptr = nullptr;
+    }
+
     /// Compare this reference with another reference
     bool operator==(const ref &r) const { return m_ptr == r.m_ptr; }
 
@@ -169,8 +172,13 @@ public:
 // #include <nanobind/nanobind.h>
 // Registar a type caster for ``ref<T>`` if nanobind was previously #included
 #if defined(NB_VERSION_MAJOR)
+// Include nb_internals.h here, just before it's needed for the type caster
+// #include "../external/nanobind/src/nb_internals.h"
 NAMESPACE_BEGIN(nanobind)
 NAMESPACE_BEGIN(detail)
+
+struct nb_inst; 
+
 template <typename T> struct type_caster<ref<T>> {
     using Caster = make_caster<T>;
     static constexpr bool IsClass = true;
@@ -201,7 +209,7 @@ template <typename T> struct type_caster<ref<T>> {
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
         nb_inst* out_inst = (nb_inst*) py_out.ptr();
-        out_inst->unused = 17;
+        // out_inst->unused = 17;
         // std::cout << "CPP DELETE: "  << out_inst->cpp_delete << std::endl; 
         // std::cout << "INTRUSIVE: "  << out_inst->intrusive << std::endl; 
         // auto _is = inst_state(py_out);
@@ -218,6 +226,10 @@ NAMESPACE_END(nanobind)
 template <typename T>
 class wref;
 
+
+// is_ref: type trait to check if a type is a ref<T> or wref<T> smart pointer.
+//   Usage: is_ref<T>::value is true if T is ref<U> or wref<U>, false otherwise.
+//   Also provides a constexpr variable is_ref_v<T> for convenience.
 template <typename T>
 struct is_ref : std::false_type {};
 
@@ -232,8 +244,8 @@ constexpr bool is_ref_v = is_ref<T>::value;
 
 
 // remove_ref_t: removes ref<T> or wref<T> wrapper, otherwise returns T
-
-
+//   Usage: remove_ref_t<T> is T if T is not a ref<U> or wref<U>, otherwise it is U.
+//   Also provides a typedef remove_ref_t<T> for convenience.
 template <typename T>
 struct remove_ref {
     using type = T;

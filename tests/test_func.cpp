@@ -476,10 +476,19 @@ void test_type_check_and_casting(){
 	concat_f(S0, S1)("Lorem ipsum dolor sit amet, consectetur",
 					 "consectetur adipiscing elit.");
 
+	ref<Var> C0 = new_var("C0", Candy);
+	ref<Var> C1 = new_var("C1", Candy);
+
 	cout << "-----------" << endl;
 	Item candy_item = combine_candy_f(make_fact(Candy,"mint", .25), make_fact(Candy,"strawberry", .25));
-	ref<Fact> candy = candy_item.as<ref<Fact>>();
-	cout << "R CNT: " << candy->get_refcount() << endl;
+	auto combine_doubles = combine_candy_f(combine_candy_f(C0,C1), combine_candy_f(C0,C1));
+	// auto combine_doubles = combine4(C0,C1,C0,C1);
+	Item combo_item = combine_doubles(make_fact(Candy,"mint", .25), make_fact(Candy,"strawberry", .25));
+
+	cout << olpops << endl;
+	cout << make_fact(Candy, "mint", .25) << endl;
+	cout << candy_item.as<Fact*>() << endl;
+	cout << combo_item.as<Fact*>() << endl;
 }
 
 

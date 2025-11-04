@@ -1,5 +1,7 @@
 import faulthandler; faulthandler.enable()
-from test_utils import *
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from t_utils import *
 import pytest
 import json
 

@@ -168,11 +168,15 @@ size_t Flattener::_fact_to_var_pairs(
 	// Make stub like (varname,)
 	if(add_exist_stubs){
 		ref<Fact> subj_fact = builder.alloc_fact(nullptr, 1);
-		subj_fact->set_unsafe(0, subj_var.get());	
+		cout << "BEFORE add_exist_stubs:" << subj_var << endl;
+		subj_fact->set_unsafe(0, subj_var);	
 		subj_fact->immutable = true;
-		builder.fact_set->_declare_back(std::move(subj_fact));
+		// cout << "VERB SUBJ VAR REFCOUNT:" << subj_var->get_refcount() << endl;
+		builder.fact_set->_declare_back(subj_fact);
 
 	}
+
+	
 
 	
 	// Make pairs like (varname.attr, value)
@@ -194,14 +198,25 @@ size_t Flattener::_fact_to_var_pairs(
 		// 	return _extend_unsafe(deref, 1, alloc_buffer);
 		// }
 
+			// out_fact->set_unsafe(0, subj_var->_extend_unsafe(deref, 1, builder.alloc_buffer));
 			verb_var = subj_var->_extend_unsafe(deref, 1, builder.alloc_buffer);
 		}else{
+			// out_fact->set_unsafe(0, subj_var->extend_item(mbr_ind, builder.alloc_buffer));
 			verb_var = subj_var->extend_item(mbr_ind, builder.alloc_buffer);
 
 		}
 
-		out_fact->set_unsafe(0, verb_var.get());
+		Var* verb_addr = verb_var.get();
+		// verb_var->inc_ref();
+		// verb_var->inc_ref();
+		
+		// Item verb_var_item = Item(verb_var);
+		out_fact->set_unsafe(0, std::move(verb_var));
+		// out_fact->set_unsafe(0, verb_var);
 
+		cout << "-VERB VAR REFCOUNT:" << verb_addr->get_refcount() << endl;
+
+		// cout << "+VERB VAR REFCOUNT:" << verb_addr->get_refcount() << endl;
 		// if(type != nullptr && ind < type->members.size()){
 		// 	out_fact->set_unsafe(verb_ind /* 1 or 0 */,
 		// 	 			type->member_names_as_items[ind]);
@@ -216,7 +231,9 @@ size_t Flattener::_fact_to_var_pairs(
 			Fact* obj_fact = obj_item._as<Fact*>();
 			ref<Var> obj_var = fact_vars[obj_fact->f_id];
 
-			out_fact->set_unsafe(1, obj_var.get());	
+			cout << "OBJ VAR REFCOUNT:" << obj_var->get_refcount() << endl;
+			out_fact->set_unsafe(1, obj_var);	
+			
 		}else{
 			out_fact->set_unsafe(1, obj_item);		
 		}

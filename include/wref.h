@@ -17,9 +17,8 @@
 #include "../include/ref.h"
 #include "../include/cre_obj.h"
 
-#if defined(NB_VERSION_MAJOR)
-#include "../external/nanobind/src/nb_internals.h"
-#endif
+// Note: nb_internals.h is included later, just before the type caster section,
+// to avoid issues with the 'check' macro definition
 // #include "counter.h"
 
 // namespace cre {
@@ -51,7 +50,7 @@ private:
     ControlBlock* m_ptr = nullptr;
 public:
     using type = T;
-    
+
     /// Create a null reference
     wref() = default;
 
@@ -116,6 +115,10 @@ public:
     /// Clear the currently stored reference
     void reset() {
         if(m_ptr) m_ptr->dec_wref();
+        m_ptr = nullptr;
+    }
+
+    void invalidate() {
         m_ptr = nullptr;
     }
 
@@ -195,8 +198,13 @@ public:
 // #include <nanobind/nanobind.h>
 // Registar a type caster for ``wref<T>`` if nanobind was previously #included
 #if defined(NB_VERSION_MAJOR)
+// Include nb_internals.h here, just before it's needed for the type caster
+// #include "../external/nanobind/src/nb_internals.h"
 NAMESPACE_BEGIN(nanobind)
 NAMESPACE_BEGIN(detail)
+
+struct nb_inst;
+
 template <typename T> struct type_caster<wref<T>> {
     using Caster = make_caster<T>;
     static constexpr bool IsClass = true;
@@ -234,8 +242,8 @@ template <typename T> struct type_caster<wref<T>> {
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
-        nb_inst* out_inst = (nb_inst*) py_out.ptr();
-        out_inst->unused = 17;
+        // nb_inst* out_inst = (nb_inst*) py_out.ptr();
+        // out_inst->unused = 17;
         // std::cout << "CPP DELETE: "  << out_inst->cpp_delete << std::endl; 
         // std::cout << "INTRUSIVE: "  << out_inst->intrusive << std::endl; 
         // auto _is = inst_state(py_out);
@@ -247,6 +255,8 @@ template <typename T> struct type_caster<wref<T>> {
 };
 NAMESPACE_END(detail)
 NAMESPACE_END(nanobind)
+
+
 #endif
 
 

@@ -11,7 +11,6 @@ namespace cre {
 
 void Var_dtor(const CRE_Obj* x){
 	Var* var = (Var*) x;
-	// cout << "VAR DTOR" << endl;
 
 	if(var->base != 0 && var->base != var){
 		var->base->dec_ref();
@@ -38,7 +37,7 @@ Var::Var(const Item& _alias,
 	// if(_type == nullptr){
 	// 	throw std::invalid_argument("Cannot initialize Var from NULL type.");
 	// }
-	this->init_control_block(&Var_dtor, T_ID);
+	// this->init_control_block(&Var_dtor, T_ID);
 
 	deref_infos = ((DerefInfo*) (( (char*) this) + sizeof(Var)) );
 
@@ -148,24 +147,38 @@ ref<Var> new_var(
 ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer){
 	// Allocate a new var 
 	// Var* new_var = _alloc_extension(var, 1);
-	Var* __restrict nv;
-	bool did_malloc = true;
+	// Var* __restrict nv;
+	// bool did_malloc = true;
 
 	size_t new_len = length+n_derefs;
 
 	// cout << "SIZEOF VAR" << sizeof(Var) << ", " << SIZEOF_VAR(length+1) << endl;
-	if(alloc_buffer != nullptr){
-		nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(new_len), did_malloc);	
-	}else{
-		nv = (Var*) malloc(SIZEOF_VAR(new_len)); 
-	}
 
-	nv = new (nv) Var(alias, base_type, nullptr, new_len);
+	auto [var_addr, did_malloc] = alloc_cre_obj(SIZEOF_VAR(new_len), &Var_dtor, T_ID_VAR, alloc_buffer);
+	// nv = (Var*) var_addr;
+	// bool did_malloc = true;
+	// Var* var;
+	// if(alloc_buffer != nullptr){
+	// 	var = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
+	// }else{
+	// 	var = (Var*) malloc(SIZEOF_VAR(_length)); 
+	// }
+    
+    // Var* var = new (var_addr) Var(alias, type, deref_infos, length);
 
-	if(!did_malloc){
-		nv->control_block->alloc_buffer = alloc_buffer;
-		alloc_buffer->inc_ref();
-	}
+	// nv = new_var(alias, base_type, deref_infos, new_len, alloc_buffer);
+	// if(alloc_buffer != nullptr){
+	// 	nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(new_len), did_malloc);	
+	// }else{
+	// 	nv = (Var*) malloc(SIZEOF_VAR(new_len)); 
+	// }
+
+	ref<Var> nv = new (var_addr) Var(alias, base_type, nullptr, new_len);
+
+	// if(!did_malloc){
+	// 	nv->control_block->alloc_buffer = alloc_buffer;
+	// 	alloc_buffer->inc_ref();
+	// }
 
 	// Var* nv = new_var(base_type, alias, deref_infos, length+1);
 	// cout << "size=" << sizeof(Var) << " d_infs=" << uint64_t(nv->deref_infos)-uint64_t(nv) 
