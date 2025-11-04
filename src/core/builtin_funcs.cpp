@@ -71,89 +71,89 @@ namespace cre {
 bool _And(bool a, bool b){
 	return a & b;
 }
-ref<Func> And = define_func<_And>("And", "And({},{})", "({} & {})");
+FuncRef And = define_func<_And>("And", "And({},{})", "({} & {})");
 
 bool _Or(bool a, bool b){
 	return a | b;
 }
-ref<Func> Or = define_func<_Or>("Or", "Or({},{})", "({} | {})");
+FuncRef Or = define_func<_Or>("Or", "Or({},{})", "({} | {})");
 
 bool _Xor(bool a, bool b){
 	return a ^ b;
 }
-ref<Func> Xor = define_func<_Xor>("Xor", "Xor({},{})", "({} ^ {})");
+FuncRef Xor = define_func<_Xor>("Xor", "Xor({},{})", "({} ^ {})");
 
 bool _Not(bool a){
 	return !a;
 }
-ref<Func> Not = define_func<_Not>("Not", "Not({})", "(~{})");
+FuncRef Not = define_func<_Not>("Not", "Not({})", "(~{})");
 
 
 int64_t _AddInts(int64_t a, int64_t b){
 	return a+b;
 }
-ref<Func> AddInts = define_func<_AddInts>("AddInts", "AddInts({},{})", "({} + {})");
+FuncRef AddInts = define_func<_AddInts>("AddInts", "AddInts({},{})", "({} + {})");
 
 double _Add(double a, double b){
 	return a+b;
 }
-ref<Func> Add = define_func<_Add>("Add", "Add({},{})", "({} + {})");
+FuncRef Add = define_func<_Add>("Add", "Add({},{})", "({} + {})");
 
 // Subtraction
 int64_t _SubtractInts(int64_t a, int64_t b){
 	return a-b;
 }
-ref<Func> SubtractInts = define_func<_SubtractInts>("SubtractInts", "SubtractInts({},{})", "({} - {})");
+FuncRef SubtractInts = define_func<_SubtractInts>("SubtractInts", "SubtractInts({},{})", "({} - {})");
 
 double _Subtract(double a, double b){
 	return a-b;
 }
-ref<Func> Subtract = define_func<_Subtract>("Subtract", "Subtract({},{})", "({} - {})");
+FuncRef Subtract = define_func<_Subtract>("Subtract", "Subtract({},{})", "({} - {})");
 
 // Multiplication
 int64_t _MultiplyInts(int64_t a, int64_t b){
 	return a*b;
 }
-ref<Func> MultiplyInts = define_func<_MultiplyInts>("MultiplyInts", "MultiplyInts({},{})", "({} * {})");
+FuncRef MultiplyInts = define_func<_MultiplyInts>("MultiplyInts", "MultiplyInts({},{})", "({} * {})");
 
 double _Multiply(double a, double b){
 	return a*b;
 }
-ref<Func> Multiply = define_func<_Multiply>("Multiply", "Multiply({},{})", "({} * {})");
+FuncRef Multiply = define_func<_Multiply>("Multiply", "Multiply({},{})", "({} * {})");
 
 // Division
 int64_t _DivideInts(int64_t a, int64_t b){
 	return a/b;
 }
-ref<Func> DivideInts = define_func<_DivideInts>("DivideInts", "DivideInts({},{})", "({} / {})");
+FuncRef DivideInts = define_func<_DivideInts>("DivideInts", "DivideInts({},{})", "({} / {})");
 
 double _Divide(double a, double b){
 	return a/b;
 }
-ref<Func> Divide = define_func<_Divide>("Divide", "Divide({},{})", "({} / {})");
+FuncRef Divide = define_func<_Divide>("Divide", "Divide({},{})", "({} / {})");
 
 // Modulo (integer only)
 int64_t _ModInts(int64_t a, int64_t b){
 	return a%b;
 }
-ref<Func> ModInts = define_func<_ModInts>("ModInts", "ModInts({},{})", "({} % {})");
+FuncRef ModInts = define_func<_ModInts>("ModInts", "ModInts({},{})", "({} % {})");
 
 // Power/Exponentiation
 double _Pow(double a, double b){
 	return std::pow(a, b);
 }
-ref<Func> Pow = define_func<_Pow>("Pow", "Pow({},{})", "({} ** {})");
+FuncRef Pow = define_func<_Pow>("Pow", "Pow({},{})", "({} ** {})");
 
 // Unary Negation
 int64_t _NegInt(int64_t a){
 	return -a;
 }
-ref<Func> NegInt = define_func<_NegInt>("NegInt", "NegInt({})", "(-{})");
+FuncRef NegInt = define_func<_NegInt>("NegInt", "NegInt({})", "(-{})");
 
 double _Neg(double a){
 	return -a;
 }
-ref<Func> Neg = define_func<_Neg>("Neg", "Neg({})", "(-{})");
+FuncRef Neg = define_func<_Neg>("Neg", "Neg({})", "(-{})");
 
 // String operations
 std::string _Concat(const StrBlock& _a, const StrBlock& _b){
@@ -163,15 +163,15 @@ std::string _Concat(const StrBlock& _a, const StrBlock& _b){
 	ss << a << b;
 	return ss.str();
 }
-ref<Func> Concat = define_func<_Concat>("Concat", "Concat({},{})", "({} + {})");
+FuncRef Concat = define_func<_Concat>("Concat", "Concat({},{})", "({} + {})");
 
 std::string _Slice(const StrBlock& _str, int64_t start, int64_t end){
 	std::string_view str = _str.view;
 	size_t len = str.length();
 	
 	// Handle negative indices
-	size_t s = (start < 0) ? (len + start >= 0 ? len + start : 0) : static_cast<size_t>(start);
-	size_t e = (end < 0) ? (len + end >= 0 ? len + end : 0) : static_cast<size_t>(end);
+	size_t s = (start < 0) ? (int64_t(len + start) >= 0 ? (len + start) : 0) : static_cast<size_t>(start);
+	size_t e = (end < 0) ? (int64_t(len + end) >= 0 ? (len + end) : 0) : static_cast<size_t>(end);
 	
 	// Clamp to bounds
 	if (s > len) s = len;
@@ -180,7 +180,7 @@ std::string _Slice(const StrBlock& _str, int64_t start, int64_t end){
 	
 	return std::string(str.substr(s, e - s));
 }
-ref<Func> Slice = define_func<_Slice>("Slice", "Slice({},{},{})", "({}[{}:{}])");
+FuncRef Slice = define_func<_Slice>("Slice", "Slice({},{},{})", "({}[{}:{}])");
 
 } // NAMESPACE_END(cre)
 

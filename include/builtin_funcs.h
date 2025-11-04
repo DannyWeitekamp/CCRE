@@ -18,23 +18,23 @@ namespace cre {
 // ref<Func> float_to_int;
 
 
-extern ref<Func> And;
-extern ref<Func> Or;
-extern ref<Func> Xor;
-extern ref<Func> Not;
-extern ref<Func> AddInts;
-extern ref<Func> Add;
-extern ref<Func> SubtractInts;
-extern ref<Func> Subtract;
-extern ref<Func> MultiplyInts;
-extern ref<Func> Multiply;
-extern ref<Func> DivideInts;
-extern ref<Func> Divide;
-extern ref<Func> ModInts;
-extern ref<Func> Pow;
-extern ref<Func> NegInt;
-extern ref<Func> Neg;
-extern ref<Func> Concat;
-extern ref<Func> Slice;
+extern FuncRef And;
+extern FuncRef Or;
+extern FuncRef Xor;
+extern FuncRef Not;
+extern FuncRef AddInts;
+extern FuncRef Add;
+extern FuncRef SubtractInts;
+extern FuncRef Subtract;
+extern FuncRef MultiplyInts;
+extern FuncRef Multiply;
+extern FuncRef DivideInts;
+extern FuncRef Divide;
+extern FuncRef ModInts;
+extern FuncRef Pow;
+extern FuncRef NegInt;
+extern FuncRef Neg;
+extern FuncRef Concat;
+extern FuncRef Slice;
 
 } // NAMESPACE_END(cre)
