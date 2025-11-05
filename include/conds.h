@@ -22,14 +22,12 @@ struct Conds : public CRE_Obj {
 	uint8_t kind;  // CONDS_KIND_AND or CONDS_KIND_OR
 
 	// -- Methods --
-	Conds(bool is_and = true);
-	Conds(const std::vector<ref<Literal>>& _literals, bool is_and = true);
+	Conds(uint8_t kind, const std::vector<ref<Literal>>& _literals);
 
 	std::string to_string();
 };
 
-ref<Conds> new_conds(bool is_and = true, AllocBuffer* buffer = nullptr);
-ref<Conds> new_conds(const std::vector<ref<Literal>>& literals, bool is_and = true, AllocBuffer* buffer = nullptr);
+ref<Conds> new_conds(uint8_t kind, const std::vector<ref<Literal>>& literals, AllocBuffer* buffer = nullptr);
 
 std::ostream& operator<<(std::ostream& out, Conds* conds);
 std::ostream& operator<<(std::ostream& out, ref<Conds> conds);

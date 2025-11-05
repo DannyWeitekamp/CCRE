@@ -13,27 +13,15 @@ void Conds_dtor(const CRE_Obj* x) {
 	CRE_Obj_dtor(x);
 }
 
-Conds::Conds(bool is_and) :
-	kind(is_and ? CONDS_KIND_AND : CONDS_KIND_OR)
-{
-	literals = {};
-}
-
-Conds::Conds(const std::vector<ref<Literal>>& _literals, bool is_and) :
-	literals(_literals),
-	kind(is_and ? CONDS_KIND_AND : CONDS_KIND_OR)
+Conds::Conds(uint8_t kind, const std::vector<ref<Literal>>& _literals) :
+	kind(kind),
+	literals(_literals)
 {
 }
 
-ref<Conds> new_conds(bool is_and, AllocBuffer* buffer) {
+ref<Conds> new_conds(uint8_t kind, const std::vector<ref<Literal>>& literals, AllocBuffer* buffer) {
 	auto [addr, did_malloc] = alloc_cre_obj(sizeof(Conds), &Conds_dtor, T_ID_CONDITIONS, buffer);
-	Conds* conds = new (addr) Conds(is_and);
-	return conds;
-}
-
-ref<Conds> new_conds(const std::vector<ref<Literal>>& literals, bool is_and, AllocBuffer* buffer) {
-	auto [addr, did_malloc] = alloc_cre_obj(sizeof(Conds), &Conds_dtor, T_ID_CONDITIONS, buffer);
-	Conds* conds = new (addr) Conds(literals, is_and);
+	Conds* conds = new (addr) Conds(kind, literals);
 	return conds;
 }
 
