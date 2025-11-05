@@ -1,27 +1,26 @@
-#include <functional>
-#include <string>
-#include <cstring>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <span>
-#include <sstream>
+#include <bits/chrono.h>                  // for duration_cast, operator-
+#include <bits/std_abs.h>                 // for abs
+#include <stdint.h>                       // for uint64_t, uint8_t
+#include <fstream>                        // for basic_ostream, endl, operat...
+#include <iostream>                       // for cout, cerr
+#include <span>                           // for span
+#include <string>                         // for char_traits, string, operat...
+#include <unordered_map>                  // for unordered_map
+#include <utility>                        // for forward
+#include <vector>                         // for vector, operator==
+#include "../external/rapidhash.h"        // for rapidhash
+#include "../external/unordered_dense.h"  // for map
+#include "../external/xxhash.h"           // for xxhash
+#include "../include/fact.h"              // for make_fact, begin, Fact, end
+#include "../include/factset.h"           // for FactSet, operator<<
+#include "../include/hash.h"              // for IntHash, hash_string, CREHash
+#include "../include/intern.h"            // for intern, InternStr
+#include "context.h"                      // for CRE_Context, current_context
+#include "item.h"                         // for Item
+#include "ref.h"                          // for ref
+#include "test_macros.h"                  // for time_it_n, IS_TRUE, high_re...
 
 #define XXH_INLINE_ALL 1
-
-
-#include "../external/unordered_dense.h"
-#include "../external/rapidhash.h"
-#include "../external/xxhash.h"
-#include "../include/intern.h"
-#include "../include/fact.h"
-#include "../include/factset.h"
-#include "test_macros.h"
-
-
-
-#include "../include/hash.h"
-
 
 using std::cout;
 using std::endl;

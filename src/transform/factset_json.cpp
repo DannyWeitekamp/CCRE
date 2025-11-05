@@ -1,19 +1,32 @@
-#include "../include/types.h"
-#include "../include/context.h"
-#include "../external/rapidjson/reader.h"
-#include "../external/rapidjson/filereadstream.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <cstring>
+#include <functional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <utility>
+#include <vector>
 #include "../external/rapidjson/document.h"
 #include "../external/rapidjson/pointer.h"
 #include "../external/rapidjson/stringbuffer.h"
 #include "../external/rapidjson/writer.h"
+#include "../include/context.h"
 #include "../include/factset.h"
 #include "../include/item.h"
-#include "../include/intern.h"
 #include "../include/ref.h"
-
-
-#include <iostream>
-#include <algorithm>
+#include "../include/types.h"
+#include "/home/danny/Projects/CCRE/external/rapidjson/allocators.h"
+#include "/home/danny/Projects/CCRE/external/rapidjson/encodings.h"
+#include "/home/danny/Projects/CCRE/external/rapidjson/rapidjson.h"
+#include "alloc_buffer.h"
+#include "fact.h"
+#include "hash.h"
+#include "member.h"
+#include "t_ids.h"
 
 
 //-----------------------------------------------------------------

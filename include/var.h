@@ -1,11 +1,20 @@
 #pragma once
 
-#include "../include/types.h"
-#include "../include/cre_obj.h"
-#include "../include/hash.h"
-#include "../include/intern.h"
-#include "../include/ref.h"
-#include "../include/member.h"
+#include <stddef.h>              // for size_t, NULL
+#include <stdint.h>              // for uint16_t, int16_t, uint32_t, uint64_t
+#include <iosfwd>                // for ostream
+#include <string>                // for string
+#include <string_view>           // for string_view
+#include <vector>                // for vector
+#include "../include/cre_obj.h"  // for CRE_Obj
+#include "../include/intern.h"   // for InternStr
+#include "../include/ref.h"      // for ref
+#include "item.h"                // for Item
+#include "t_ids.h"               // for T_ID_VAR
+namespace cre { struct AllocBuffer; }
+namespace cre { struct CRE_Type; }
+namespace cre { struct Member; }
+
 
 namespace cre {
 

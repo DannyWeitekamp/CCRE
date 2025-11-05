@@ -1,23 +1,21 @@
+#include <fmt/format.h>          // for format
+#include <fmt/ranges.h>          // for join
+#include <cstdint>               // for uint8_t, uint32_t, uint64_t
+#include <cstring>               // for size_t
+#include <iostream>              // for basic_ostream, operator<<, stringstream
+#include <sstream>               // for basic_stringstream
+#include <stdexcept>             // for out_of_range, runtime_error
+#include <string>                // for char_traits, allocator, operator+
+#include <string_view>           // for string_view
+#include <vector>                // for vector
+#include "../include/fact.h"     // for Fact
+#include "../include/factset.h"  // for FactSet, FactChange, FactSetBuilder
+#include "alloc_buffer.h"        // for AllocBuffer
+#include "fmt/base.h"            // for runtime
+#include "hash.h"                // for CREHash, bytes_to_base64
+#include "ref.h"                 // for ref
+namespace cre { class CRE_Obj; }
 
-
-#include <string>
-#include <vector>
-#include <bit>
-#include <cstdint>
-#include <memory>
-#include <iostream>
-#include <stdexcept>
-#include <sstream> 
-#include <cstring>
-
-// #define FMT_HEADER_ONLY
-#include <fmt/format.h>
-#include <fmt/ranges.h>
-
-#include "../include/item.h"
-#include "../include/types.h"
-#include "../include/fact.h"
-#include "../include/factset.h"
 
 using std::cout;
 using std::endl;

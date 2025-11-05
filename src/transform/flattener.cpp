@@ -1,12 +1,29 @@
-#include <bitset>
-#include <map>
-#include "../include/hash.h"
-#include "../include/flattener.h"
-#include "../include/fact.h"
-#include "../include/factset.h"
-#include "../include/var.h"
-#include <execution>
-#include <thread>
+#include <alloca.h>                      // for alloca
+#include <stddef.h>                      // for size_t
+#include <stdint.h>                      // for uint8_t
+#include <functional>                    // for equa...
+#include <map>                           // for map
+#include <string>                        // for string
+#include <utility>                       // for move
+#include <vector>                        // for vector
+#include "../include/fact.h"             // for Fact
+#include "../include/factset.h"          // for FactSet
+#include "../include/flattener.h"        // for Flat...
+#include "../include/hash.h"             // for HashMap
+#include "../include/var.h"              // for Var
+#include "../external/unordered_dense.h"  
+#include "incr_processor.h"              // for Incr...
+#include "item.h"                        // for Item
+#include "member.h"                      // for Member
+#include "ref.h"                         // for ref
+#include "t_ids.h"                       // for T_ID...
+#include "types.h"                       // for Flag...
+
+
+
+namespace cre { class CRE_Obj; }
+
+// #include "../external/unordered_dense.h"
 
 namespace cre {
 

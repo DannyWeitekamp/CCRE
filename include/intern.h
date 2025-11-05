@@ -1,26 +1,10 @@
 #pragma once
 
-#include <string>
-#include <iostream>
-#include <sstream> 
-#include <bit>
-#include <cstdint>
-#include <inttypes.h>
-#include <vector>
-#include <tuple>
-#include <list>
-#include <unordered_map>
-#include <cmath>
-#include <numeric>
-#include <iomanip>
-#include <cstdint>
-#include <cstring>
-#include <iostream>
+#include <inttypes.h>            // for uint64_t, int32_t, int64_t, uint32_t
+#include <iostream>              // for ostream, cout, endl
+#include <string_view>           // for string_view
+#include "../include/context.h"  // for CRE_Context, current_context
 
-// #include "../external/unordered_dense.h"
-
-#include "../include/hash.h"
-#include "../include/context.h"
 
 namespace cre {
 

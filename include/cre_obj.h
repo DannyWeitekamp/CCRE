@@ -15,7 +15,7 @@ using std::endl;
 // Forward Declarations
 // class ControlBlock;
 class CRE_Obj;
-class CRE_Type;
+struct CRE_Type;
 struct AllocBuffer;
 // extern "C" void CRE_incref(const CRE_Obj* x);
 // extern "C" void CRE_addref(const CRE_Obj* x, size_t n);

@@ -1,10 +1,22 @@
+#include <math.h>                   // for NAN
+#include <stddef.h>                 // for size_t
+#include <stdint.h>                 // for uint64_t, uint32_t
+#include <iostream>                 // for char_traits, basic_ostream, basic...
+#include <tuple>                    // for make_tuple, tuple
+#include <utility>                  // for pair, move
+#include <vector>                   // for vector
+#include "../include/fact.h"        // for Fact, FactView, COPY_DEEP, operat...
+#include "../include/factset.h"     // for FactSet, cout, endl
+#include "../include/hash.h"        // for HashMap, CREHash
+#include "../include/item.h"        // for Item
+#include "../include/vectorizer.h"  // for Vectorizer, UintPair
+#include "alloc_buffer.h"           // for AllocBuffer
+#include "incr_processor.h"         // for IncrementalProcessor
+#include "member.h"                 // for Member
+#include "ref.h"                    // for ref
+#include "t_ids.h"                  // for T_ID_FLOAT
+namespace cre { class CRE_Obj; }
 
-#include <math.h>
-#include "../include/hash.h"
-#include "../include/vectorizer.h"
-#include "../include/item.h"
-#include "../include/fact.h"
-#include "../include/factset.h"
 
 namespace cre {
 

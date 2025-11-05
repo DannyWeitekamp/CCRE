@@ -1,4 +1,11 @@
 #include "../include/intern.h"
+#include <stdlib.h>   // for malloc
+#include <cstring>    // for memcpy
+#include <utility>    // for pair
+#include <vector>     // for vector
+#include "context.h"  // for CRE_Context
+#include "hash.h"     // for HashSet, CREHash
+
 
 namespace cre {
 

@@ -1,15 +1,20 @@
-#include "../include/helpers.h"
-#include "../include/flattener.h"
-#include "../include/vectorizer.h"
-#include "test_macros.h"
-#include <random>
+#include <cstdlib>                  // for rand, size_t
+#include <iostream>                 // for basic_ostream, operator<<, endl
+#include <string>                   // for char_traits, allocator, basic_string
+#include <tuple>                    // for tie, tuple
+#include <utility>                  // for pair
+#include <vector>                   // for vector
+#include "../include/flattener.h"   // for Flattener
+#include "../include/helpers.h"     // for operator<<, rand_flt
+#include "../include/vectorizer.h"  // for Vectorizer
+#include "fact.h"                   // for Fact, operator<<, make_fact, SIZE...
+#include "factset.h"                // for FactSet, FactSetBuilder, operator<<
+#include "hash.h"                   // for HashMap
+#include "item.h"                   // for Item
+#include "ref.h"                    // for ref
+#include "test_macros.h"            // for time_it_n, IS_TRUE
+#include "types.h"                  // for MemberSpec, cre_str, cre_int, def...
 
-#include <fmt/format.h>
-#include <fmt/ranges.h>
-
-// #include <chrono>
-// using namespace std;
-// using namespace std::chrono;
 
 using std::cout;
 using std::endl;

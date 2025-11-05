@@ -1,9 +1,11 @@
-#include <stdint.h>
-#include <stddef.h>
-#include <cstring>
-#include <iostream>
-#include "cre_obj.h"
-#include "alloc_buffer.h"
+#include <stdint.h>        // for uint8_t
+#include <stdlib.h>        // for malloc
+#include <cstring>         // for size_t, memcpy
+#include <stdexcept>       // for runtime_error
+#include <string>          // for operator+, to_string
+#include "alloc_buffer.h"  // for AllocBuffer
+namespace cre { class CRE_Obj; }
+
 
 namespace cre {
 

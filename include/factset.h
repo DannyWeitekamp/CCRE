@@ -381,7 +381,7 @@ struct ToFactSetTranslator {
            // uid_index = get_unique_id_index(type);
         
         // Resolve the length, and type, and uid of this container item
-        size_t length; 
+        size_t length = 0; 
         FactType* type = nullptr;
         if(T::is_dict(val)){
             auto fact_dict = T::to_dict(val);

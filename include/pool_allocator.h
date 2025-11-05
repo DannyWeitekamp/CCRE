@@ -1,12 +1,18 @@
 #pragma once
 
-#include <iostream>
-#include <vector>
-#include <cstdint>
+#include <stdlib.h>   // for free, malloc
+#include <algorithm>  // for min
+#include <cstdint>    // for uint64_t, int64_t
+#include <cstdio>     // for size_t, remove
+#include <iostream>   // for ostream, cout, endl, ptrdiff_t
+#include <iterator>   // for forward_iterator_tag
+#include <memory>     // for construct_at
+#include <new>        // for operator new
+#include <vector>     // for vector
+
 
 using std::cout;
 using std::endl;
-#include <sys/mman.h>
 
 // NOTE: Real page size might not be this, but it is on most systems
 //  and its a good enough default block size.

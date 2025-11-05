@@ -1,10 +1,12 @@
 # Specify the minimum version of CMake required
 cmake_minimum_required(VERSION 3.22)
 
-find_program(IWYU_PATH NAMES include-what-you-use iwyu)
-if(IWYU_PATH) 
-  set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE "${IWYU_PATH]};<IWYU_ARGUMENT_1>;<IWYU_ARGUMENT_2>") 
-}
+
+if (DEFINED ENV{USE_IWYU})
+  find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+  if(IWYU_PATH) 
+    set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
+  endif()
 endif()
 
 # Set the project name and version

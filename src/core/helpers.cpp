@@ -1,13 +1,9 @@
-
-#include <fmt/format.h>
-#include <fmt/ranges.h>
-#include <iostream>
-#include <iomanip>
-#include <string>
-#include <sstream>
-#include "../include/helpers.h"
-
-
+#include <fmt/format.h>          // for basic_memory_buffer
+#include <stdint.h>              // for int64_t
+#include <iterator>              // for back_insert_iterator, back_inserter
+#include <string>                // for string
+#include "../include/helpers.h"  // for flt_to_str, int_to_str
+#include "fmt/base.h"            // for format_to
 
 
 namespace cre {

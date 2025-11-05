@@ -1,31 +1,24 @@
-// Program to calculate the sum of n numbers entered by the user
-#include <iostream>
-#include <string>
-#include <inttypes.h>
-#include <vector>
-#include <unordered_map>
-#include <bit>
-#include <cstdint>
-#include <cstring>
-
-#include "../include/helpers.h"
-#include "../include/types.h"
-#include "../include/hash.h"
-#include "../include/context.h"
-#include "../include/item.h"
-#include "../include/fact.h"
-#include "../include/factset.h"
-#include "../include/intern.h"
-
-// #include "../include/unicode.h"
-#include "../include/cre_obj.h"
-#include "../include/wref.h"
-#include "../include/pool_allocator.h"
-#include "test_macros.h"
-
-// #include <chrono>
-// using namespace std;
-// using namespace std::chrono;
+#include <inttypes.h>                   // for uint64_t
+#include <stdlib.h>                     // for malloc, free
+#include <cstring>                      // for NULL, size_t
+#include <iostream>                     // for basic_ostream, cout, endl
+#include <string>                       // for char_traits, allocator, opera...
+#include <string_view>                  // for string_view
+#include <tuple>                        // for make_tuple
+#include <utility>                      // for pair
+#include <vector>                       // for vector
+#include "../include/cre_obj.h"         // for ControlBlock
+#include "../include/fact.h"            // for Fact, make_fact, FactView
+#include "../include/hash.h"            // for CREHash, HashMap
+#include "../include/helpers.h"         // for flt_to_str, int_to_str
+#include "../include/intern.h"          // for intern
+#include "../include/item.h"            // for Item, operator<<
+#include "../include/pool_allocator.h"  // for PoolAllocator, PoolStats
+#include "../include/types.h"           // for MemberSpec, cre_str, Deffered...
+#include "../include/wref.h"            // for ControlBlock, wref
+#include "member.h"                     // for Member
+#include "ref.h"                        // for ref
+#include "test_macros.h"                // for IS_TRUE, EXPECT_THROW, time_it_n
 
 using std::cout;
 using std::endl;

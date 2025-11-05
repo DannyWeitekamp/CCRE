@@ -1,3 +1,18 @@
+#include <sys/types.h>              // for uint
+#include <algorithm>                // for max
+#include <cmath>                    // for ceil, frexp, isfinite, isinf
+#include <cstdint>                  // for uint64_t, uint8_t, uint32_t
+#include <cstring>                  // for size_t, memcpy
+#include <iostream>                 // for cout, endl
+#include <string>                   // for string
+#include <vector>                   // for vector
+#include "../external/rapidhash.h"  // for rapidhash
+#include "../include/hash.h"        // for IntHash, MurmurHash64A, _PyHASH_X...
+
+
+using std::cout;
+using std::endl;
+
 /* 
 Implementation of various hash utilities used in CRE. Hash functions
  are hard-coded to ensure consistency between processes and systems
@@ -9,21 +24,6 @@ Implementation of various hash utilities used in CRE. Hash functions
  same as CPython, and in many cases cyptographic gaurentees are abondoned
  for improved performance. 
 */
-
-
-#include <cstdint>
-#include <cstdint>
-#include <cstring>
-#include <cmath>
-#include <limits>
-#include <string>
-#include "../external/rapidhash.h"
-#include "../include/hash.h"
-#include "../include/item.h"
-#include "../include/types.h"
-
-using std::cout;
-using std::endl;
 
 namespace cre {
 

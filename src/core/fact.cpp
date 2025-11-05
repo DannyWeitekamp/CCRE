@@ -1,16 +1,22 @@
-#include <vector>
-#include <bit>
-#include <cstdint>
-#include <sstream> 
-#include <cstring>
-#include <iostream>
-#include <algorithm>
-#include "../include/helpers.h"
-#include "../include/alloc_buffer.h"
-#include "../include/fact.h"
-#include "../include/factset.h"
-#include "../include/item.h"
-#include "../include/var.h"
+#include <algorithm>          // for min
+#include <cstdint>            // for int64_t, uint64_t, uint8_t, int16_t
+#include <cstring>            // for size_t
+#include <sstream>            // for char_traits, basic_ostream, operator<<
+#include <stdexcept>          // for runtime_error
+#include <string>             // for operator+, operator<<, to_string, string
+#include <tuple>              // for make_tuple, tuple
+#include <vector>             // for allocator, vector
+#include "../include/fact.h"  // for Fact, FactView, alloc_fact, _zfill_fact
+#include "../include/item.h"  // for Item, item_to_string
+#include "../include/var.h"   // for Var
+#include "cre_obj.h"          // for CRE_Obj_dtor, CRE_Obj (ptr only), Contr...
+#include "hash.h"             // for CREHash, FNV_BASIS, FNV_PRIME
+#include "member.h"           // for Member
+#include "ref.h"              // for ref
+#include "t_ids.h"            // for T_ID_FACT, T_ID_CONDITIONS, T_ID_FLOAT
+#include "types.h"            // for FactType, MemberSpec, BIFLG_VERBOSITY
+namespace cre { struct AllocBuffer; }
+
 
 namespace cre {
 

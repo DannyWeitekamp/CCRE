@@ -1,6 +1,7 @@
 
-#include "../include/cre_obj.h"
-#include "../include/t_ids.h"
+#include <stdint.h>              // for uint16_t
+#include "../include/cre_obj.h"  // for CRE_Obj
+#include "../include/t_ids.h"    // for T_ID_CONDITIONS, T_ID_FACT, T_ID_FAC...
 
 namespace cre {
 

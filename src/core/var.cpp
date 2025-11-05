@@ -1,10 +1,20 @@
 #include "../include/var.h"
-#include "../include/intern.h"
-#include "../include/fact.h"
-#include "../include/ref.h"
-#include "../include/member.h"
-#include <fmt/format.h>
-#include <fmt/ranges.h>
+#include <alloca.h>             // for alloca
+#include <fmt/format.h>         // for format
+#include <fmt/ranges.h>         // for join, join_view
+#include <string.h>             // for size_t, memcpy
+#include <iostream>             // for basic_ostream, operator<<, basic_ios
+#include <new>                  // for operator new
+#include <sstream>              // for basic_stringstream
+#include <stdexcept>            // for runtime_error, invalid_argument
+#include "../include/fact.h"    // for Fact
+#include "../include/member.h"  // for Member
+#include "../include/ref.h"     // for ref
+#include "cre_obj.h"            // for CRE_Obj (ptr only), alloc_cre_obj
+#include "hash.h"               // for CREHash
+#include "types.h"              // for FactType, CRE_Type
+namespace cre { struct AllocBuffer; }
+
 
 namespace cre {
 // extern "C" 
