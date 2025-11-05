@@ -1,6 +1,12 @@
 # Specify the minimum version of CMake required
 cmake_minimum_required(VERSION 3.22)
 
+find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+if(IWYU_PATH) 
+  set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE "${IWYU_PATH]};<IWYU_ARGUMENT_1>;<IWYU_ARGUMENT_2>") 
+}
+endif()
+
 # Set the project name and version
 project(cre VERSION 1.0)
 
@@ -92,6 +98,9 @@ target_link_libraries(transform_lib tsl::robin_map) # for nanobind
 #  -- main2 -- 
 # add_executable(main2 main2.cpp)
 # target_link_libraries(main2 PRIVATE app_lib)
+
+
+
 
 # ---------- TESTS ----------
 enable_testing()
