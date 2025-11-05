@@ -183,7 +183,7 @@ FuncRef define_func(
 	func->return_stack_offset = offsets[arg_types.size()];
 	func->is_origin = true;
 	func->stack_size = stack_size;
-	cout << "ST@@CK: " << stack_size << endl;
+	// cout << "ST@@CK: " << stack_size << endl;
 
 	func->reinitialize();
 

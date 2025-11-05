@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../include/ref.h"
 #include "../include/func.h"
 

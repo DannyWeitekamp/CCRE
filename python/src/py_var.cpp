@@ -4,9 +4,141 @@
 #include "../../include/func.h"
 
 
+void do_nothing(){
+
+}
+
+
+std::string_view locate_py_name(PyObject* py_proxy, nb::handle dict){
+    nb::dict locals = nb::cast<nb::dict>(dict);
+    for (auto [key, value] : locals) {
+        if(value.ptr() == py_proxy){
+            return nb::cast<std::string_view>(nb::handle(key));
+        }
+    }
+    return "";
+}
+
+//  Use internal Python API for looping over dicts to avoid increfing each handle
+std::string_view locate_py_name_fast(PyObject* py_proxy, PyObject* dict){
+    Py_ssize_t pos = 0;
+    PyObject *key = nullptr;
+    PyObject *value = nullptr;
+    // cout << "LOOKING FOR" << uint64_t(py_proxy) << endl;
+    while(PyDict_Next(dict, &pos, &key, &value) != 0){
+        // cout << "pos=" << pos << " value=" << uint64_t(value) << endl; 
+        if(value == py_proxy){
+            return nb::cast<std::string_view>(nb::handle(key));
+        }
+    }
+    return "";
+}
+
+
+
+
+void py_Var_resolve_alias_fast(Var* var){
+    if(var->alias != ""){
+        return;
+    }
+
+    PyObject* py_proxy = (PyObject*) var->get_proxy_obj();
+
+    std::string_view alias = "";
+    if(alias == "" && py_proxy != nullptr){
+        // Search for proxy in locals
+        nb::handle locals_handle = PyEval_GetLocals();
+        // nb::dict locals = nb::cast<nb::dict>(locals_handle);
+        alias = locate_py_name_fast(py_proxy, locals_handle.ptr());
+
+        if(alias == ""){
+            nb::handle globals_handle = PyEval_GetGlobals();
+            alias = locate_py_name_fast(py_proxy, globals_handle.ptr());    
+        }
+
+        if(alias != ""){
+            var->alias = Item(intern(alias));
+            // cout << "Var found: " << alias << endl;
+            return;
+        }
+
+        
+        // nb::dict globals = nb::cast<nb::dict>(globals_handle);
+        // for (auto [k, v] : globals) {
+        //     if(v.ptr() == py_proxy){
+        //         alias = nb::cast<std::string_view>(k);
+        //         cout << "Var found: " << nb::cast<std::string>(nb::str(k)) << endl;
+        //         return;
+        //         // cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+        //     }
+        //     // cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+        // }    
+
+        // cout << "Alias not found!" << endl;
+    }else{
+        cout << "NO PROXY" << endl;
+    }
+}
+
+void py_Var_resolve_alias(Var* var){
+    if(var->alias != ""){
+        return;
+    }
+
+    PyObject* py_proxy = (PyObject*) var->get_proxy_obj();
+
+    std::string_view alias = "";
+    if(py_proxy != nullptr){
+        // Search for proxy in locals
+        nb::handle locals_handle = PyEval_GetLocals();
+        alias = locate_py_name(py_proxy, locals_handle);
+
+        // Search for proxy in globals
+        if(alias == ""){
+            nb::handle globals_handle = PyEval_GetGlobals();
+            alias = locate_py_name(py_proxy, globals_handle);
+        }
+
+        if(alias != ""){
+            // cout << "Var found: " << alias << endl;
+            var->alias = Item(intern(alias));
+            return;
+        }
+
+
+        // nb::handle locals_handle = PyEval_GetLocals();
+        // nb::dict locals = nb::cast<nb::dict>(locals_handle);
+        // for (auto [k, v] : locals) {
+        //     if(v.ptr() == py_proxy){
+        //         alias = nb::cast<std::string_view>(k);
+        //         // cout << "Var found: " << nb::cast<std::string>(nb::str(k)) << endl;
+        //         return;
+        //         // cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+        //     }
+        //     // cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+        // }    
+
+        // nb::handle globals_handle = PyEval_GetGlobals();
+        // nb::dict globals = nb::cast<nb::dict>(globals_handle);
+        // for (auto [k, v] : globals) {
+        //     if(v.ptr() == py_proxy){
+        //         alias = nb::cast<std::string_view>(k);
+        //         // cout << "Var found: " << nb::cast<std::string>(nb::str(k)) << endl;
+        //         return;
+        //         // cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+        //     }
+        //     // cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+        // }    
+
+        // cout << "Alias not found!" << endl;
+    }else{
+        cout << "NO PROXY" << endl;
+    }
+}
+
 ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
-    CRE_Type* type = nullptr;
-    std::string_view alias;
+    CRE_Type* type = cre_undef;
+    std::string_view alias = "";
     bool error = false;
     bool has_type_kwarg = false;
     bool has_alias_kwarg = false;
@@ -32,55 +164,65 @@ ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
         }
     }
 
-    // If both kwargs are provided, use them and ignore positional args
-    if(has_type_kwarg && has_alias_kwarg) {
-        if(args.size() > 0) {
-            throw std::runtime_error("Var constructor: cannot use both keyword arguments and positional arguments");
-        }
-        if(error) {
-            throw std::runtime_error("Var constructor: 'type' must be a Python type or CRE_Type, and 'alias' must be string");
-        }
-        return new_var(alias, type);
+    if(error){
+        throw std::invalid_argument("Var constructor: 'type' must be a Python type or CRE_Type, and 'alias' must be string");    
     }
 
-    // If only one kwarg is provided, error
-    if(has_type_kwarg || has_alias_kwarg) {
-        throw std::runtime_error("Var constructor: must provide both 'type' and 'alias' as keyword arguments, or use positional arguments");
-    }
+    // // If both kwargs are provided, use them and ignore positional args
+    // if(has_type_kwarg && has_alias_kwarg) {
+    //     if(args.size() > 0) {
+    //         throw std::runtime_error("Var constructor: cannot use both keyword arguments and positional arguments");
+    //     }
+    //     if(error) {
+    //         throw std::runtime_error("Var constructor: 'type' must be a Python type or CRE_Type, and 'alias' must be string");
+    //     }
+    //     return new_var(alias, type);
+    // }
 
-    // Fall back to positional arguments
-    if(args.size() != 2) {
-        throw std::runtime_error("Var constructor expects exactly 2 arguments (CRE_Type and string), got " + std::to_string(args.size()));
-    }
+    // // If only one kwarg is provided, error
+    // if(has_type_kwarg || has_alias_kwarg) {
+    //     throw std::runtime_error("Var constructor: must provide both 'type' and 'alias' as keyword arguments, or use positional arguments");
+    // }
+
+    // // Fall back to positional arguments
+    // if(args.size() != 2) {
+    //     throw std::runtime_error("Var constructor expects exactly 2 arguments (CRE_Type and string), got " + std::to_string(args.size()));
+    // }
 
     // Check first argument
-    if(nb::isinstance<CRE_Type>(args[0]) || args[0].is_type()) {
-        try {
-            type = Type_from_py(args[0]);
-            if(nb::isinstance<nb::str>(args[1])){
-                alias = nb::cast<std::string_view>(args[1]);
-            } else {
-                error = true;
-            }
-        } catch(...) {
-            error = true;
-        }
-    } else if(nb::isinstance<nb::str>(args[0])){
-        alias = nb::cast<std::string_view>(args[0]);
-        if(nb::isinstance<CRE_Type>(args[1]) || args[1].is_type()){
+    if(args.size() > 0){
+        if(nb::isinstance<CRE_Type>(args[0]) || args[0].is_type()) {
             try {
-                type = Type_from_py(args[1]);
+                if(!has_type_kwarg) type = Type_from_py(args[0]);                    
+                if(args.size()==2){
+                    if(nb::isinstance<nb::str>(args[1])){
+                        if(!has_alias_kwarg) alias = nb::cast<std::string_view>(args[1]);
+                    } else {
+                        error = true;
+                    }    
+                }
             } catch(...) {
                 error = true;
+            }
+        } else if(nb::isinstance<nb::str>(args[0])){
+            if(!has_alias_kwarg) alias = nb::cast<std::string_view>(args[0]);
+            if(args.size()==2){
+                if(nb::isinstance<CRE_Type>(args[1]) || args[1].is_type()){
+                    try {
+                        if(!has_type_kwarg) type = Type_from_py(args[1]);
+                    } catch(...) {
+                        error = true;
+                    }    
+                } else {
+                    error = true;
+                }
             }
         } else {
             error = true;
         }
-    } else {
-        error = true;
     }
 
-    if(error) throw std::runtime_error("Var constructor: arguments must be either CRE_Type and string, got: " + nb::cast<std::string>(nb::str(args[0])) + " and " + nb::cast<std::string>(nb::str(args[1])));
+    if(error) throw std::invalid_argument("Var constructor: optional positional arguments must be CRE_Type for 'type' and string for 'alias'");
     
     return new_var(alias, type);
 }
@@ -161,6 +303,25 @@ ref<Func> py_Var_neg(Var* self) {
 }
 
 
+
+
+void peak_locals(){
+    PyObject* py_locals = PyEval_GetLocals();
+    nb::handle locals_handle(py_locals);
+    
+    if (!nb::isinstance<nb::dict>(locals_handle)) {
+        cout << "PyEval_GetLocals() did not return a dict" << endl;
+        return;
+    }
+    
+    nb::dict locals = nb::cast<nb::dict>(locals_handle);
+    
+    for (auto [k, v] : locals) {
+        cout << "Key: " << nb::cast<std::string>(nb::str(k)) << ", Value: " << nb::cast<std::string>(nb::str(v)) << endl;
+    }
+}
+
+
 void init_var(nb::module_ & m){
 	nb::class_<Var>(m, "Var", nb::type_slots(cre_obj_slots))
     
@@ -188,4 +349,9 @@ void init_var(nb::module_ & m){
     .def("__rpow__", &py_Var_rpow, nb::rv_policy::reference)
     .def("__neg__", &py_Var_neg, nb::rv_policy::reference)
     ;
+
+    m.def("peak_locals", &peak_locals);
+    m.def("resolve_alias", &py_Var_resolve_alias);
+    m.def("resolve_alias_fast", &py_Var_resolve_alias_fast);
+    m.def("do_nothing", &do_nothing);
 }

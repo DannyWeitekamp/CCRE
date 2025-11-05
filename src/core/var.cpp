@@ -402,4 +402,15 @@ uint64_t CREHash::operator()(Var* var){
   return hash; 
 }
 
+
+// void EnsureVarsNamed(const std::vector<Var*>& vars){
+// 	HashSet<std::string_view> alias_map = {};
+// 	for(auto var : vars){
+// 		if(var->alias != ""){
+// 			alias_map.insert(var->alias);
+// 		}
+// 	}
+// }
+
+
 } // NAMESPACE_END(cre)

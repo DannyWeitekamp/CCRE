@@ -315,6 +315,10 @@ public :
         return this->control_block->t_id;
     }
 
+    inline void* get_proxy_obj() const noexcept{
+        return this->control_block->proxy_obj;
+    }
+
     CRE_Type* get_type() const noexcept; 
     // void operator delete(void * p);
 };

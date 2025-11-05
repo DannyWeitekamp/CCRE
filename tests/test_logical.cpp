@@ -11,22 +11,23 @@
 #include "test_macros.h"
 #include "../include/var.h"
 #include "../include/fact.h"
+#include "../include/builtin_funcs.h"
+#include "../include/literal.h"
 
 using std::cout;
 using std::endl;
 using namespace cre;
 
+FactType* DudeType = define_fact("Dude", 
+    {{"name", cre_str, {{"unique_id", Item(true)}}},
+     {"buddy", new DefferedType("Dude")},
+     {"dad", new DefferedType("Dude")},
+     {"mom", new DefferedType("Dude")}
+ 	}
+);
 
 
 void test_var(){
-	FactType* DudeType = define_fact("Dude", 
-	    {{"name", cre_str, {{"unique_id", Item(true)}}},
-	     {"buddy", new DefferedType("Dude")},
-	     {"dad", new DefferedType("Dude")},
-	     {"mom", new DefferedType("Dude")}
-	 	}
-	);
-
 	ref<Fact> olpops = make_fact(DudeType, "Ol'Pops");
 	ref<Fact> pops = make_fact(DudeType, "Pops", nullptr, olpops, nullptr);
 	ref<Fact> ma = make_fact(DudeType, "Ma", pops);
@@ -71,12 +72,27 @@ void test_var(){
 	ref<Var> itm_v0 = new_var(Item(0));
 	ref<Var> itm_v1 = new_var(Item(1));
 	cout << std::bitset<64>(CREHash{}(itm_v0)) << "\n" << std::bitset<64>(CREHash{}(itm_v1)) << endl;
-
-
-
-
 }
 
+void test_literal(){
+	ref<Var> A = new_var("A", cre_float);
+	ref<Var> DudeVar = new_var("A", DudeType);
+	ref<Fact> olpops = make_fact(DudeType, "Ol'Pops");
+	ref<Fact> tuple = make_tuple("isa", "tuple", true);
+
+	cout << new_literal(A) << endl;
+	cout << new_literal(olpops) << endl;
+	cout << new_literal(tuple) << endl;
+	cout << new_literal(Add(1,A)) << endl;
+
+	cout << new_literal(A, true) << endl;
+	cout << new_literal(olpops, true) << endl;
+	cout << new_literal(tuple, true) << endl;
+	cout << new_literal(Add(1,A), true) << endl;
+}
+
+
 int main(){
-	test_var();
+	// test_var();
+	test_literal();
 }

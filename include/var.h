@@ -97,6 +97,10 @@ Member* deref_once(CRE_Obj* obj, const DerefInfo& inf);
 Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length);
 
 
+
+InternStr InventVarName(Var* var, const std::vector<Var*>& other_vars);
+
+
 #define SIZEOF_VAR(n) (sizeof(Var)+(n)*sizeof(DerefInfo))
 
 } // NAMESPACE_END(cre)
