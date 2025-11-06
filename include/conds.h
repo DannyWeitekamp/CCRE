@@ -49,6 +49,7 @@ struct Conds : public CRE_Obj {
     std::vector<Var*> vars = {};
     std::vector<size_t> standard_order = {};
     std::vector<std::tuple<size_t, size_t>> standard_var_spans = {};
+    std::vector<VarMapType::iterator> var_map_iters = {};
 
     size_t n_abs_vars = 0;
     // Absolute Vars: Regular Vars that must be bound in a match to the Conds pattern.

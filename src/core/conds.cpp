@@ -38,13 +38,14 @@ void Conds::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
         if(part_of_item){
             info.item_inds.push_back(items.size());
         }
-        var_map.insert({var, info});
-        
+        auto [_it, inserted] = var_map.insert({var, info});
+        var_map_iters.push_back(_it);
     }else{
         if(part_of_item){
             VarInfo& info = it->second;
             info.item_inds.push_back(items.size());
         }
+        var_map_iters.push_back(it);
     }
 }
 
@@ -119,7 +120,8 @@ void Conds::_finalize() {
         }
     }
 
-    for(auto [var, info] : var_map){
+    for(auto it : var_map_iters){
+        auto [var, info] = *it;
         if(info.kind == VAR_KIND_ABSOLUTE){
             n_abs_vars++;
             info.pos = vars.size();
@@ -127,7 +129,8 @@ void Conds::_finalize() {
         }
     }
 
-    for(auto [var, info] : var_map){
+    for(auto it : var_map_iters){
+        auto [var, info] = *it;
         if(info.kind != VAR_KIND_ABSOLUTE){
             info.pos = vars.size();
             vars.push_back(var);
@@ -246,20 +249,20 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
     bool mult_vars = vars.size() > 1;
     // cout << "MV:" << mult_vars << endl;
     if(mult_vars) ss << "\n";
-        
+    bool prev_endl = mult_vars;        
 
     size_t v_ind = 0;
     size_t L = items.size();
     auto [start, end] = standard_var_spans[v_ind];
     // for(size_t j : standard_order){
     for(size_t i=0; i<L; i++){
+        if(prev_endl) ss << indent;
+
         CRE_Obj* item = items[standard_order[i]].get();
         while(item->get_t_id() != T_ID_CONDS &&
               i >= start && i < end && v_ind < vars.size()){
             // cout << "V_IND: " << v_ind << "SIZE" << vars.size() << endl;
             Var* v = vars[v_ind];
-
-            if(mult_vars) ss << indent;
 
             if(!covered->contains(v)){
                 ss << fmt::format("{}:=Var({})", v->get_alias_str(), v->base_type->to_string());
@@ -275,33 +278,47 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
         
         switch(item->get_t_id()){
         case T_ID_LITERAL:
-            ss << ((Literal*) item)->to_string();    
+            ss << ((Literal*) item)->to_string();
+            if(i < L-1) ss << ", ";
+
+            prev_endl = false;
+            if((i+1 >= start && i+1 < end) ||
+                i+1 >= L ||
+                items[standard_order[i+1]]->get_t_id() == T_ID_CONDS){
+                ss << "\n";
+                prev_endl = true;
+            }
             break;
         case T_ID_CONDS:
         {
             Conds* inner_conds = (Conds*) item;
             
             std::string next_indent = fmt::format("{}{}", indent, indent);
-            ss << indent << inner_conds->standard_str(next_indent, covered);
-            // if(inner_conds->vars.size() > 1) ss << "\n";
+            ss << inner_conds->standard_str(next_indent, covered);
             ss << indent << ")";
+            if(i < L-1) ss << ", ";
+            ss << "\n";
+            prev_endl = true;
+
             break;
         }
         default:
             ss << "??";
+            if(i < L-1) ss << ", ";
+            prev_endl = false;
             break;
         }
-        if(i < L-1) ss << ", ";
-        if(mult_vars){
-            if(item->get_t_id() == T_ID_CONDS){
-                ss << "\n" << indent;    
-            }else if(
-                (i+1 >= start && i+1 < end) ||
-                (i+1 >= L || items[standard_order[i+1]]->get_t_id() == T_ID_CONDS)
-            ){
-                ss << "\n";
-            }
-        }
+        // if(i < L-1) ss << ", ";
+        // if(mult_vars){
+        //     if(item->get_t_id() == T_ID_CONDS){
+        //         ss << "\n" << indent;    
+        //     }else if(
+        //         (i+1 >= start && i+1 < end) ||
+        //         (i+1 >= L || items[standard_order[i+1]]->get_t_id() == T_ID_CONDS)
+        //     ){
+        //         ss << "\n";
+        //     }
+        // }
 
 
         // if(i != standard_var_spans.size() -1){

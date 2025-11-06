@@ -113,6 +113,9 @@ void test_conds(){
 
 	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), conds1o) << endl;
 	cout << OR(Equals(C, 5), Equals(B, 1), conds1a) << endl;
+
+	cout << AND(conds1o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
+	cout << OR(conds1a, Equals(C, 5), Equals(B, 1)) << endl;
 	
 
 }
