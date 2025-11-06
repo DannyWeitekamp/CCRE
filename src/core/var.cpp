@@ -32,6 +32,7 @@ void Var_dtor(const CRE_Obj* x){
 
 Var::Var(const Item& _alias,
  		CRE_Type* _type,
+ 		uint8_t _kind,
  		DerefInfo* _deref_infos,
  		size_t _length) : 
 
@@ -39,6 +40,7 @@ Var::Var(const Item& _alias,
 		base(nullptr), 
 		base_type(_type), head_type(_type),
 		alias(_alias),
+		kind(_kind),
 		deref_infos(nullptr),
 		length(_length),
 		hash(0){
@@ -102,6 +104,7 @@ Var::Var(const Item& _alias,
 ref<Var> new_var(
 			const Item& alias,
 			CRE_Type* type,
+			uint8_t kind,
  			DerefInfo* deref_infos,
  			size_t length,
  			AllocBuffer* buffer){
@@ -117,7 +120,7 @@ ref<Var> new_var(
 	// 	var = (Var*) malloc(SIZEOF_VAR(_length)); 
 	// }
     
-    Var* var = new (var_addr) Var(alias, type, deref_infos, length);
+    Var* var = new (var_addr) Var(alias, type, kind, deref_infos, length);
 
     // if(!did_malloc){
     // 	var->control_block->alloc_buffer = alloc_buffer;
@@ -183,7 +186,7 @@ ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* al
 	// 	nv = (Var*) malloc(SIZEOF_VAR(new_len)); 
 	// }
 
-	ref<Var> nv = new (var_addr) Var(alias, base_type, nullptr, new_len);
+	ref<Var> nv = new (var_addr) Var(alias, base_type, kind, nullptr, new_len);
 
 	// if(!did_malloc){
 	// 	nv->control_block->alloc_buffer = alloc_buffer;
@@ -268,7 +271,16 @@ ref<Var> Var::extend_item(int16_t mbr_ind, AllocBuffer* alloc_buffer){
 	return _extend_unsafe(deref, 1, alloc_buffer);	
 }
 
-
+std::string Var::get_alias_str(){
+	if(alias.get_t_id() == T_ID_STR){
+		return alias.as<std::string>();
+	}else if(alias.get_t_id() == T_ID_INT){
+		return fmt::format("F{}", alias.as<int64_t>());	
+	}else{
+		throw std::runtime_error("Var has unknown alias type t_id=" + std::to_string(alias.get_t_id()));
+	}
+	return "";
+}
 
 std::string Var::to_string(){
 	std::vector<std::string> deref_strs = {};
@@ -295,14 +307,7 @@ std::string Var::to_string(){
 		}
 		type = fact_type->get_item_type(mbr_ind);	
 	}
-	if(alias.get_t_id() == T_ID_STR){
-		return fmt::format("{}{}", alias.as<std::string>(), fmt::join(deref_strs, ""));	
-	}else if(alias.get_t_id() == T_ID_INT){
-		return fmt::format("F{}{}", alias.as<int64_t>(), fmt::join(deref_strs, ""));	
-	}else{
-		throw std::runtime_error("Var has unknown alias type t_id=" + std::to_string(alias.get_t_id()));
-	}
-	
+	return fmt::format("{}{}", get_alias_str(), fmt::join(deref_strs, ""));		
 }
 
 std::ostream& operator<<(std::ostream& out, Var* var){

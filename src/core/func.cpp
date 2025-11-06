@@ -338,7 +338,7 @@ FuncRef Func::copy_deep(){
 
 std::string resolve_template(Func* func, uint8_t verbosity){
 	OriginData* od = func->origin_data;
-	if(verbosity == LOW_VERBOSITY && od->shorthand_template.size() > 0){
+	if(verbosity <= DEFAULT_VERBOSITY && od->shorthand_template.size() > 0){
 		return od->shorthand_template;
 	}else if(od->expr_template.size() > 0){
 		return od->expr_template;
@@ -358,7 +358,7 @@ std::string Func::to_string(uint8_t verbosity){
 
 	OriginData* od = this->origin_data;
 	bool use_derefs = true;
-	bool use_shorthand = verbosity == LOW_VERBOSITY && od->shorthand_template.size() > 0;
+	bool use_shorthand = (verbosity <= DEFAULT_VERBOSITY) && (od->shorthand_template.size() > 0);
 	std::string ignore_pattern = "";
 
 	std::vector<stack_tuple> stack = {};

@@ -13,6 +13,7 @@
 #include "../include/fact.h"
 #include "../include/builtin_funcs.h"
 #include "../include/literal.h"
+#include "../include/conds.h"
 
 using std::cout;
 using std::endl;
@@ -92,7 +93,33 @@ void test_literal(){
 }
 
 
+void test_conds(){
+	ref<Var> A = new_var("A", cre_float);
+	ref<Var> B = new_var("B", cre_float);
+	ref<Var> C = new_var("C", cre_float);
+
+	ref<Conds> conds1a = AND(Equals(A, 1), Equals(B, 2));
+	cout << conds1a << endl;
+
+	ref<Conds> conds1o = OR(Equals(A, 1), Equals(B, 2));
+	cout << conds1o << endl;
+
+	cout << "--------" << endl;
+	cout << AND(Equals(C, 5), conds1a) << endl;
+	cout << AND(Equals(C, 1), conds1o) << endl;
+	cout << OR(Equals(C, 5), conds1a) << endl;
+	cout << OR(Equals(C, 1), conds1o) << endl;
+
+
+	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), conds1o) << endl;
+	cout << OR(Equals(C, 5), Equals(B, 1), conds1a) << endl;
+	
+
+}
+
 int main(){
 	// test_var();
-	test_literal();
+	// test_literal();
+	test_conds();
+	return 0;
 }

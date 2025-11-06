@@ -18,6 +18,15 @@ namespace cre { struct Member; }
 
 namespace cre {
 
+
+const uint8_t VAR_KIND_ABSOLUTE = 1;
+const uint8_t VAR_KIND_BOUND = 2;
+const uint8_t VAR_KIND_OPTIONAL = 3; 
+const uint8_t VAR_KIND_EXIST = 4;
+const uint8_t VAR_KIND_NOT = 5;
+// const uint8_t VAR_KIND_ALL = 4;
+
+
 const uint16_t DEREF_KIND_ATTR = 1;
 const uint16_t DEREF_KIND_ITEM = 2 ;
 
@@ -55,11 +64,16 @@ struct Var : public CRE_Obj{
 	DerefInfo* deref_infos;
 	size_t length; // Note: could be smaller than size_t
 
+	Item bound_obj;
+
 	uint64_t hash;
+
+	uint8_t kind=false;
 
 // -- Methods --
 	Var(const Item& _alias,
 		CRE_Type* _type=nullptr,
+		uint8_t kind = VAR_KIND_ABSOLUTE,
 		DerefInfo* _deref_infos=nullptr,
 		size_t _length=0);
 
@@ -79,16 +93,39 @@ struct Var : public CRE_Obj{
 	inline size_t size(){
 		return length;
 	}
+	inline size_t is_existential(){
+		return kind > VAR_KIND_EXIST;
+	}
+	// inline size_t is_universal(){
+	// 	return kind & 4;
+	// }
+	std::string get_alias_str();
 	std::string to_string();
 	bool operator==(const Var& other) const;
 
 };
 
+
+
+
 ref<Var> new_var(const Item& alias,
  			CRE_Type* type=nullptr,
+ 			uint8_t kind=VAR_KIND_ABSOLUTE,
  			DerefInfo* deref_infos=NULL,
  			size_t length=0,
  			AllocBuffer* buffer=nullptr);
+
+// ref<Var> new_Exists(const Item& alias,
+//  			CRE_Type* type=nullptr,
+//  			DerefInfo* deref_infos=NULL,
+//  			size_t length=0,
+//  			AllocBuffer* buffer=nullptr);
+
+// ref<Var> new_Not(const Item& alias,
+//  			CRE_Type* type=nullptr,
+//  			DerefInfo* deref_infos=NULL,
+//  			size_t length=0,
+//  			AllocBuffer* buffer=nullptr);
 
 // ref<Var> new_var(const std::string_view& _alias,
 //  			CRE_Type* _type=nullptr,

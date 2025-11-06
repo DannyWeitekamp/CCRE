@@ -369,7 +369,7 @@ std::vector<ref<Var>> Flattener::_make_fact_vars(FactSet* input){
 				);
 
 		CRE_Type* var_type = fact->type == nullptr ? cre_Fact : fact->type;
-		ref<Var> var = new_var(subj_item, var_type, nullptr, 0, builder.alloc_buffer);
+		ref<Var> var = new_var(subj_item, var_type, VAR_KIND_ABSOLUTE, nullptr, 0, builder.alloc_buffer);
 		
         fact_vars[fact->f_id] = var;
 	}

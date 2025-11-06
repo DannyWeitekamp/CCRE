@@ -375,7 +375,7 @@ CRE_Type* cre_FactSet;// = new CRE_Type("Fact",{}, 1);
 CRE_Type* cre_Var;// = new CRE_Type("Var",{}, 1);
 CRE_Type* cre_Func;// = new CRE_Type("Func",{}, 1);
 CRE_Type* cre_Literal;// = new CRE_Type("Literal",{}, 1);
-CRE_Type* cre_Conditions;// = new CRE_Type("Conditions",{}, 1);
+CRE_Type* cre_Conds;// = new CRE_Type("Conds",{}, 1);
 CRE_Type* cre_Rule;// = new CRE_Type("Rule",{}, 1);
 
 
@@ -412,7 +412,7 @@ void ensure_builtins(){
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Literal = new CRE_Type("Literal", T_ID_LITERAL,
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
-        cre_Conditions = new CRE_Type("Conditions", T_ID_CONDITIONS,
+        cre_Conds = new CRE_Type("Conds", T_ID_CONDS,
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Rule = new CRE_Type("Rule", T_ID_RULE,
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
@@ -431,7 +431,7 @@ void ensure_builtins(){
         cre_builtins.push_back(cre_Var);
         cre_builtins.push_back(cre_Func);
         cre_builtins.push_back(cre_Literal);
-        cre_builtins.push_back(cre_Conditions);
+        cre_builtins.push_back(cre_Conds);
         cre_builtins.push_back(cre_Rule);
         
         // cre_builtins = {
@@ -471,16 +471,20 @@ DefferedType::DefferedType(std::string_view _name) :
 
 
 // to_string implementation
-std::string to_string(const CRE_Type* type) {
-    if(type->kind == TYPE_KIND_DEFFERED){
-        return fmt::format("DefferedType[{}]", type->name);
+std::string CRE_Type::to_string() {
+    if(kind == TYPE_KIND_DEFFERED){
+        return fmt::format("DefferedType[{}]", name);
     }else{
-        return std::string(type->name);    
+        return std::string(name);    
     }
 }
 
-std::ostream& operator<<(std::ostream& outs, const CRE_Type* type) {
-    return outs << to_string(type);
+std::string to_string(CRE_Type* type) {
+    return type->to_string();
+}
+
+std::ostream& operator<<(std::ostream& outs, CRE_Type* type) {
+    return outs << type->to_string();
 }
 
 // ------------------------------------------------------------

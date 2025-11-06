@@ -55,7 +55,7 @@ namespace cre {
 	}
 
 	ref<Literal> new_literal(CRE_Obj* obj, bool negated, AllocBuffer* buffer){
-		auto [addr, did_malloc] =  alloc_cre_obj(sizeof(Literal), &Literal_dtor, T_ID_VAR, buffer);
+		auto [addr, did_malloc] =  alloc_cre_obj(sizeof(Literal), &Literal_dtor, T_ID_LITERAL, buffer);
 	    Literal* lit = new (addr) Literal(obj, negated);
 		return lit;
 	}

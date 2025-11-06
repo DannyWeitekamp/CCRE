@@ -117,6 +117,8 @@ struct CRE_Type : CRE_Obj{
         return t_id;
     }
 
+    std::string to_string();
+
     // ~CRE_Type();
 };
 
@@ -179,11 +181,13 @@ struct FactType : public CRE_Type{
         return make_fact(this, inputs...);
     }
 
+    std::string to_string();
+
 };
 
 // Function declarations
-std::string to_string(const CRE_Type* value);
-std::ostream& operator<<(std::ostream& outs, const CRE_Type* type);
+std::string to_string(CRE_Type* value);
+std::ostream& operator<<(std::ostream& outs, CRE_Type* type);
 
 
 void set_builtin_flag(uint64_t* flags, uint64_t flag_n, uint64_t val);
@@ -226,7 +230,7 @@ extern CRE_Type* cre_FactSet;
 extern CRE_Type* cre_Var;
 extern CRE_Type* cre_Func;
 extern CRE_Type* cre_Literal;
-extern CRE_Type* cre_Conditions;
+extern CRE_Type* cre_Conds;
 extern CRE_Type* cre_Rule;
 
 extern vector<CRE_Type*> cre_builtins;
@@ -247,7 +251,7 @@ struct Var;
 struct Func;
 struct FuncRef;
 struct Literal;
-struct Conditions;
+struct Conds;
 struct Rule;
 struct StrBlock;
 
@@ -284,8 +288,8 @@ CRE_Type* to_cre_type() {
         return cre_Func;
     } else if constexpr (std::is_same_v<Literal, DecayT>){
         return cre_Literal;
-    } else if constexpr (std::is_same_v<Conditions, DecayT>){
-        return cre_Conditions;
+    } else if constexpr (std::is_same_v<Conds, DecayT>){
+        return cre_Conds;  
     } else if constexpr (std::is_same_v<Rule, DecayT>){
         return cre_Rule;
     }else{
@@ -337,8 +341,8 @@ CRE_Type* to_cre_type_or_null() {
     //     return cre_Func;
     // } else if constexpr (std::is_same_v<Literal, DecayT>){
     //     return cre_Literal;
-    // } else if constexpr (std::is_same_v<Conditions, DecayT>){
-    //     return cre_Conditions;
+    // } else if constexpr (std::is_same_v<Conds, DecayT>){
+    //     return cre_Conds;
     // } else if constexpr (std::is_same_v<Rule, DecayT>){
     //     return cre_Rule;
     // }else{
