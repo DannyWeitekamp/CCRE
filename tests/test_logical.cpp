@@ -13,7 +13,7 @@
 #include "../include/fact.h"
 #include "../include/builtin_funcs.h"
 #include "../include/literal.h"
-#include "../include/conds.h"
+#include "../include/logic.h"
 
 using std::cout;
 using std::endl;
