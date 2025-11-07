@@ -98,11 +98,16 @@ void test_conds(){
 	ref<Var> B = new_var("B", cre_float);
 	ref<Var> C = new_var("C", cre_float);
 
-	ref<Conds> conds1a = AND(Equals(A, 1), Equals(B, 2));
+	ref<Conds> conds1a = AND(Equals(A, 1), Equals(A, 2));
+	ref<Conds> conds1o = OR(Equals(A, 1), Equals(A, 2));
 	cout << conds1a << endl;
-
-	ref<Conds> conds1o = OR(Equals(A, 1), Equals(B, 2));
 	cout << conds1o << endl;
+
+	ref<Conds> conds2a = AND(Equals(A, 1), Equals(B, 2));
+	ref<Conds> conds2o = OR(Equals(A, 1), Equals(B, 2));
+
+	cout << conds2a << endl;
+	cout << conds2o << endl;
 
 	cout << "--------" << endl;
 	cout << AND(Equals(C, 5), conds1a) << endl;
@@ -110,12 +115,25 @@ void test_conds(){
 	cout << OR(Equals(C, 5), conds1a) << endl;
 	cout << OR(Equals(C, 1), conds1o) << endl;
 
-
 	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), conds1o) << endl;
 	cout << OR(Equals(C, 5), Equals(B, 1), conds1a) << endl;
 
 	cout << AND(conds1o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
 	cout << OR(conds1a, Equals(C, 5), Equals(B, 1)) << endl;
+
+
+	cout << "--------" << endl;
+	cout << AND(Equals(C, 5), conds2a) << endl;
+	cout << AND(Equals(C, 1), conds2o) << endl;
+	cout << OR(Equals(C, 5), conds2a) << endl;
+	cout << OR(Equals(C, 1), conds2o) << endl;
+
+
+	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), conds2o) << endl;
+	cout << OR(Equals(C, 5), Equals(B, 1), conds2a) << endl;
+
+	cout << AND(conds2o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
+	cout << OR(conds2a, Equals(C, 5), Equals(B, 1)) << endl;
 	
 
 }

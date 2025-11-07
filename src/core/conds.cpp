@@ -45,7 +45,6 @@ void Conds::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
             VarInfo& info = it->second;
             info.item_inds.push_back(items.size());
         }
-        var_map_iters.push_back(it);
     }
 }
 
@@ -247,7 +246,7 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
     ss << (kind == CONDS_KIND_AND ? "AND(" : "OR(");
 
     bool mult_vars = vars.size() > 1;
-    // cout << "MV:" << mult_vars << endl;
+    // cout << "MV:" << mult_vars << "SIZE:" << vars.size() << endl;
     if(mult_vars) ss << "\n";
     bool prev_endl = mult_vars;        
 
@@ -267,13 +266,17 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
             if(!covered->contains(v)){
                 ss << fmt::format("{}:=Var({})", v->get_alias_str(), v->base_type->to_string());
                 if(start != end) ss << ", ";
-            }            
+                covered->insert(v);
+            }
 
             ++v_ind;
             if(v_ind < standard_var_spans.size()){
                 std::tie(start, end) = standard_var_spans[v_ind];    
+            }else{
+                start = -1;
+                end = -1;
             }
-            covered->insert(v);
+            
         }
         
         switch(item->get_t_id()){
@@ -282,9 +285,10 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
             if(i < L-1) ss << ", ";
 
             prev_endl = false;
-            if((i+1 >= start && i+1 < end) ||
-                i+1 >= L ||
-                items[standard_order[i+1]]->get_t_id() == T_ID_CONDS){
+            if(mult_vars && 
+                ((i+1 >= start && i+1 < end) ||
+                  i+1 >= L ||
+                  items[standard_order[i+1]]->get_t_id() == T_ID_CONDS)){
                 ss << "\n";
                 prev_endl = true;
             }
@@ -292,14 +296,13 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
         case T_ID_CONDS:
         {
             Conds* inner_conds = (Conds*) item;
-            
             std::string next_indent = fmt::format("{}{}", indent, indent);
             ss << inner_conds->standard_str(next_indent, covered);
-            ss << indent << ")";
+            if(inner_conds->vars.size() > 1) ss << indent;
+            ss << ")";
             if(i < L-1) ss << ", ";
             ss << "\n";
             prev_endl = true;
-
             break;
         }
         default:
@@ -308,26 +311,7 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
             prev_endl = false;
             break;
         }
-        // if(i < L-1) ss << ", ";
-        // if(mult_vars){
-        //     if(item->get_t_id() == T_ID_CONDS){
-        //         ss << "\n" << indent;    
-        //     }else if(
-        //         (i+1 >= start && i+1 < end) ||
-        //         (i+1 >= L || items[standard_order[i+1]]->get_t_id() == T_ID_CONDS)
-        //     ){
-        //         ss << "\n";
-        //     }
-        // }
-
-
-        // if(i != standard_var_spans.size() -1){
-        // if(i != standard_var_spans.size() -1){
-        //     ss << ",";
-        //     if(mult_vars) ss << "\n";
-        // }
     }
-    // if(mult_vars) ss << "\n";
     
     if(is_outermost){
         ss << ")";
