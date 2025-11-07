@@ -275,8 +275,7 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
             }else{
                 start = -1;
                 end = -1;
-            }
-            
+            }   
         }
         
         switch(item->get_t_id()){
