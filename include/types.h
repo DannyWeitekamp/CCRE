@@ -230,7 +230,7 @@ extern CRE_Type* cre_FactSet;
 extern CRE_Type* cre_Var;
 extern CRE_Type* cre_Func;
 extern CRE_Type* cre_Literal;
-extern CRE_Type* cre_Conds;
+extern CRE_Type* cre_Logic;
 extern CRE_Type* cre_Rule;
 
 extern vector<CRE_Type*> cre_builtins;
@@ -251,7 +251,7 @@ struct Var;
 struct Func;
 struct FuncRef;
 struct Literal;
-struct Conds;
+struct Logic;
 struct Rule;
 struct StrBlock;
 
@@ -288,8 +288,8 @@ CRE_Type* to_cre_type() {
         return cre_Func;
     } else if constexpr (std::is_same_v<Literal, DecayT>){
         return cre_Literal;
-    } else if constexpr (std::is_same_v<Conds, DecayT>){
-        return cre_Conds;  
+    } else if constexpr (std::is_same_v<Logic, DecayT>){
+        return cre_Logic;  
     } else if constexpr (std::is_same_v<Rule, DecayT>){
         return cre_Rule;
     }else{
@@ -341,8 +341,8 @@ CRE_Type* to_cre_type_or_null() {
     //     return cre_Func;
     // } else if constexpr (std::is_same_v<Literal, DecayT>){
     //     return cre_Literal;
-    // } else if constexpr (std::is_same_v<Conds, DecayT>){
-    //     return cre_Conds;
+    // } else if constexpr (std::is_same_v<Logic, DecayT>){
+    //     return cre_Logic;
     // } else if constexpr (std::is_same_v<Rule, DecayT>){
     //     return cre_Rule;
     // }else{

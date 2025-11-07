@@ -13,7 +13,7 @@
 #include "hash.h"             // for CREHash, FNV_BASIS, FNV_PRIME
 #include "member.h"           // for Member
 #include "ref.h"              // for ref
-#include "t_ids.h"            // for T_ID_FACT, T_ID_CONDS, T_ID_FLOAT
+#include "t_ids.h"            // for T_ID_FACT, T_ID_LOGIC, T_ID_FLOAT
 #include "types.h"            // for FactType, MemberSpec, BIFLG_VERBOSITY
 namespace cre { struct AllocBuffer; }
 
@@ -538,7 +538,7 @@ bool item_eq(const Item& ia, const Item& ib){
 		case T_ID_LITERAL:
 			// TODO
 			break;
-		case T_ID_CONDS:
+		case T_ID_LOGIC:
 			// TODO
 			break;
 		// Default case should work for integer types

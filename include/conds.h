@@ -40,8 +40,8 @@ struct VarInfo {
 
 typedef std::map<Var*, VarInfo> VarMapType;
 
-struct Conds : public CRE_Obj {
-	static constexpr uint16_t T_ID = T_ID_CONDS;
+struct Logic : public CRE_Obj {
+	static constexpr uint16_t T_ID = T_ID_LOGIC;
 
 	// -- Members --
 	std::vector<ref<CRE_Obj>> items = {};
@@ -52,7 +52,7 @@ struct Conds : public CRE_Obj {
     std::vector<VarMapType::iterator> var_map_iters = {};
 
     size_t n_abs_vars = 0;
-    // Absolute Vars: Regular Vars that must be bound in a match to the Conds pattern.
+    // Absolute Vars: Regular Vars that must be bound in a match to the Logic pattern.
     // std::vector<Var*> abs_vars = {};
     // Bound Vars: Vars that are effectively an alias for another Var 
     // std::vector<Var*> bnd_vars = {};
@@ -67,13 +67,13 @@ struct Conds : public CRE_Obj {
     uint8_t is_pure_conj;  
 
 	// -- Methods --
-	Conds(uint8_t kind);
+	Logic(uint8_t kind);
 
 
     void _insert_literal(ref<Literal> lit);
     void _insert_var(Var* var, bool part_of_item=false, uint8_t kind=uint8_t(-1));
     void _insert_arg(CRE_Obj* obj);
-    void _extend_same_kind(ref<Conds> conj);
+    void _extend_same_kind(ref<Logic> conj);
     void _finalize();
 
     std::string basic_str();
@@ -91,26 +91,26 @@ struct Conds : public CRE_Obj {
     
 };
 
-ref<Conds> new_conds(uint8_t kind, AllocBuffer* buffer = nullptr);
+ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer = nullptr);
 
-std::ostream& operator<<(std::ostream& out, Conds* conds);
-std::ostream& operator<<(std::ostream& out, ref<Conds> conds);
+std::ostream& operator<<(std::ostream& out, Logic* logic);
+std::ostream& operator<<(std::ostream& out, ref<Logic> logic);
 
 
 
 
 template<typename... Args>
-ref<Conds> AND(Args&&... args) {
-    ref<Conds> conds = new_conds(CONDS_KIND_AND);
-    conds->_populate(std::forward<Args>(args)...);
-    return conds;
+ref<Logic> AND(Args&&... args) {
+    ref<Logic> logic = new_logic(CONDS_KIND_AND);
+    logic->_populate(std::forward<Args>(args)...);
+    return logic;
 }
 
 template<typename... Args>
-ref<Conds> OR(Args&&... args) {
-    ref<Conds> conds = new_conds(CONDS_KIND_OR);
-    conds->_populate(std::forward<Args>(args)...);
-    return conds;
+ref<Logic> OR(Args&&... args) {
+    ref<Logic> logic = new_logic(CONDS_KIND_OR);
+    logic->_populate(std::forward<Args>(args)...);
+    return logic;
 }
 
 

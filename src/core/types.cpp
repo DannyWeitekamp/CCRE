@@ -375,7 +375,7 @@ CRE_Type* cre_FactSet;// = new CRE_Type("Fact",{}, 1);
 CRE_Type* cre_Var;// = new CRE_Type("Var",{}, 1);
 CRE_Type* cre_Func;// = new CRE_Type("Func",{}, 1);
 CRE_Type* cre_Literal;// = new CRE_Type("Literal",{}, 1);
-CRE_Type* cre_Conds;// = new CRE_Type("Conds",{}, 1);
+CRE_Type* cre_Logic;// = new CRE_Type("Logic",{}, 1);
 CRE_Type* cre_Rule;// = new CRE_Type("Rule",{}, 1);
 
 
@@ -412,7 +412,7 @@ void ensure_builtins(){
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Literal = new CRE_Type("Literal", T_ID_LITERAL,
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
-        cre_Conds = new CRE_Type("Conds", T_ID_CONDS,
+        cre_Logic = new CRE_Type("Logic", T_ID_LOGIC,
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
         cre_Rule = new CRE_Type("Rule", T_ID_RULE,
                                 sizeof(void*), {}, 1, cre_obj_dynamic_dtor);
@@ -431,7 +431,7 @@ void ensure_builtins(){
         cre_builtins.push_back(cre_Var);
         cre_builtins.push_back(cre_Func);
         cre_builtins.push_back(cre_Literal);
-        cre_builtins.push_back(cre_Conds);
+        cre_builtins.push_back(cre_Logic);
         cre_builtins.push_back(cre_Rule);
         
         // cre_builtins = {

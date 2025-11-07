@@ -93,47 +93,47 @@ void test_literal(){
 }
 
 
-void test_conds(){
+void test_logic(){
 	ref<Var> A = new_var("A", cre_float);
 	ref<Var> B = new_var("B", cre_float);
 	ref<Var> C = new_var("C", cre_float);
 
-	ref<Conds> conds1a = AND(Equals(A, 1), Equals(A, 2));
-	ref<Conds> conds1o = OR(Equals(A, 1), Equals(A, 2));
-	cout << conds1a << endl;
-	cout << conds1o << endl;
+	ref<Logic> logic1a = AND(Equals(A, 1), Equals(A, 2));
+	ref<Logic> logic1o = OR(Equals(A, 1), Equals(A, 2));
+	cout << logic1a << endl;
+	cout << logic1o << endl;
 
-	ref<Conds> conds2a = AND(Equals(A, 1), Equals(B, 2));
-	ref<Conds> conds2o = OR(Equals(A, 1), Equals(B, 2));
+	ref<Logic> logic2a = AND(Equals(A, 1), Equals(B, 2));
+	ref<Logic> logic2o = OR(Equals(A, 1), Equals(B, 2));
 
-	cout << conds2a << endl;
-	cout << conds2o << endl;
-
-	cout << "--------" << endl;
-	cout << AND(Equals(C, 5), conds1a) << endl;
-	cout << AND(Equals(C, 1), conds1o) << endl;
-	cout << OR(Equals(C, 5), conds1a) << endl;
-	cout << OR(Equals(C, 1), conds1o) << endl;
-
-	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), conds1o) << endl;
-	cout << OR(Equals(C, 5), Equals(B, 1), conds1a) << endl;
-
-	cout << AND(conds1o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
-	cout << OR(conds1a, Equals(C, 5), Equals(B, 1)) << endl;
-
+	cout << logic2a << endl;
+	cout << logic2o << endl;
 
 	cout << "--------" << endl;
-	cout << AND(Equals(C, 5), conds2a) << endl;
-	cout << AND(Equals(C, 1), conds2o) << endl;
-	cout << OR(Equals(C, 5), conds2a) << endl;
-	cout << OR(Equals(C, 1), conds2o) << endl;
+	cout << AND(Equals(C, 5), logic1a) << endl;
+	cout << AND(Equals(C, 1), logic1o) << endl;
+	cout << OR(Equals(C, 5), logic1a) << endl;
+	cout << OR(Equals(C, 1), logic1o) << endl;
+
+	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), logic1o) << endl;
+	cout << OR(Equals(C, 5), Equals(B, 1), logic1a) << endl;
+
+	cout << AND(logic1o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
+	cout << OR(logic1a, Equals(C, 5), Equals(B, 1)) << endl;
 
 
-	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), conds2o) << endl;
-	cout << OR(Equals(C, 5), Equals(B, 1), conds2a) << endl;
+	cout << "--------" << endl;
+	cout << AND(Equals(C, 5), logic2a) << endl;
+	cout << AND(Equals(C, 1), logic2o) << endl;
+	cout << OR(Equals(C, 5), logic2a) << endl;
+	cout << OR(Equals(C, 1), logic2o) << endl;
 
-	cout << AND(conds2o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
-	cout << OR(conds2a, Equals(C, 5), Equals(B, 1)) << endl;
+
+	cout << AND(Equals(C, 1), Equals(B, 1), Equals(B, 2), logic2o) << endl;
+	cout << OR(Equals(C, 5), Equals(B, 1), logic2a) << endl;
+
+	cout << AND(logic2o, Equals(C, 1), Equals(B, 1), Equals(B, 2)) << endl;
+	cout << OR(logic2a, Equals(C, 5), Equals(B, 1)) << endl;
 	
 
 }
@@ -141,6 +141,6 @@ void test_conds(){
 int main(){
 	// test_var();
 	// test_literal();
-	test_conds();
+	test_logic();
 	return 0;
 }

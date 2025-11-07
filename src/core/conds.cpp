@@ -4,30 +4,30 @@
 #include "types.h"             // for T_ID
 #include <sstream>              // for stringstream
 #include <stdexcept>           // for runtime_error
-#include "../include/conds.h"  // for Conds
-#include "../include/t_ids.h"  // for T_ID_CONDS
+#include "../include/conds.h"  // for Logic
+#include "../include/t_ids.h"  // for T_ID_LOGIC
 #include "../include/var.h"    // for Var, VAR_KIND_ABSOLUTE, VAR_KIND_BOUND, VAR_KIND_OPTIONAL, VAR_KIND_EXIST, VAR_KIND_NOT
 
 namespace cre {
 
-void Conds_dtor(const CRE_Obj* x) {
-	Conds* conds = (Conds*) x;
+void Logic_dtor(const CRE_Obj* x) {
+	Logic* logic = (Logic*) x;
 	// Vector of refs will automatically handle reference counting
 	CRE_Obj_dtor(x);
 }
 
-Conds::Conds(uint8_t kind) :
+Logic::Logic(uint8_t kind) :
 	kind(kind)
 {}
 
-ref<Conds> new_conds(uint8_t kind, AllocBuffer* buffer) {
-	auto [addr, did_malloc] = alloc_cre_obj(sizeof(Conds), &Conds_dtor, T_ID_CONDS, buffer);
-	Conds* conds = new (addr) Conds(kind);
-	return conds;
+ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer) {
+	auto [addr, did_malloc] = alloc_cre_obj(sizeof(Logic), &Logic_dtor, T_ID_LOGIC, buffer);
+	Logic* logic = new (addr) Logic(kind);
+	return logic;
 }
 
 
-void Conds::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
+void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
     // cout << "INSERT VAR: " << var->get_alias_str() << ", PART OF ITEM: " << part_of_item << endl;
     auto it = var_map.find(var);
     if(it == var_map.end()) {
@@ -48,7 +48,7 @@ void Conds::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
     }
 }
 
-void Conds::_insert_literal(ref<Literal> lit) {
+void Logic::_insert_literal(ref<Literal> lit) {
     // cout << "INSERT LITERAL:" << lit << endl;
     for(auto var : lit->vars) {
         _insert_var(var, true);
@@ -56,14 +56,14 @@ void Conds::_insert_literal(ref<Literal> lit) {
     items.push_back(ref<CRE_Obj>(lit.get()));
 }
 
-void Conds::_extend_same_kind(ref<Conds> conj) {
+void Logic::_extend_same_kind(ref<Logic> conj) {
     for(auto c_item : conj->items){
         _insert_arg(c_item);
     }
 }
 
 
-void Conds::_insert_arg(CRE_Obj* obj) {
+void Logic::_insert_arg(CRE_Obj* obj) {
     // cout << "ARG T_ID: " << obj->get_t_id() << endl;
 
     switch(obj->get_t_id()) {
@@ -79,16 +79,16 @@ void Conds::_insert_arg(CRE_Obj* obj) {
     case T_ID_VAR:
         _insert_var((Var*) obj, false);
         break;
-    case T_ID_CONDS:
+    case T_ID_LOGIC:
     {
-        Conds* item_conds = (Conds*) obj; 
-        if(kind == item_conds->kind){
-            _extend_same_kind(item_conds);
+        Logic* item_logic = (Logic*) obj; 
+        if(kind == item_logic->kind){
+            _extend_same_kind(item_logic);
         }else{
-            for(size_t i=0; i<item_conds->vars.size(); i++){
-            // for(auto inner_var : item_conds->vars){
-                Var* inner_var = item_conds->vars[i];
-                if(i >= item_conds->n_abs_vars && 
+            for(size_t i=0; i<item_logic->vars.size(); i++){
+            // for(auto inner_var : item_logic->vars){
+                Var* inner_var = item_logic->vars[i];
+                if(i >= item_logic->n_abs_vars && 
                    inner_var->kind == VAR_KIND_ABSOLUTE){
                     _insert_var(inner_var, true, VAR_KIND_OPTIONAL);
                 }else{
@@ -102,12 +102,12 @@ void Conds::_insert_arg(CRE_Obj* obj) {
     }
     default:
         std::stringstream ss;
-        ss << "Argument to Conds with type " << obj->get_t_id() << " is not supported.";
+        ss << "Argument to Logic with type " << obj->get_t_id() << " is not supported.";
         throw std::invalid_argument(ss.str());
     }
 }
 
-void Conds::_finalize() {
+void Logic::_finalize() {
     // When OR() change any absolute vars to optional if they 
     //   do not occur in every item.
     if(kind == CONDS_KIND_OR){
@@ -177,7 +177,7 @@ void Conds::_finalize() {
     // }
 }
 
-void Conds::_ensure_standard_order(){
+void Logic::_ensure_standard_order(){
     if(standard_order.size() == 0 && items.size() != 0){
         standard_order = std::vector<size_t>(items.size(), -1);
         standard_var_spans.reserve(vars.size());
@@ -209,7 +209,7 @@ void Conds::_ensure_standard_order(){
     }
 }
 
-std::string Conds::basic_str() {
+std::string Logic::basic_str() {
 	std::stringstream ss;
     ss << (kind == CONDS_KIND_AND ? "AND(" : "OR(");	
     for (size_t i = 0; i < items.size(); ++i) {
@@ -219,8 +219,8 @@ std::string Conds::basic_str() {
         case T_ID_LITERAL:
             ss << ((Literal*) item)->to_string();    
             break;
-        case T_ID_CONDS:
-            ss << ((Conds*) item)->to_string();    
+        case T_ID_LOGIC:
+            ss << ((Logic*) item)->to_string();    
             break;
         default:
             cout << "??" << endl;
@@ -233,7 +233,7 @@ std::string Conds::basic_str() {
 	return ss.str();
 }
 
-std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered) {
+std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered) {
     _ensure_standard_order();
 
     bool is_outermost = false;
@@ -258,7 +258,7 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
         if(prev_endl) ss << indent;
 
         CRE_Obj* item = items[standard_order[i]].get();
-        while(item->get_t_id() != T_ID_CONDS &&
+        while(item->get_t_id() != T_ID_LOGIC &&
               i >= start && i < end && v_ind < vars.size()){
             // cout << "V_IND: " << v_ind << "SIZE" << vars.size() << endl;
             Var* v = vars[v_ind];
@@ -287,17 +287,17 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
             if(mult_vars && 
                 ((i+1 >= start && i+1 < end) ||
                   i+1 >= L ||
-                  items[standard_order[i+1]]->get_t_id() == T_ID_CONDS)){
+                  items[standard_order[i+1]]->get_t_id() == T_ID_LOGIC)){
                 ss << "\n";
                 prev_endl = true;
             }
             break;
-        case T_ID_CONDS:
+        case T_ID_LOGIC:
         {
-            Conds* inner_conds = (Conds*) item;
+            Logic* inner_logic = (Logic*) item;
             std::string next_indent = fmt::format("{}{}", indent, indent);
-            ss << inner_conds->standard_str(next_indent, covered);
-            if(inner_conds->vars.size() > 1) ss << indent;
+            ss << inner_logic->standard_str(next_indent, covered);
+            if(inner_logic->vars.size() > 1) ss << indent;
             ss << ")";
             if(i < L-1) ss << ", ";
             ss << "\n";
@@ -320,16 +320,16 @@ std::string Conds::standard_str(std::string_view indent, HashSet<Var*>* covered)
     return ss.str();
 }
 
-std::string Conds::to_string() {
+std::string Logic::to_string() {
     return standard_str();
 }
 
-std::ostream& operator<<(std::ostream& out, Conds* conds) {
-	return out << conds->to_string();
+std::ostream& operator<<(std::ostream& out, Logic* logic) {
+	return out << logic->to_string();
 }
 
-std::ostream& operator<<(std::ostream& out, ref<Conds> conds) {
-	return out << conds->to_string();
+std::ostream& operator<<(std::ostream& out, ref<Logic> logic) {
+	return out << logic->to_string();
 }
 
 } // NAMESPACE_END(cre)

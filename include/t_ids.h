@@ -17,7 +17,7 @@ const uint16_t T_ID_FACTSET =     9;
 const uint16_t T_ID_VAR =         10;
 const uint16_t T_ID_FUNC =        11;
 const uint16_t T_ID_LITERAL =     12;
-const uint16_t T_ID_CONDS =       13;
+const uint16_t T_ID_LOGIC =       13;
 const uint16_t T_ID_RULE =        14;
 
 

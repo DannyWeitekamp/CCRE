@@ -1,7 +1,7 @@
 
 #include <stdint.h>              // for uint16_t
 #include "../include/cre_obj.h"  // for CRE_Obj
-#include "../include/t_ids.h"    // for T_ID_CONDS, T_ID_FACT, T_ID_FAC...
+#include "../include/t_ids.h"    // for T_ID_LOGIC, T_ID_FACT, T_ID_FAC...
 
 namespace cre {
 
@@ -24,7 +24,7 @@ bool CRE_Objs_equal(CRE_Obj* a, CRE_Obj* b){
         return a == b;
     case T_ID_LITERAL:
         return a == b;
-    case T_ID_CONDS:
+    case T_ID_LOGIC:
         return a == b;
     case T_ID_RULE:
         return a == b;
