@@ -46,14 +46,10 @@ void Func_dtor(const CRE_Obj* x){
 }
 
 std::string make_default_template(
-	const std::string_view& name,
-	size_t n_args){
+	const std::string_view& name, size_t n_args){
 
 	std::vector<std::string> brackets(n_args, "{}");
-	return fmt::format(
-		"{}({})", name,
-		fmt::join(brackets, ", ")
-	);
+	return fmt::format("{}({})", name, fmt::join(brackets, ", "));
 }
 
 
@@ -152,7 +148,8 @@ FuncRef define_func(
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template,
-		const std::string_view& shorthand_template){
+		const std::string_view& shorthand_template,
+		const std::string_view& negated_shorthand_template){
 
 	size_t n_args = arg_types.size();
 
@@ -168,6 +165,16 @@ FuncRef define_func(
 		origin_data->shorthand_template = make_default_template(name, n_args);
 	}else{
 		origin_data->shorthand_template = shorthand_template;
+	}
+
+	if(negated_shorthand_template.size() == 0){
+		if(shorthand_template.size() == 0){
+			origin_data->negated_shorthand_template = fmt::format("~{}", origin_data->expr_template);
+		}else{
+			origin_data->negated_shorthand_template = fmt::format("~({})", shorthand_template);
+		}
+	}else{
+		origin_data->negated_shorthand_template = negated_shorthand_template;
 	}
 
 	ref<Func> func = new_func(
@@ -336,10 +343,13 @@ FuncRef Func::copy_deep(){
 // -------------------------------------------------------------
 // to_string()
 
-std::string resolve_template(Func* func, uint8_t verbosity){
+std::string resolve_template(Func* func, uint8_t verbosity, bool negated){
 	OriginData* od = func->origin_data;
-	if(verbosity <= DEFAULT_VERBOSITY && od->shorthand_template.size() > 0){
+	bool use_shorthand = (verbosity <= DEFAULT_VERBOSITY) && (od->shorthand_template.size() > 0);
+	if(use_shorthand && !negated && od->shorthand_template.size() > 0){
 		return od->shorthand_template;
+	}else if(use_shorthand && negated && od->negated_shorthand_template.size() > 0){
+		return od->negated_shorthand_template;
 	}else if(od->expr_template.size() > 0){
 		return od->expr_template;
 	}else{
@@ -350,7 +360,7 @@ std::string resolve_template(Func* func, uint8_t verbosity){
 
 
 
-std::string Func::to_string(uint8_t verbosity){
+std::string Func::to_string(uint8_t verbosity, bool negated){
 	using fmt_args_t = fmt::dynamic_format_arg_store<fmt::format_context>;
 	using stack_tuple = std::tuple<Func*, int, fmt_args_t*> ;
 
@@ -359,6 +369,7 @@ std::string Func::to_string(uint8_t verbosity){
 	OriginData* od = this->origin_data;
 	bool use_derefs = true;
 	bool use_shorthand = (verbosity <= DEFAULT_VERBOSITY) && (od->shorthand_template.size() > 0);
+
 	std::string ignore_pattern = "";
 
 	std::vector<stack_tuple> stack = {};
@@ -422,7 +433,7 @@ std::string Func::to_string(uint8_t verbosity){
 			if(should_ignore){
 				tmp = "{0}";
 			}else{
-				tmp = resolve_template(cf, verbosity);
+				tmp = resolve_template(cf, verbosity, negated);
 			}
 			s = fmt::vformat(std::string_view(tmp), *arg_strs);
 			delete arg_strs;
@@ -432,9 +443,15 @@ std::string Func::to_string(uint8_t verbosity){
 				break;
 			}
 
+
 			if(use_shorthand && !should_ignore){
                 auto parent_nd = std::get<0>(stack[stack.size()-1])->origin_data;
-                auto parent_tmp = use_shorthand ? parent_nd->shorthand_template : parent_nd->expr_template;
+				std::string parent_tmp;
+				if(negated && parent_nd->negated_shorthand_template.size() > 0){
+					parent_tmp = parent_nd->negated_shorthand_template;
+				}else{
+					parent_tmp = use_shorthand ? parent_nd->shorthand_template : parent_nd->expr_template;
+				}
                 if( tmp[tmp.size()-1] != ')' && 
                  	parent_tmp[parent_tmp.size()-1] != ')'){
 

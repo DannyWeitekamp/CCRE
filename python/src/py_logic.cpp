@@ -72,7 +72,19 @@ void init_logic(nb::module_ & m) {
     // Expose constants
     m.attr("CONDS_KIND_AND") = CONDS_KIND_AND;
     m.attr("CONDS_KIND_OR") = CONDS_KIND_OR;
-    
+
+    // Define Literal class
+    nb::class_<Literal, CRE_Obj>(m, "Literal", nb::type_slots(cre_obj_slots))
+        .def("__str__", &Literal::to_string, "verbosity"_a=DEFAULT_VERBOSITY)
+        .def("__repr__", &Literal::to_string, "verbosity"_a=DEFAULT_VERBOSITY)
+        .def("to_string", &Literal::to_string)
+        .def_ro("negated", &Literal::negated)
+        .def_ro("kind", &Literal::kind)
+        .def_ro("obj", &Literal::obj)
+        .def_ro("vars", &Literal::vars)
+        .def_ro("var_inds", &Literal::var_inds) 
+        ;
+        
     // Define Logic class
     nb::class_<Logic, CRE_Obj>(m, "Logic", nb::type_slots(cre_obj_slots))
         .def(nb::new_(&py_Logic_ctor), "kind"_a, "args"_a, nb::rv_policy::reference)

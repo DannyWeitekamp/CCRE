@@ -30,7 +30,7 @@ struct Literal : public CRE_Obj{
 	uint8_t pad[2];
 
 	Literal(CRE_Obj* obj, bool negated=false);
-	std::string to_string();
+	std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
 };
 
 

@@ -2,6 +2,7 @@
 #include "../include/fact.h"
 #include "../include/func.h"
 #include "../include/alloc_buffer.h"
+#include <regex>
 
 struct Fact;
 struct Var;
@@ -62,28 +63,39 @@ namespace cre {
 
 
 
-	std::string Literal::to_string() {
-		std::stringstream ss;
+	std::string Literal::to_string(uint8_t verbosity) {
+		// std::stringstream ss;
 
-		if(negated){
-			ss << "~";
-		}
+		// if(negated){
+		// 	ss << "~";
+		// }
 
 		switch(kind){
 		case LIT_KIND_FACT:
-			ss << (Fact*) obj.get();
-			break;
+		{
+			Fact* fact = (Fact*) obj.get();
+			return fmt::format("{}{}", negated ? "~" :"", fact->to_string(verbosity));
+		}
 		case LIT_KIND_FUNC:
-			ss << (Func*) obj.get();
+		{
+			Func* func = (Func*) obj.get();
+			if(func->origin_data != nullptr && func->origin_data->negated_shorthand_template.size() > 0){
+				return func->to_string(verbosity, negated);
+			}else{
+				return fmt::format("{}{}", negated ? "~" :"", func->to_string(verbosity));
+			}
 			break;
+		}
+		// TODO: Perhaps this should not be an option?
 		case LIT_KIND_VAR:
-			ss << (Var*) obj.get();
-			break;
+		{
+			Var* var = (Var*) obj.get();
+			return fmt::format("{}{}", negated ? "~" :"", var->to_string());
+		}
 		default:
 			std::runtime_error("Literal Kind Unkown.");
 		}
-
-		return ss.str();
+		return "";
 	}
 
 	std::ostream& operator<<(std::ostream& out, Literal* lit){

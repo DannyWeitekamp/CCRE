@@ -23,6 +23,10 @@ namespace cre {
 extern FuncRef Equals;
 extern FuncRef EqualsInt;
 extern FuncRef EqualsStr;
+extern FuncRef LessThan;
+extern FuncRef GreaterThan;
+extern FuncRef LessThanOrEqual;
+extern FuncRef GreaterThanOrEqual;
 extern FuncRef And;
 extern FuncRef Or;
 extern FuncRef Xor;
@@ -35,10 +39,12 @@ extern FuncRef MultiplyInts;
 extern FuncRef Multiply;
 extern FuncRef DivideInts;
 extern FuncRef Divide;
-extern FuncRef ModInts;
+extern FuncRef FloorDivide;
+extern FuncRef Modulo;
+extern FuncRef ModuloInts;
 extern FuncRef Pow;
-extern FuncRef NegInt;
-extern FuncRef Neg;
+extern FuncRef NegateInt;
+extern FuncRef Negate;
 extern FuncRef Concat;
 extern FuncRef Slice;
 

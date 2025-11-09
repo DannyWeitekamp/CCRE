@@ -167,6 +167,7 @@ struct OriginData {
 	std::string name;
 	std::string expr_template;
 	std::string shorthand_template;
+	std::string negated_shorthand_template;
 	// std::vector<void *> repr_const_addrs;
 };
 
@@ -614,7 +615,7 @@ struct Func : CRE_Obj{
   }
   // Func(const Func&) = default;
 
-  std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
+  std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY, bool negated=false);
 
   void set_arg(size_t i, const Item& val);
 
@@ -1478,7 +1479,8 @@ FuncRef define_func(
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
 		const std::string_view& expr_template = "",
-		const std::string_view& shorthand_template = "");
+		const std::string_view& shorthand_template = "",
+	    const std::string_view& negated_shorthand_template = "");
 
 
 
@@ -1565,7 +1567,8 @@ template <auto F>
 FuncRef define_func(
 		const std::string_view& name, 
 		const std::string_view& expr_template = "",
-		const std::string_view& shorthand_template = ""){
+		const std::string_view& shorthand_template = "",
+		const std::string_view& negated_shorthand_template = ""){
 
   auto stack_call_lambda = [](void* ret, void** args) {
       stack_call<F>(ret, args);
@@ -1599,7 +1602,7 @@ FuncRef define_func(
 
 	return define_func(name, 
 		stack_call_func, stack_call_func2, ptr_to_item_func, call_recursive_func,
-		 stack_size, offsets, ret_type, arg_types, expr_template, shorthand_template);
+		 stack_size, offsets, ret_type, arg_types, expr_template, shorthand_template, negated_shorthand_template);
 }
 
 

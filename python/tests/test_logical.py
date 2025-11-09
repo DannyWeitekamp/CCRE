@@ -61,9 +61,118 @@ def test_arith():
     B = Var(float, "B")
     C = Var(float, "C")
 
+    # Addition
     assert(str(A + B) == "A + B")
-    assert((A + B) + 1 == "(A + B) + 1")
-    assert(1 + (A + B) == "1 + (A + B)")
+    assert(str((A + B) + 1) == "(A + B) + 1")
+    assert(str(1 + (A + B)) == "1 + (A + B)")
+    assert((A + B)(2,3) == 5)
+    assert(((A + B) + 1)(2,3) == 6)
+    assert((1 + (A + B))(2,3) == 6)
+
+    # Equals
+    assert(str(A == B) == "A == B")
+    assert(str(A == 1) == "A == 1")
+    assert((A == B)(2,3) == False)
+    assert((A == B)(2,2) == True)
+    assert((A == 1)(1) == True)
+    assert((A == 1)(2) == False)
+
+
+    # Not Equals
+    # assert(str(A != B) == "A != B")
+    # assert(str(A != 1) == "A != 1")
+    # assert((A != B)(2,3) == True)
+    # assert((A != B)(2,2) == False)
+    # assert((A != 1)(1) == False)
+    # assert((A != 1)(2) == True)
+    
+    # Less than
+    assert(str(A < B) == "A < B")
+    assert(str(A < 1) == "A < 1")
+    assert((A < B)(2,3) == True)
+    assert((A < B)(3,2) == False)
+    assert((A < 1)(0) == True)
+    assert((A < 1)(2) == False)
+    
+    # Greater than
+    assert(str(A > B) == "A > B")
+    assert(str(A > 1) == "A > 1")
+    assert((A > B)(3,2) == True)
+    assert((A > B)(2,3) == False)
+    assert((A > 1)(2) == True)
+    assert((A > 1)(0) == False)
+    
+    # Less than or equal
+    assert(str(A <= B) == "A <= B")
+    assert(str(A <= 1) == "A <= 1")
+    assert((A <= B)(2,3) == True)
+    assert((A <= B)(2,2) == True)
+    assert((A <= B)(3,2) == False)
+    assert((A <= 1)(1) == True)
+    assert((A <= 1)(2) == False)
+    
+    # Greater than or equal
+    assert(str(A >= B) == "A >= B")
+    assert(str(A >= 1) == "A >= 1")
+    assert((A >= B)(3,2) == True)
+    assert((A >= B)(2,2) == True)
+    assert((A >= B)(2,3) == False)
+    assert((A >= 1)(2) == True)
+    assert((A >= 1)(0) == False)
+    
+    # Subtraction
+    assert(str(A - B) == "A - B")
+    assert(str(A - 1) == "A - 1")
+    assert(str(1 - A) == "1 - A")
+    assert((A - B)(2,3) == -1)
+    assert(((A - B) - 1)(2,3) == -2)
+    assert((1 - (A - B))(2,3) == 2)
+    
+    # Multiplication
+    assert(str(A * B) == "A * B")
+    assert(str(A * 2) == "A * 2")
+    assert(str(2 * A) == "2 * A")
+    assert((A * B)(2,3) == 6)
+    assert(((A * B) * 2)(2,3) == 12)
+    assert((2 * (A * B))(2,3) == 12)
+    
+    # # True division
+    # assert(str(A / B) == "A / B")
+    # assert(str(A / 2) == "A / 2")
+    # assert(str(2 / A) == "2 / A")
+    # assert((A / B)(2,3) == 2/3)
+    # assert(((A / B) / 2)(2,3) == 1/3)
+    # assert((2 / (A / B))(2,3) == 3)
+    
+    # Floor division
+    assert(str(A // B) == "A // B")
+    assert(str(A // 2) == "A // 2")
+    assert(str(2 // A) == "2 // A")
+    assert((A // B)(2,3) == 0)
+    assert(((A // B) // 2)(2,3) == 0)
+    assert((2 // (A // B + 1))(2,3) == 2)
+    
+    # Modulo
+    assert(str(A % B) == "A % B")
+    assert(str(A % 2) == "A % 2")
+    assert(str(2 % A) == "2 % A")
+    assert((A % B)(2,3) == 2)
+    assert(((A % B) % 2)(2,3) == 0)
+    assert((2 % (A % B))(2,3) == 0)
+    
+    # Power
+    assert(str(A ** B) == "A ** B")
+    assert(str(A ** 2) == "A ** 2")
+    assert(str(2 ** A) == "2 ** A")
+    assert((A ** B)(2,3) == 8)
+    assert(((A ** B) ** 2)(2,3) == 64)
+    assert((2 ** (A ** B))(2,3) == 256)
+    
+    # Negation
+    assert(str(-A) == "-A")
+    assert(str(-(A + B)) == "-(A + B)")
+    
+    
 
     print(A < B)
     print(~(A < B))

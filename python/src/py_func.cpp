@@ -4,6 +4,7 @@
 #include "../../include/types.h"
 #include "../../include/func.h"
 #include "../../include/builtin_funcs.h"
+#include "../../include/literal.h"
 
 
 ref<Func> py_Func([[maybe_unused]] nb::args args) {
@@ -219,14 +220,24 @@ ref<Func> py_Func_rtruediv(Func* self, nb::handle other) {
     return Divide->compose(other_item, self);
 }
 
+ref<Func> py_Func_floordiv(Func* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return FloorDivide->compose(self, other_item);
+}
+
+ref<Func> py_Func_rfloordiv(Func* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return FloorDivide->compose(other_item, self);
+}
+
 ref<Func> py_Func_mod(Func* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    return ModInts->compose(self, other_item);
+    return Modulo->compose(self, other_item);
 }
 
 ref<Func> py_Func_rmod(Func* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    return ModInts->compose(other_item, self);
+    return Modulo->compose(other_item, self);
 }
 
 ref<Func> py_Func_pow(Func* self, nb::handle other) {
@@ -240,7 +251,15 @@ ref<Func> py_Func_rpow(Func* self, nb::handle other) {
 }
 
 ref<Func> py_Func_neg(Func* self) {
-    return Neg->compose(self);
+    return Negate->compose(self);
+}
+
+ref<Literal> py_Func_invert(Func* self) {
+    return new_literal(self, true);
+}
+
+std::string py_Func_to_string(Func* self, nb::handle verbosity) {
+    return self->to_string(nb::cast<uint8_t>(verbosity));
 }
 
 void init_func(nb::module_ & m){
@@ -250,8 +269,8 @@ void init_func(nb::module_ & m){
 
     // .def("get_refcount", &Fact::get_refcount)
 
-    .def("__str__", &Func::to_string, "verbosity"_a=2)
-    .def("__repr__", &Func::to_string, "verbosity"_a=2)
+    .def("__str__", &py_Func_to_string, "verbosity"_a=DEFAULT_VERBOSITY)
+    .def("__repr__", &py_Func_to_string, "verbosity"_a=DEFAULT_VERBOSITY)
     .def("__call__", &py_Func__call__)
     .def("call", &py_Func_call)
     .def("compose", &py_Func_compose, nb::rv_policy::reference)
@@ -266,11 +285,15 @@ void init_func(nb::module_ & m){
     .def("__rmul__", &py_Func_rmul, nb::rv_policy::reference)
     .def("__truediv__", &py_Func_truediv, nb::rv_policy::reference)
     .def("__rtruediv__", &py_Func_rtruediv, nb::rv_policy::reference)
+    .def("__floordiv__", &py_Func_floordiv, nb::rv_policy::reference)
+    .def("__rfloordiv__", &py_Func_rfloordiv, nb::rv_policy::reference)
     .def("__mod__", &py_Func_mod, nb::rv_policy::reference)
     .def("__rmod__", &py_Func_rmod, nb::rv_policy::reference)
     .def("__pow__", &py_Func_pow, nb::rv_policy::reference)
     .def("__rpow__", &py_Func_rpow, nb::rv_policy::reference)
     .def("__neg__", &py_Func_neg, nb::rv_policy::reference)
+    .def("__invert__", &py_Func_invert, nb::rv_policy::reference)
+    
 
     // .def("__len__", &Fact::size)
     
@@ -314,10 +337,10 @@ void init_func(nb::module_ & m){
     m.attr("MultiplyInts") = ref<Func>(cre::MultiplyInts);
     m.attr("Divide") = ref<Func>(cre::Divide);
     m.attr("DivideInts") = ref<Func>(cre::DivideInts);
-    m.attr("ModInts") = ref<Func>(cre::ModInts);
+    m.attr("Modulo") = ref<Func>(cre::Modulo);
     m.attr("Pow") = ref<Func>(cre::Pow);
-    m.attr("Neg") = ref<Func>(cre::Neg);
-    m.attr("NegInt") = ref<Func>(cre::NegInt);
+    m.attr("Negate") = ref<Func>(cre::Negate);
+    m.attr("NegateInt") = ref<Func>(cre::NegateInt);
     m.attr("Concat") = ref<Func>(cre::Concat);
     m.attr("Slice") = ref<Func>(cre::Slice);
     m.attr("AddInts") = ref<Func>(cre::AddInts);

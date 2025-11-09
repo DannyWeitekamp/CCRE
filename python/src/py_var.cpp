@@ -2,6 +2,7 @@
 #include "../../include/var.h"
 #include "../../include/builtin_funcs.h"
 #include "../../include/func.h"
+#include "../../include/literal.h"
 
 
 void do_nothing(){
@@ -234,9 +235,29 @@ ref<Func> py_Var_equals(Var* self, nb::handle other) {
     return Equals->compose(self, other_item);
 }
 
-ref<Func> py_Var_not_equals(Var* self, nb::handle other) {
+ref<Literal> py_Var_not_equals(Var* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    return Not->compose(Equals->compose(other_item, self));
+    return new_literal(Equals->compose(self, other_item), true);
+}
+
+ref<Func> py_Var_less_than(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return LessThan->compose(self, other_item);
+}
+
+ref<Func> py_Var_greater_than(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return GreaterThan->compose(self, other_item);
+}
+
+ref<Func> py_Var_less_than_or_equal(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return LessThanOrEqual->compose(self, other_item);
+}
+
+ref<Func> py_Var_greater_than_or_equal(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return GreaterThanOrEqual->compose(self, other_item);
 }
 
 ref<Func> py_Var_add(Var* self, nb::handle other) {
@@ -279,14 +300,24 @@ ref<Func> py_Var_rtruediv(Var* self, nb::handle other) {
     return Divide->compose(other_item, self);
 }
 
+ref<Func> py_Var_floordiv(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return FloorDivide->compose(self, other_item);
+}
+
+ref<Func> py_Var_rfloordiv(Var* self, nb::handle other) {
+    Item other_item = Item_from_py(other);
+    return FloorDivide->compose(other_item, self);
+}
+
 ref<Func> py_Var_mod(Var* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    return ModInts->compose(self, other_item);
+    return Modulo->compose(self, other_item);
 }
 
 ref<Func> py_Var_rmod(Var* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    return ModInts->compose(other_item, self);
+    return Modulo->compose(other_item, self);
 }
 
 ref<Func> py_Var_pow(Var* self, nb::handle other) {
@@ -300,7 +331,7 @@ ref<Func> py_Var_rpow(Var* self, nb::handle other) {
 }
 
 ref<Func> py_Var_neg(Var* self) {
-    return Neg->compose(self);
+    return Negate->compose(self);
 }
 
 
@@ -342,6 +373,10 @@ void init_var(nb::module_ & m){
     // Arithmetic operators
     .def("__eq__", &py_Var_equals, nb::rv_policy::reference)
     .def("__ne__", &py_Var_not_equals, nb::rv_policy::reference)
+    .def("__lt__", &py_Var_less_than, nb::rv_policy::reference)
+    .def("__gt__", &py_Var_greater_than, nb::rv_policy::reference)
+    .def("__le__", &py_Var_less_than_or_equal, nb::rv_policy::reference)
+    .def("__ge__", &py_Var_greater_than_or_equal, nb::rv_policy::reference)
     .def("__add__", &py_Var_add, nb::rv_policy::reference)
     .def("__radd__", &py_Var_radd, nb::rv_policy::reference)
     .def("__sub__", &py_Var_sub, nb::rv_policy::reference)
@@ -350,6 +385,8 @@ void init_var(nb::module_ & m){
     .def("__rmul__", &py_Var_rmul, nb::rv_policy::reference)
     .def("__truediv__", &py_Var_truediv, nb::rv_policy::reference)
     .def("__rtruediv__", &py_Var_rtruediv, nb::rv_policy::reference)
+    .def("__floordiv__", &py_Var_floordiv, nb::rv_policy::reference)
+    .def("__rfloordiv__", &py_Var_rfloordiv, nb::rv_policy::reference)
     .def("__mod__", &py_Var_mod, nb::rv_policy::reference)
     .def("__rmod__", &py_Var_rmod, nb::rv_policy::reference)
     .def("__pow__", &py_Var_pow, nb::rv_policy::reference)
