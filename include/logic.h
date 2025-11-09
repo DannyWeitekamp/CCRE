@@ -96,7 +96,7 @@ ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer = nullptr);
 std::ostream& operator<<(std::ostream& out, Logic* logic);
 std::ostream& operator<<(std::ostream& out, ref<Logic> logic);
 
-
+extern void (*ext_locate_var_alias)(Var*);
 
 
 template<typename... Args>

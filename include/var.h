@@ -134,7 +134,7 @@ ref<Var> new_var(const Item& alias,
 //  			AllocBuffer* alloc_buffer=nullptr);
 
 
-
+extern void (*ext_locate_var_alias)(Var*);
 // std::string var_to_string(Var* var);
 std::ostream& operator<<(std::ostream& out, Var* var);
 std::ostream& operator<<(std::ostream& out, ref<Var> var);

@@ -1,12 +1,13 @@
-#include "../include/conds.h"
 #include "../include/alloc_buffer.h"
 #include "cre_obj.h"           // for CRE_Obj, alloc_cre_obj, CRE_Obj_dtor
 #include "types.h"             // for T_ID
 #include <sstream>              // for stringstream
 #include <stdexcept>           // for runtime_error
-#include "../include/conds.h"  // for Logic
+#include "../include/logic.h"  // for Logic
 #include "../include/t_ids.h"  // for T_ID_LOGIC
 #include "../include/var.h"    // for Var, VAR_KIND_ABSOLUTE, VAR_KIND_BOUND, VAR_KIND_OPTIONAL, VAR_KIND_EXIST, VAR_KIND_NOT
+
+
 
 namespace cre {
 
@@ -40,6 +41,10 @@ void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
         }
         auto [_it, inserted] = var_map.insert({var, info});
         var_map_iters.push_back(_it);
+
+        if(var->alias == "" && ext_locate_var_alias != nullptr){
+            ext_locate_var_alias(var);
+        }
     }else{
         if(part_of_item){
             VarInfo& info = it->second;

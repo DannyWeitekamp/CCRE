@@ -417,6 +417,8 @@ uint64_t CREHash::operator()(Var* var){
   return hash; 
 }
 
+void (*ext_locate_var_alias)(Var*) = nullptr;
+
 
 // void EnsureVarsNamed(const std::vector<Var*>& vars){
 // 	HashSet<std::string_view> alias_map = {};

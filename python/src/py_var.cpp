@@ -37,7 +37,8 @@ std::string_view locate_py_name_fast(PyObject* py_proxy, PyObject* dict){
 
 
 
-void py_Var_resolve_alias_fast(Var* var){
+// This is a 
+void py_Var_locate_alias_fast(Var* var){
     if(var->alias != ""){
         return;
     }
@@ -80,7 +81,7 @@ void py_Var_resolve_alias_fast(Var* var){
     }
 }
 
-void py_Var_resolve_alias(Var* var){
+void py_Var_locate_alias(Var* var){
     if(var->alias != ""){
         return;
     }
@@ -323,6 +324,10 @@ void peak_locals(){
 
 
 void init_var(nb::module_ & m){
+
+    // Register the Python implementation of locate_var_alias
+    ext_locate_var_alias = &py_Var_locate_alias_fast;
+
 	nb::class_<Var>(m, "Var", nb::type_slots(cre_obj_slots))
     
     // .def(nb::new_(
@@ -335,6 +340,8 @@ void init_var(nb::module_ & m){
     .def("__repr__", &Var::to_string)
     .def("__len__", &Var::size)
     // Arithmetic operators
+    .def("__eq__", &py_Var_equals, nb::rv_policy::reference)
+    .def("__ne__", &py_Var_not_equals, nb::rv_policy::reference)
     .def("__add__", &py_Var_add, nb::rv_policy::reference)
     .def("__radd__", &py_Var_radd, nb::rv_policy::reference)
     .def("__sub__", &py_Var_sub, nb::rv_policy::reference)
@@ -350,8 +357,8 @@ void init_var(nb::module_ & m){
     .def("__neg__", &py_Var_neg, nb::rv_policy::reference)
     ;
 
-    m.def("peak_locals", &peak_locals);
-    m.def("resolve_alias", &py_Var_resolve_alias);
-    m.def("resolve_alias_fast", &py_Var_resolve_alias_fast);
+    // m.def("peak_locals", &peak_locals);
+    m.def("resolve_alias", &py_Var_locate_alias);
+    m.def("resolve_alias_fast", &py_Var_locate_alias_fast);
     m.def("do_nothing", &do_nothing);
 }
