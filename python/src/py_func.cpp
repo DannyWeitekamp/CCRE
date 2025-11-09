@@ -1,6 +1,6 @@
 
 #include "../include/py_cre_core.h"
-#include "../include/shared_func_utils.h"
+#include "../include/shared_logic_utils.h"
 #include "../../include/item.h"
 #include "../../include/types.h"
 #include "../../include/func.h"
@@ -20,6 +20,41 @@ ref<Func> py_define_func([[maybe_unused]] nb::args args) {
         throw std::runtime_error("Not implemented, define_func().");        
     //pass
 }
+
+
+
+// void* py_resolve_heads(void* dest, nb::object py_obj, CRE_Type* type){
+//     if (nb::isinstance<nb::bool_>(py_obj)) {
+//         return _copy_convert_from_numerical(dest, nb::cast<bool>(py_obj), type);
+//         // return Item(nb::cast<bool>(py_obj));
+//     } else if (nb::isinstance<nb::int_>(py_obj)) {
+//         return _copy_convert_from_numerical(dest, nb::cast<int64_t>(py_obj), type);
+//         // return Item(nb::cast<int>(py_obj));
+//     } else if (nb::isinstance<nb::float_>(py_obj)) {
+//         return _copy_convert_from_numerical(dest, nb::cast<double>(py_obj), type);
+//         // return Item(nb::cast<double>(py_obj));
+//     } else if (nb::isinstance<nb::str>(py_obj)) {
+//         return _copy_convert_from_str(dest, nb::cast<std::string_view>(py_obj), type);
+//         // InternStr intern_str = intern(nb::cast<std::string_view>(py_obj));
+//         // cout << "Interned: " << intern_str << endl;
+//         // return Item(intern_str);
+
+//     } else if (nb::isinstance<CRE_Obj>(py_obj)) {
+//         CRE_Obj* ptr = nb::cast<CRE_Obj*>(py_obj);
+//         if(!_check_pointer_is_of_type(ptr, type)) return nullptr;
+//         return ptr;
+//     }else if (py_obj.is_none()){
+//         // return Item();
+//         return nullptr;
+//     } else {
+//         throw std::runtime_error("Func argument type not recognized by CRE: " + nb::cast<std::string>(nb::str(py_obj)));
+//         // return Item();
+//     }    
+// }
+
+
+
+
 
 nb::object py_Func_call(Func* func, nb::args args, nb::kwargs kwargs) {
     return Item_to_py(py_Func_call_to_item(func, args, kwargs));

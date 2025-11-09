@@ -1,5 +1,5 @@
 #include "../include/py_cre_core.h"
-#include "../include/shared_func_utils.h"
+#include "../include/shared_logic_utils.h"
 #include "../../include/logic.h"
 #include "../../include/func.h"
 #include "../../include/builtin_funcs.h"

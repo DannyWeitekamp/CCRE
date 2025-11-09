@@ -2,7 +2,6 @@
 #include "../../include/item.h"
 #include "../../include/types.h"
 #include "../../include/func.h"
-#include "../../include/logic.h"
 #include "../../include/builtin_funcs.h"  
 #include "../../include/literal.h"  
 #include "../include/nanobind/nanobind.h"
@@ -31,6 +30,7 @@ CRE_Obj* py_to_cre_obj(nb::handle py_obj) {
                                 nb::cast<std::string>(nb::str(py_obj.type())));
     }
 }
+
 
 
 void* py_resolve_heads(void* dest, nb::object py_obj, const HeadInfo& hi){
@@ -129,3 +129,4 @@ ref<Func> py_Func_compose(Func* func, nb::args args) {
     // Return the composed function
     return cf;
 }
+
