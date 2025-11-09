@@ -1,10 +1,12 @@
 
 #include "../include/py_cre_core.h"
+#include "../include/shared_func_utils.h"
 #include "../../include/item.h"
 #include "../../include/types.h"
 #include "../../include/func.h"
 #include "../../include/builtin_funcs.h"
 #include "../../include/literal.h"
+
 
 
 ref<Func> py_Func([[maybe_unused]] nb::args args) {
@@ -19,135 +21,10 @@ ref<Func> py_define_func([[maybe_unused]] nb::args args) {
     //pass
 }
 
-
-
-// void* py_resolve_heads(void* dest, nb::object py_obj, CRE_Type* type){
-//     if (nb::isinstance<nb::bool_>(py_obj)) {
-//         return _copy_convert_from_numerical(dest, nb::cast<bool>(py_obj), type);
-//         // return Item(nb::cast<bool>(py_obj));
-//     } else if (nb::isinstance<nb::int_>(py_obj)) {
-//         return _copy_convert_from_numerical(dest, nb::cast<int64_t>(py_obj), type);
-//         // return Item(nb::cast<int>(py_obj));
-//     } else if (nb::isinstance<nb::float_>(py_obj)) {
-//         return _copy_convert_from_numerical(dest, nb::cast<double>(py_obj), type);
-//         // return Item(nb::cast<double>(py_obj));
-//     } else if (nb::isinstance<nb::str>(py_obj)) {
-//         return _copy_convert_from_str(dest, nb::cast<std::string_view>(py_obj), type);
-//         // InternStr intern_str = intern(nb::cast<std::string_view>(py_obj));
-//         // cout << "Interned: " << intern_str << endl;
-//         // return Item(intern_str);
-
-//     } else if (nb::isinstance<CRE_Obj>(py_obj)) {
-//         CRE_Obj* ptr = nb::cast<CRE_Obj*>(py_obj);
-//         if(!_check_pointer_is_of_type(ptr, type)) return nullptr;
-//         return ptr;
-//     }else if (py_obj.is_none()){
-//         // return Item();
-//         return nullptr;
-//     } else {
-//         throw std::runtime_error("Func argument type not recognized by CRE: " + nb::cast<std::string>(nb::str(py_obj)));
-//         // return Item();
-//     }    
-// }
-
-void* py_resolve_heads(void* dest, nb::object py_obj, const HeadInfo& hi){
-    if (nb::isinstance<nb::bool_>(py_obj)) {
-        return resolve_heads(dest, nb::cast<bool>(py_obj), hi);
-    } else if (nb::isinstance<nb::int_>(py_obj)) {
-        return resolve_heads(dest, nb::cast<int64_t>(py_obj), hi);
-    } else if (nb::isinstance<nb::float_>(py_obj)) {
-        return resolve_heads(dest, nb::cast<double>(py_obj), hi);
-    } else if (nb::isinstance<nb::str>(py_obj)) {
-        return resolve_heads(dest, nb::cast<std::string_view>(py_obj), hi);
-
-        // InternStr intern_str = intern(nb::cast<std::string_view>(py_obj));
-        // // cout << "Interned: " << intern_str << endl;
-        // return Item(intern_str);
-
-    } else if (nb::isinstance<Fact>(py_obj)) {
-        return resolve_heads(dest, nb::cast<Fact*>(py_obj), hi);
-
-        // return Item(nb::cast<Fact*>(py_obj));
-
-    }else if (py_obj.is_none()){
-        return resolve_heads(dest, Item(None), hi);
-
-    } else {
-        throw std::runtime_error("Item cannot be created from: " + nb::cast<std::string>(nb::str(py_obj)));
-    }
-}
-
-
-
 nb::object py_Func_call(Func* func, nb::args args, nb::kwargs kwargs) {
-    if(kwargs.size() > 0){
-        throw std::runtime_error("Not implemented: keyword args (kwargs) e.g. f(arg0=1, arg2=7).");
-    }
-
-
-    void** head_val_ptrs = (void**) alloca(sizeof(void**)*func->head_infos.size());
-    uint8_t* stack = (uint8_t*) alloca(func->outer_stack_size);
-    uint8_t* arg_head = stack;
-
-    int64_t ret = 0;
-    void* ret_ptr = (void*) (stack+func->outer_stack_size-func->return_type->byte_width);
-    if(args.size() != func->n_args){
-        func->throw_bad_n_args(args.size());
-    }
-
-    for(int i=0; i < args.size(); i++){
-        auto arg = args[i];
-        auto h_start = func->head_ranges[i].start;
-        auto h_end = func->head_ranges[i].end;
-    
-        for(size_t head_ind=h_start; head_ind < h_end; ++head_ind){
-            const HeadInfo& hi = func->head_infos[head_ind];
-            void* head_val_ptr = py_resolve_heads(arg_head, arg, hi);
-
-            if(head_val_ptr == nullptr){ [[unlikely]]
-                func->throw_bad_arg(i, Item_from_py(arg), hi.base_type);
-            }
-            
-            head_val_ptrs[head_ind] = head_val_ptr;
-            arg_head += hi.base_type->byte_width;
-        }
-    }
-    func->call_recursive_fc(func, ret_ptr, head_val_ptrs);
-
-    if(func->has_outer_cleanup){
-        for(size_t head_ind=0; head_ind < func->head_infos.size(); ++head_ind){
-            const HeadInfo& hi = func->head_infos[head_ind];
-            if(hi.head_type->dynamic_dtor != nullptr){
-                // cout << ":::" << uint64_t(hi.head_type->dynamic_dtor) << endl;
-                hi.head_type->dynamic_dtor(head_val_ptrs[head_ind]);
-            }
-        }   
-    }
-
-    return Item_to_py(func->ptr_to_item_func(ret_ptr));
+    return Item_to_py(py_Func_call_to_item(func, args, kwargs));
 }
 
-ref<Func> py_Func_compose(Func* func, nb::args args) {
-    // Create a deep copy of the function
-    FuncRef cf = func->copy_deep();
-    
-    // Check argument count
-    if(args.size() != func->n_args){
-        func->throw_bad_n_args(args.size());
-    }
-    
-    // Convert each Python argument to Item and set it
-    for(size_t i = 0; i < args.size(); ++i){
-        Item arg_item = Item_from_py(args[i]);
-        cf->set_arg(i, arg_item);
-    }
-    
-    // Reinitialize the composed function
-    cf->reinitialize();
-    
-    // Return the composed function
-    return cf;
-}
 
 nb::object py_Func__call__(Func* func, nb::args args, nb::kwargs kwargs) {
     // Check if any argument is Var or Func type

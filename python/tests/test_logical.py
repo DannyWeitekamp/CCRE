@@ -61,14 +61,6 @@ def test_arith():
     B = Var(float, "B")
     C = Var(float, "C")
 
-    # Addition
-    assert(str(A + B) == "A + B")
-    assert(str((A + B) + 1) == "(A + B) + 1")
-    assert(str(1 + (A + B)) == "1 + (A + B)")
-    assert((A + B)(2,3) == 5)
-    assert(((A + B) + 1)(2,3) == 6)
-    assert((1 + (A + B))(2,3) == 6)
-
     # Equals
     assert(str(A == B) == "A == B")
     assert(str(A == 1) == "A == 1")
@@ -77,14 +69,13 @@ def test_arith():
     assert((A == 1)(1) == True)
     assert((A == 1)(2) == False)
 
-
     # Not Equals
-    # assert(str(A != B) == "A != B")
-    # assert(str(A != 1) == "A != 1")
-    # assert((A != B)(2,3) == True)
-    # assert((A != B)(2,2) == False)
-    # assert((A != 1)(1) == False)
-    # assert((A != 1)(2) == True)
+    assert(str(A != B) == "A != B")
+    assert(str(A != 1) == "A != 1")
+    assert((A != B)(2,3) == True)
+    assert((A != B)(2,2) == False)
+    assert((A != 1)(1) == False)
+    assert((A != 1)(2) == True)
     
     # Less than
     assert(str(A < B) == "A < B")
@@ -119,6 +110,14 @@ def test_arith():
     assert((A >= B)(2,3) == False)
     assert((A >= 1)(2) == True)
     assert((A >= 1)(0) == False)
+
+    # Addition
+    assert(str(A + B) == "A + B")
+    assert(str(A + 1) == "A + 1")
+    assert(str(1 + A) == "1 + A")
+    assert((A + B)(2,3) == 5)
+    assert(((A + B) + 1)(2,3) == 6)
+    assert((1 + (A + B))(2,3) == 6)
     
     # Subtraction
     assert(str(A - B) == "A - B")
@@ -137,12 +136,12 @@ def test_arith():
     assert((2 * (A * B))(2,3) == 12)
     
     # # True division
-    # assert(str(A / B) == "A / B")
-    # assert(str(A / 2) == "A / 2")
-    # assert(str(2 / A) == "2 / A")
-    # assert((A / B)(2,3) == 2/3)
-    # assert(((A / B) / 2)(2,3) == 1/3)
-    # assert((2 / (A / B))(2,3) == 3)
+    assert(str(A / B) == "A / B")
+    assert(str(A / 2) == "A / 2")
+    assert(str(2 / A) == "2 / A")
+    assert((A / B)(2,3) == 2/3)
+    assert(((A / B) / 2)(2,3) == 1/3)
+    assert((2 / (A / B))(2,3) == 3)
     
     # Floor division
     assert(str(A // B) == "A // B")
