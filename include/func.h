@@ -635,7 +635,7 @@ struct Func : CRE_Obj{
   // void set_var_arg(size_t i, Var* val);
   // void set_func_arg(size_t i, Func* val);
 
-  inline void set(uint32_t ind, const Item& val){
+  	inline void set_init(uint32_t ind, const Item& val){
 		Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
 		);
@@ -643,6 +643,15 @@ struct Func : CRE_Obj{
 		// Emplacement new with Undef member to make valgrind happy
     
 		// data_ptr[ind].release();
+		new (data_ptr + ind) Item(val);
+		// data_ptr[ind] = val;
+	}
+
+	inline void set(uint32_t ind, const Item& val){
+		Item* data_ptr = std::bit_cast<Item*>(
+		    std::bit_cast<uint64_t>(this) + sizeof(Func)
+		);
+
 		data_ptr[ind] = val;
 	}
 

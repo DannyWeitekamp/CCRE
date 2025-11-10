@@ -208,7 +208,7 @@ template <typename T> struct type_caster<ref<T>> {
             }
         }
         handle py_out = Caster::from_cpp(value.get(), policy, cleanup);
-        nb_inst* out_inst = (nb_inst*) py_out.ptr();
+        // nb_inst* out_inst = (nb_inst*) py_out.ptr();
         // out_inst->unused = 17;
         // std::cout << "CPP DELETE: "  << out_inst->cpp_delete << std::endl; 
         // std::cout << "INTRUSIVE: "  << out_inst->intrusive << std::endl; 

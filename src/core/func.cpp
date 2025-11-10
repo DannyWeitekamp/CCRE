@@ -26,7 +26,7 @@ void Func_dtor(const CRE_Obj* x){
 
 	Func* func = (Func*) x;
 
-	cout << "FUNC_DTOR: " << func << endl;
+	// cout << "FUNC_DTOR: " << func << endl;
 
 	// Release all of function's members
 	for(size_t i=0; i < func->root_arg_infos.size(); ++i){
@@ -232,7 +232,7 @@ FuncRef Func::copy_shallow(){
 	}
 
 	for(size_t i=0; i < root_arg_infos.size(); ++i){
-		nf->set(i, *this->get(i));
+		nf->set_init(i, *this->get(i));
 		// Item* mbr_ptr = nf->get(i);
 		// nf->root_arg_infos[i].ptr = mbr_ptr;
 	}
@@ -1411,6 +1411,7 @@ std::ostream& operator<<(std::ostream& out, const StrBlock& sb){
 // ---------------------------------------------------------------
 // reinitialize()
 
+
 void Func::reinitialize(){
 	// cout << "REINIT FUNC: " << uint64_t(this) << endl;
 
@@ -1428,6 +1429,8 @@ void Func::reinitialize(){
 	std::vector<base_heads_pair_t> base_vars = {};
 	size_t n_vars = 0;
 
+
+
 	
 
 	// ArgInfo& last_arg = root_arg_infos[root_arg_infos.size()-1];
@@ -1435,6 +1438,22 @@ void Func::reinitialize(){
 	uint16_t args_stack_length = 0; //last_arg.offset + last_arg.type.byte_width;
 	std::vector<uint16_t> arg_stack_offsets = {};
 	
+	auto _try_insert_var = [&](HeadInfo& head_info) {
+		Var* var = head_info.var_ptr;
+		SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
+		auto [it, inserted] = base_var_map.try_emplace(base_ptr, n_vars);
+		if(inserted){
+			std::vector<HeadInfo> var_head_info = {};
+			base_vars.push_back({base_ptr, var_head_info});
+			++n_vars;
+
+			arg_stack_offsets.push_back(args_stack_length);
+			args_stack_length += head_info.base_type->byte_width;
+		}else{
+
+		}
+		std::get<1>(base_vars[it->second]).push_back(head_info);
+	};
 
 	// Calculate arg_stack_offsets  
 	for(auto hrng : head_ranges){
@@ -1461,31 +1480,32 @@ void Func::reinitialize(){
 				}
 
 				case ARGINFO_VAR: {				
-					
-					Var* var = head_info.var_ptr;
-					SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
-
-					cout << "VP:" << uint64_t(var->base) << endl;
-
-					auto [it, inserted] = base_var_map.try_emplace(
-						base_ptr, n_vars);
-					if(inserted){
-						std::vector<HeadInfo> var_head_info = {};
-						base_vars.push_back({base_ptr, var_head_info});
-						++n_vars;
-
-						// cout << "PB stack_offset:" << stack_offset <<  endl;
-						arg_stack_offsets.push_back(args_stack_length);
-						args_stack_length += head_info.base_type->byte_width;
-					}else{
-
-					}
-					cout << "INSERTED:" << inserted << endl;
-					// if(var->size() > 0){
-					// 	bytecode_len += sizeof_deref_var(var);	
-					// }
-					std::get<1>(base_vars[it->second]).push_back(head_info);
+					_try_insert_var(head_info);
 					break;
+					// Var* var = head_info.var_ptr;
+					// SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
+
+					// cout << "VP:" << uint64_t(var->base) << endl;
+
+					// auto [it, inserted] = base_var_map.try_emplace(
+					// 	base_ptr, n_vars);
+					// if(inserted){
+					// 	std::vector<HeadInfo> var_head_info = {};
+					// 	base_vars.push_back({base_ptr, var_head_info});
+					// 	++n_vars;
+
+					// 	// cout << "PB stack_offset:" << stack_offset <<  endl;
+					// 	arg_stack_offsets.push_back(args_stack_length);
+					// 	args_stack_length += head_info.base_type->byte_width;
+					// }else{
+
+					// }
+					// cout << "INSERTED:" << inserted << endl;
+					// // if(var->size() > 0){
+					// // 	bytecode_len += sizeof_deref_var(var);	
+					// // }
+					// std::get<1>(base_vars[it->second]).push_back(head_info);
+					// break;
 				}
 
 			// For ARGINFO_FUNC_UNEXPANDED kind insert the base_ptrs of all of the
@@ -1497,25 +1517,26 @@ void Func::reinitialize(){
 					for(auto& hrng_k : cf->head_ranges){
 						// cout << "HRNG" << endl;
 						for(uint16_t n=hrng_k.start; n < hrng_k.end; ++n){
-							HeadInfo& head_info_n = cf->head_infos[n];
+							// HeadInfo& head_info_n = cf->head_infos[n];
+							_try_insert_var(cf->head_infos[n]);
 
-							Var* var = head_info_n.var_ptr;
-							// cout << var << endl;
-							// cout << "n=" << n << " UVP:" << uint64_t(head_info_n.var_ptr) << endl;
-							SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
+							// Var* var = head_info_n.var_ptr;
+							// // cout << var << endl;
+							// // cout << "n=" << n << " UVP:" << uint64_t(head_info_n.var_ptr) << endl;
+							// SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
 
-							// std::vector<HeadInfo> var_head_info = {};
-							auto [it, inserted] = base_var_map.try_emplace(
-								base_ptr, n_vars);
-							if(inserted){
-								std::vector<HeadInfo> var_head_info = {};
-								base_vars.push_back({base_ptr, var_head_info});
-								++n_vars;
+							// // std::vector<HeadInfo> var_head_info = {};
+							// auto [it, inserted] = base_var_map.try_emplace(
+							// 	base_ptr, n_vars);
+							// if(inserted){
+							// 	std::vector<HeadInfo> var_head_info = {};
+							// 	base_vars.push_back({base_ptr, var_head_info});
+							// 	++n_vars;
 
-								arg_stack_offsets.push_back(args_stack_length);
-								args_stack_length += head_info_n.base_type->byte_width;
-							}
-							std::get<1>(base_vars[it->second]).push_back(head_info_n);							
+							// 	arg_stack_offsets.push_back(args_stack_length);
+							// 	args_stack_length += head_info_n.base_type->byte_width;
+							// }
+							// std::get<1>(base_vars[it->second]).push_back(head_info_n);							
 						}
 						max_arg_depth = std::max(cf->depth, max_arg_depth);
 					}

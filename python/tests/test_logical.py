@@ -225,6 +225,7 @@ def test_semantic_var():
 
     print("-----------")
     f = A + _A
+    g = (A + _A) + 1
     print("f REFCNT", f.get_refcount())
     print(f(1))
     print("f REFCNT", f.get_refcount())
