@@ -1,9 +1,10 @@
 #include "../include/py_cre_core.h"
+#include "../include/shared_logic_utils.h"
 #include "../../include/var.h"
 #include "../../include/builtin_funcs.h"
 #include "../../include/func.h"
 #include "../../include/literal.h"
-
+#include "../../include/ref.h"
 
 void do_nothing(){
 
@@ -138,7 +139,7 @@ void py_Var_locate_alias(Var* var){
     }
 }
 
-ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
+ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_ABSOLUTE) {
     CRE_Type* type = cre_undef;
     std::string_view alias = "";
     bool error = false;
@@ -226,112 +227,21 @@ ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
 
     if(error) throw std::invalid_argument("Var constructor: optional positional arguments must be CRE_Type for 'type' and string for 'alias'");
     
-    return new_var(alias, type);
+    return new_var(alias, type, kind);
 }
 
-// Arithmetic operator helpers that compose functions with Var/Func arguments
-ref<Func> py_Var_equals(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Equals->compose(self, other_item);
+ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
+    return _py_Var_ctor(args, kwargs);
 }
 
-ref<Literal> py_Var_not_equals(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return new_literal(Equals->compose(self, other_item), true);
-}
-
-ref<Func> py_Var_less_than(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return LessThan->compose(self, other_item);
-}
-
-ref<Func> py_Var_greater_than(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return GreaterThan->compose(self, other_item);
-}
-
-ref<Func> py_Var_less_than_or_equal(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return LessThanOrEqual->compose(self, other_item);
-}
-
-ref<Func> py_Var_greater_than_or_equal(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return GreaterThanOrEqual->compose(self, other_item);
-}
-
-ref<Func> py_Var_add(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Add->compose(self, other_item);
-}
-
-ref<Func> py_Var_radd(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Add->compose(other_item, self);
-}
-
-ref<Func> py_Var_sub(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Subtract->compose(self, other_item);
-}
-
-ref<Func> py_Var_rsub(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Subtract->compose(other_item, self);
-}
-
-ref<Func> py_Var_mul(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Multiply->compose(self, other_item);
-}
-
-ref<Func> py_Var_rmul(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Multiply->compose(other_item, self);
-}
-
-ref<Func> py_Var_truediv(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Divide->compose(self, other_item);
-}
-
-ref<Func> py_Var_rtruediv(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Divide->compose(other_item, self);
-}
-
-ref<Func> py_Var_floordiv(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return FloorDivide->compose(self, other_item);
-}
-
-ref<Func> py_Var_rfloordiv(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return FloorDivide->compose(other_item, self);
-}
-
-ref<Func> py_Var_mod(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Modulo->compose(self, other_item);
-}
-
-ref<Func> py_Var_rmod(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Modulo->compose(other_item, self);
-}
-
-ref<Func> py_Var_pow(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Pow->compose(self, other_item);
-}
-
-ref<Func> py_Var_rpow(Var* self, nb::handle other) {
-    Item other_item = Item_from_py(other);
-    return Pow->compose(other_item, self);
-}
-
-ref<Func> py_Var_neg(Var* self) {
-    return Negate->compose(self);
+nb::object py_Not(nb::args args, nb::kwargs kwargs) {
+    if(args.size() == 1) {
+        Item arg_item = Item_from_py(args[0]);
+        if(arg_item.is_evaluatable()) {
+            return nb::cast(cre::NotFunc->compose(arg_item));
+        }
+    }
+    return nb::cast(_py_Var_ctor(args, kwargs, VAR_KIND_NOT));
 }
 
 
@@ -359,7 +269,7 @@ void init_var(nb::module_ & m){
     // Register the Python implementation of locate_var_alias
     ext_locate_var_alias = &py_Var_locate_alias_fast;
 
-	nb::class_<Var>(m, "Var", nb::type_slots(cre_obj_slots))
+	nb::class_<Var, CRE_Obj>(m, "Var", nb::type_slots(cre_obj_slots))
     
     // .def(nb::new_(
     //     [](CRE_Type* _type, std::string_view _alias){
@@ -368,34 +278,38 @@ void init_var(nb::module_ & m){
     //     // nb::rv_policy::reference)
     .def(nb::new_(&py_Var_ctor), nb::rv_policy::reference)
     .def("__str__", &Var::to_string)
-    .def("__repr__", &Var::to_string)
+    .def("__repr__", [](Var* self){return self->repr(true);}, nb::rv_policy::reference)
     .def("__len__", &Var::size)
     // Arithmetic operators
-    .def("__eq__", &py_Var_equals, nb::rv_policy::reference)
-    .def("__ne__", &py_Var_not_equals, nb::rv_policy::reference)
-    .def("__lt__", &py_Var_less_than, nb::rv_policy::reference)
-    .def("__gt__", &py_Var_greater_than, nb::rv_policy::reference)
-    .def("__le__", &py_Var_less_than_or_equal, nb::rv_policy::reference)
-    .def("__ge__", &py_Var_greater_than_or_equal, nb::rv_policy::reference)
-    .def("__add__", &py_Var_add, nb::rv_policy::reference)
-    .def("__radd__", &py_Var_radd, nb::rv_policy::reference)
-    .def("__sub__", &py_Var_sub, nb::rv_policy::reference)
-    .def("__rsub__", &py_Var_rsub, nb::rv_policy::reference)
-    .def("__mul__", &py_Var_mul, nb::rv_policy::reference)
-    .def("__rmul__", &py_Var_rmul, nb::rv_policy::reference)
-    .def("__truediv__", &py_Var_truediv, nb::rv_policy::reference)
-    .def("__rtruediv__", &py_Var_rtruediv, nb::rv_policy::reference)
-    .def("__floordiv__", &py_Var_floordiv, nb::rv_policy::reference)
-    .def("__rfloordiv__", &py_Var_rfloordiv, nb::rv_policy::reference)
-    .def("__mod__", &py_Var_mod, nb::rv_policy::reference)
-    .def("__rmod__", &py_Var_rmod, nb::rv_policy::reference)
-    .def("__pow__", &py_Var_pow, nb::rv_policy::reference)
-    .def("__rpow__", &py_Var_rpow, nb::rv_policy::reference)
-    .def("__neg__", &py_Var_neg, nb::rv_policy::reference)
+    .def("__eq__", [](Var* self, nb::handle other){return py_cre_equals(self,other);}, nb::rv_policy::reference)
+    .def("__ne__", [](Var* self, nb::handle other){return py_cre_not_equals(self,other);}, nb::rv_policy::reference)
+    .def("__lt__", [](Var* self, nb::handle other){return py_cre_less_than(self,other);}, nb::rv_policy::reference)
+    .def("__gt__", [](Var* self, nb::handle other){return py_cre_greater_than(self,other);}, nb::rv_policy::reference)
+    .def("__le__", [](Var* self, nb::handle other){return py_cre_less_than_or_equal(self,other);}, nb::rv_policy::reference)
+    .def("__ge__", [](Var* self, nb::handle other){return py_cre_greater_than_or_equal(self,other);}, nb::rv_policy::reference)
+    .def("__add__", [](Var* self, nb::handle other){return py_cre_add(self,other);}, nb::rv_policy::reference)
+    .def("__radd__", [](Var* self, nb::handle other){return py_cre_radd(self,other);}, nb::rv_policy::reference)
+    .def("__sub__", [](Var* self, nb::handle other){return py_cre_sub(self,other);}, nb::rv_policy::reference)
+    .def("__rsub__", [](Var* self, nb::handle other){return py_cre_rsub(self,other);}, nb::rv_policy::reference)
+    .def("__mul__", [](Var* self, nb::handle other){return py_cre_mul(self,other);}, nb::rv_policy::reference)
+    .def("__rmul__", [](Var* self, nb::handle other){return py_cre_rmul(self,other);}, nb::rv_policy::reference)
+    .def("__truediv__", [](Var* self, nb::handle other){return py_cre_truediv(self,other);}, nb::rv_policy::reference)
+    .def("__rtruediv__", [](Var* self, nb::handle other){return py_cre_rtruediv(self,other);}, nb::rv_policy::reference)
+    .def("__floordiv__", [](Var* self, nb::handle other){return py_cre_floordiv(self,other);}, nb::rv_policy::reference)
+    .def("__rfloordiv__", [](Var* self, nb::handle other){return py_cre_rfloordiv(self,other);}, nb::rv_policy::reference)
+    .def("__mod__", [](Var* self, nb::handle other){return py_cre_mod(self,other);}, nb::rv_policy::reference)
+    .def("__rmod__", [](Var* self, nb::handle other){return py_cre_rmod(self,other);}, nb::rv_policy::reference)
+    .def("__pow__", [](Var* self, nb::handle other){return py_cre_pow(self,other);}, nb::rv_policy::reference)
+    .def("__rpow__", [](Var* self, nb::handle other){return py_cre_rpow(self,other);}, nb::rv_policy::reference)
+    .def("__neg__", [](Var* self){return py_cre_neg(self);}, nb::rv_policy::reference)
     ;
 
     // m.def("peak_locals", &peak_locals);
     m.def("resolve_alias", &py_Var_locate_alias);
     m.def("resolve_alias_fast", &py_Var_locate_alias_fast);
     m.def("do_nothing", &do_nothing);
+    m.def("Not", &py_Not, nb::rv_policy::reference);
+    m.def("Exists", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_EXIST);}, nb::rv_policy::reference);
+    m.def("Bound", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_BOUND);}, nb::rv_policy::reference);
+    m.def("Optional", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_OPTIONAL);}, nb::rv_policy::reference);
 }

@@ -2,6 +2,7 @@
 #include "../../include/item.h"
 #include "../../include/types.h"
 #include "../../include/func.h"
+#include "../../include/logic.h"
 #include "../../include/builtin_funcs.h"  
 #include "../../include/literal.h"  
 #include "../include/nanobind/nanobind.h"
@@ -129,4 +130,6 @@ ref<Func> py_Func_compose(Func* func, nb::args args) {
     // Return the composed function
     return cf;
 }
+
+
 

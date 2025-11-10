@@ -170,7 +170,7 @@ FuncRef Xor = define_func<_Xor>("Xor", "Xor({},{})", "{} ^ {}");
 bool _Not(bool a){
 	return !a;
 }
-FuncRef Not = define_func<_Not>("Not", "Not({})", "~{}");
+FuncRef NotFunc = define_func<_Not>("Not", "Not({})", "~{}");
 
 // Add +
 int64_t _AddInts(int64_t a, int64_t b){

@@ -131,10 +131,10 @@ struct HeadInfo {
 	Var* var_ptr = nullptr;
 
 	// Data pointer for the a{i} member for the base.
-	Item* arg_data_ptr;
+	// Item* arg_data_ptr;
 
 	// Data pointer for the h{i} member for the resolved head.
-	Item* head_data_ptr;
+	// Item* head_data_ptr;
 
 
 	void* conv_fn_ptr=nullptr;
@@ -666,7 +666,7 @@ struct Func : CRE_Obj{
 	void write_bytecode(
 		uint16_t bytecode_len,
 		uint16_t args_stack_length,
-		const std::map<void*, size_t>& base_var_map,
+		const std::map<SemanticVarPtr, size_t>& base_var_map,
 		const std::vector<uint16_t>& arg_stack_offsets
 	);
 
@@ -741,6 +741,14 @@ struct Func : CRE_Obj{
 
 	template <class ... Ts>
 	inline auto operator()(Ts&& ... args);
+
+	inline CRE_Type* eval_type() const {
+		return return_type;
+	}
+
+	inline uint16_t eval_t_id() const {
+		return return_type->get_t_id();
+	}
 	
 
 	// template <class... Ts>

@@ -495,6 +495,13 @@ public:
         return t_id_is_ptr(t_id);
     }
 
+    inline bool is_evaluatable() const{
+        return t_id == T_ID_VAR || t_id == T_ID_FUNC || t_id == T_ID_LITERAL;
+    }
+
+    CRE_Type* eval_type() const;
+	uint16_t eval_t_id() const ;
+
 
 
     inline CRE_Obj* get_ptr() const{
@@ -714,16 +721,16 @@ public:
     //     copy.val_kind = WEAK_REF
     //     return 
     // }
-    inline Item to_weak(){
-        return Item(this, WEAK_REF);
+    inline Item to_weak() const{
+        return Item(*this, WEAK_REF);
     }
 
-    inline Item to_strong(){
-        return Item(this, STRONG_REF);        
+    inline Item to_strong() const{
+        return Item(*this, STRONG_REF);        
     }
 
-    inline Item to_raw_ptr(){
-        return Item(this, RAW_PTR);
+    inline Item to_raw_ptr() const{
+        return Item(*this, RAW_PTR);
     }
 
     size_t get_refcount() const {
@@ -817,7 +824,12 @@ public:
         
 };
 
+// // Same as Item, but gaurenteed to be interned
+// struct InternItem : public Item {
+//     using Item::Item;  // Inherit all constructors from Item
 
+//     bool operator==(const InternItem& other) const;
+// };
 
 
 

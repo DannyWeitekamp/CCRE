@@ -269,7 +269,7 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
             Var* v = vars[v_ind];
 
             if(!covered->contains(v)){
-                ss << fmt::format("{}:=Var({})", v->get_alias_str(), v->base_type->to_string());
+                ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
                 if(start != end) ss << ", ";
                 covered->insert(v);
             }

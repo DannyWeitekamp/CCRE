@@ -16,6 +16,8 @@
 #include "../include/types.h"
 #include "../include/var.h"
 #include "../include/alloc_buffer.h"
+#include "../include/builtin_funcs.h"
+#include "../include/literal.h"
 
 
 namespace cre {
@@ -24,7 +26,7 @@ void Func_dtor(const CRE_Obj* x){
 
 	Func* func = (Func*) x;
 
-	// cout << "FUNC_DTOR: " << func << endl;
+	cout << "FUNC_DTOR: " << func << endl;
 
 	// Release all of function's members
 	for(size_t i=0; i < func->root_arg_infos.size(); ++i){
@@ -125,8 +127,8 @@ void _init_arg_specs(Func* func,
 		hi.head_type = arg_type;
 
 		// TODO: Make Offsets
-		hi.arg_data_ptr = nullptr;
-		hi.head_data_ptr = nullptr;
+		// hi.arg_data_ptr = nullptr;
+		// hi.head_data_ptr = nullptr;
 		// hi.byte_width = 0;
 		hi.ref_kind = 0; // Necessary ? 
 
@@ -616,14 +618,16 @@ void Func::set_arg(size_t i, const Item& val){
 		throw std::invalid_argument("Setting Func arg out of range.");
 	}
 
+	
 
 	this->is_initialized = false;
 	// auto& head_infos = this->head_infos;
 	size_t start = this->head_ranges[i].start;
 	size_t end = this->head_ranges[i].end;
-
+	
 	uint8_t kind = val.get_t_id() == T_ID_VAR ? ARGINFO_VAR :
 				   val.get_t_id() == T_ID_FUNC ? ARGINFO_FUNC :
+				   val.get_t_id() == T_ID_LITERAL ? ARGINFO_FUNC :
 				   ARGINFO_CONST;
 
 	// cout << uint64_t(this) << "  set_arg() i=" << i << ", val=" << val << ", t_id=" << uint64_t(val.get_t_id()) << ", kind=" << uint64_t(kind) << endl;
@@ -634,6 +638,7 @@ void Func::set_arg(size_t i, const Item& val){
 	// 	" with t_id=" + std::to_string(val.get_t_id()) + ". Expected int, float, string, Var or Func.");	
 	// }
 
+	// cout << "SET_ARG: " << this->to_string() << ", i=" << i << ", val=" << val.to_string() << ", t_id=" << val.get_t_id() << ", kind=" << uint64_t(kind) << endl;
 
 	
 	for(size_t j = start; j < end; ++j){
@@ -660,7 +665,7 @@ void Func::set_arg(size_t i, const Item& val){
         		// if(head_info.base_t_id != var->head_t_id && !this->is_ptr_func){
             	// 	throw std::invalid_argument("Var's head_type doesn't match composing CREFunc's argument type.");
         		// }
-
+				// cout << "VAR: " << var->to_string() << ", head_type=" << head_info.base_type->to_string() << ", var->head_type=" << var->head_type->to_string() << endl;
         		if(not cast_allowed(var->head_type, head_info.base_type)){
         			throw_bad_arg(i, var, head_info.base_type, var->head_type, false);
         		}
@@ -680,7 +685,7 @@ void Func::set_arg(size_t i, const Item& val){
 		        }else{
 		            head_var = var;
 		            has_deref = var->size() > 0;
-		            cf->set(arg_ind, val);
+		            cf->set(arg_ind, val.to_strong());
 		        }
 
 		        head_info.has_deref = has_deref;
@@ -689,7 +694,20 @@ void Func::set_arg(size_t i, const Item& val){
         		break;
         	case ARGINFO_FUNC:
         	{
-        		Func* func = val._as<Func*>();
+				Func* func;
+				if(val.get_t_id() == T_ID_LITERAL){
+					Literal* lit = val._as<Literal*>();
+					if(!lit->is_func()){
+						throw std::invalid_argument(fmt::format("Cannot compose non-Func literal: {}", lit->to_string()));
+					}
+					Func* func = (Func*) lit->obj.get();
+					if(lit->negated){
+						func = NotFunc->compose(func);
+					}
+				}else{
+					func = val._as<Func*>();
+				}
+        		
         		if(not cast_allowed(func->return_type, head_info.base_type)){
         			throw_bad_arg(i, func, head_info.base_type, func->return_type, false);
         		}
@@ -1000,7 +1018,7 @@ uint16_t Func::calc_bytecode_length(){
 std::tuple<uint8_t*, uint16_t> _write_bytecode(
 	Func* cf,
 	uint8_t* bc_head, uint16_t stack_offset,
-	const std::map<void*, size_t>& base_var_map,
+	const std::map<SemanticVarPtr, size_t>& base_var_map,
 	const std::vector<uint16_t>& arg_stack_offsets//,
 	// uint16_t head_ind
 	){
@@ -1043,9 +1061,9 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 		case ARGINFO_VAR:
 		{
 			Var* var =  (*cf->get(i))._as<Var*>();
-			Var* base_var =  var->base;
+			SemanticVarPtr base_var =  SemanticVarPtr(var->base);
 
-			auto it = base_var_map.find((void *) base_var);
+			auto it = base_var_map.find(base_var);
 			if(it == base_var_map.end()){
 				throw std::runtime_error("Var not found.");
 			}
@@ -1081,7 +1099,7 @@ std::tuple<uint8_t*, uint16_t> _write_bytecode(
 void Func::write_bytecode(
 		uint16_t bytecode_len,
 		uint16_t args_stack_length,
-		const std::map<void*, size_t>& base_var_map,
+		const std::map<SemanticVarPtr, size_t>& base_var_map,
 		const std::vector<uint16_t>& arg_stack_offsets
 		){
 
@@ -1383,6 +1401,9 @@ void Func::write_bytecode(
 // }
 
 
+
+
+
 std::ostream& operator<<(std::ostream& out, const StrBlock& sb){
 	return out << sb.view;
 }
@@ -1403,7 +1424,7 @@ void Func::reinitialize(){
 	// Build new base_var_map. This dictates a new signature when there are  
 	//  repeated Vars in a Func's expression. For instance, A=Var("A", int),
 	//  f = add(A, A), maps two args to one for an effective signature of f(A). 
-	std::map<void*, size_t> base_var_map = {};
+	std::map<SemanticVarPtr, size_t> base_var_map = {};
 	std::vector<base_heads_pair_t> base_vars = {};
 	size_t n_vars = 0;
 
@@ -1424,7 +1445,7 @@ void Func::reinitialize(){
 		for(uint16_t j=hrng.start; j < hrng.end; ++j){
 
 
-			HeadInfo head_info = head_infos[j];
+			HeadInfo& head_info = head_infos[j];
 			// ArgInfo root_info = root_arg_infos[head_info.arg_ind];
 
 			// cout << "KIND:" << uint64_t(head_info.kind) << endl;
@@ -1442,9 +1463,9 @@ void Func::reinitialize(){
 				case ARGINFO_VAR: {				
 					
 					Var* var = head_info.var_ptr;
-					void* base_ptr = (void*) var->base;
+					SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
 
-					// cout << "VP:" << uint64_t(head_info.var_ptr) << endl;
+					cout << "VP:" << uint64_t(var->base) << endl;
 
 					auto [it, inserted] = base_var_map.try_emplace(
 						base_ptr, n_vars);
@@ -1456,7 +1477,10 @@ void Func::reinitialize(){
 						// cout << "PB stack_offset:" << stack_offset <<  endl;
 						arg_stack_offsets.push_back(args_stack_length);
 						args_stack_length += head_info.base_type->byte_width;
+					}else{
+
 					}
+					cout << "INSERTED:" << inserted << endl;
 					// if(var->size() > 0){
 					// 	bytecode_len += sizeof_deref_var(var);	
 					// }
@@ -1478,7 +1502,7 @@ void Func::reinitialize(){
 							Var* var = head_info_n.var_ptr;
 							// cout << var << endl;
 							// cout << "n=" << n << " UVP:" << uint64_t(head_info_n.var_ptr) << endl;
-							void* base_ptr = (void*) var->base;
+							SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
 
 							// std::vector<HeadInfo> var_head_info = {};
 							auto [it, inserted] = base_var_map.try_emplace(

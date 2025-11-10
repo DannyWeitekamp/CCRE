@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__)))
 from t_utils import *
 import pytest
 
-from cre import Var, AND, OR
+from cre import Var, AND, OR, Not, Exists, Bound, Optional
 
 import time
 class PrintElapse():
@@ -57,124 +57,135 @@ def test_basic_logic():
     print(OR(logic2a, C == 5, B == 1))
 
 def test_arith():
-    A = Var(float, "A")
-    B = Var(float, "B")
-    C = Var(float, "C")
+    for typ in [int, float]:
+        A = Var(typ, "A")
+        B = Var(typ, "B")
+        C = Var(typ, "C")
 
-    # Equals
-    assert(str(A == B) == "A == B")
-    assert(str(A == 1) == "A == 1")
-    assert((A == B)(2,3) == False)
-    assert((A == B)(2,2) == True)
-    assert((A == 1)(1) == True)
-    assert((A == 1)(2) == False)
+        _0,_1,_2,_3 = typ(0),typ(1),typ(2),typ(3)
 
-    # Not Equals
-    assert(str(A != B) == "A != B")
-    assert(str(A != 1) == "A != 1")
-    assert((A != B)(2,3) == True)
-    assert((A != B)(2,2) == False)
-    assert((A != 1)(1) == False)
-    assert((A != 1)(2) == True)
-    
-    # Less than
-    assert(str(A < B) == "A < B")
-    assert(str(A < 1) == "A < 1")
-    assert((A < B)(2,3) == True)
-    assert((A < B)(3,2) == False)
-    assert((A < 1)(0) == True)
-    assert((A < 1)(2) == False)
-    
-    # Greater than
-    assert(str(A > B) == "A > B")
-    assert(str(A > 1) == "A > 1")
-    assert((A > B)(3,2) == True)
-    assert((A > B)(2,3) == False)
-    assert((A > 1)(2) == True)
-    assert((A > 1)(0) == False)
-    
-    # Less than or equal
-    assert(str(A <= B) == "A <= B")
-    assert(str(A <= 1) == "A <= 1")
-    assert((A <= B)(2,3) == True)
-    assert((A <= B)(2,2) == True)
-    assert((A <= B)(3,2) == False)
-    assert((A <= 1)(1) == True)
-    assert((A <= 1)(2) == False)
-    
-    # Greater than or equal
-    assert(str(A >= B) == "A >= B")
-    assert(str(A >= 1) == "A >= 1")
-    assert((A >= B)(3,2) == True)
-    assert((A >= B)(2,2) == True)
-    assert((A >= B)(2,3) == False)
-    assert((A >= 1)(2) == True)
-    assert((A >= 1)(0) == False)
+        # Equals
+        assert(str(A == B) == "A == B")
+        assert(str(A == _1) == f"A == {_1}")
+        assert((A == B)(_2,_3) == False)
+        assert((A == B)(_2,_2) == True)
+        assert((A == _1)(_1) == True)
+        assert((A == _1)(_2) == False)
 
-    # Addition
-    assert(str(A + B) == "A + B")
-    assert(str(A + 1) == "A + 1")
-    assert(str(1 + A) == "1 + A")
-    assert((A + B)(2,3) == 5)
-    assert(((A + B) + 1)(2,3) == 6)
-    assert((1 + (A + B))(2,3) == 6)
-    
-    # Subtraction
-    assert(str(A - B) == "A - B")
-    assert(str(A - 1) == "A - 1")
-    assert(str(1 - A) == "1 - A")
-    assert((A - B)(2,3) == -1)
-    assert(((A - B) - 1)(2,3) == -2)
-    assert((1 - (A - B))(2,3) == 2)
-    
-    # Multiplication
-    assert(str(A * B) == "A * B")
-    assert(str(A * 2) == "A * 2")
-    assert(str(2 * A) == "2 * A")
-    assert((A * B)(2,3) == 6)
-    assert(((A * B) * 2)(2,3) == 12)
-    assert((2 * (A * B))(2,3) == 12)
-    
-    # # True division
-    assert(str(A / B) == "A / B")
-    assert(str(A / 2) == "A / 2")
-    assert(str(2 / A) == "2 / A")
-    assert((A / B)(2,3) == 2/3)
-    assert(((A / B) / 2)(2,3) == 1/3)
-    assert((2 / (A / B))(2,3) == 3)
-    
-    # Floor division
-    assert(str(A // B) == "A // B")
-    assert(str(A // 2) == "A // 2")
-    assert(str(2 // A) == "2 // A")
-    assert((A // B)(2,3) == 0)
-    assert(((A // B) // 2)(2,3) == 0)
-    assert((2 // (A // B + 1))(2,3) == 2)
-    
-    # Modulo
-    assert(str(A % B) == "A % B")
-    assert(str(A % 2) == "A % 2")
-    assert(str(2 % A) == "2 % A")
-    assert((A % B)(2,3) == 2)
-    assert(((A % B) % 2)(2,3) == 0)
-    assert((2 % (A % B))(2,3) == 0)
-    
-    # Power
-    assert(str(A ** B) == "A ** B")
-    assert(str(A ** 2) == "A ** 2")
-    assert(str(2 ** A) == "2 ** A")
-    assert((A ** B)(2,3) == 8)
-    assert(((A ** B) ** 2)(2,3) == 64)
-    assert((2 ** (A ** B))(2,3) == 256)
-    
-    # Negation
-    assert(str(-A) == "-A")
-    assert(str(-(A + B)) == "-(A + B)")
-    
-    
+        # Not Equals
+        assert(str(A != B) == "A != B")
+        assert(str(A != _1) == f"A != {_1}")
+        assert((A != B)(_2,_3) == True)
+        assert((A != B)(_2,_2) == False)
+        assert((A != _1)(_1) == False)
+        assert((A != _1)(_2) == True)
+        
+        # Less than
+        assert(str(A < B) == "A < B")
+        assert(str(A < _1) == f"A < {_1}")
+        assert((A < B)(_2,_3) == True)
+        assert((A < B)(_3,_2) == False)
+        assert((A < _1)(_0) == True)
+        assert((A < _1)(_2) == False)
+        
+        # Greater than
+        assert(str(A > B) == "A > B")
+        assert(str(A > _1) == f"A > {_1}")
+        assert((A > B)(_3,_2) == True)
+        assert((A > B)(_2,_3) == False)
+        assert((A > _1)(_2) == True)
+        assert((A > _1)(_0) == False)
+        
+        # Less than or equal
+        assert(str(A <= B) == "A <= B")
+        assert(str(A <= _1) == f"A <= {_1}")
+        assert((A <= B)(_2,_3) == True)
+        assert((A <= B)(_2,_2) == True)
+        assert((A <= B)(_3,_2) == False)
+        assert((A <= _1)(_1) == True)
+        assert((A <= _1)(_2) == False)
+        
+        # Greater than or equal
+        assert(str(A >= B) == "A >= B")
+        assert(str(A >= _1) == f"A >= {_1}")
+        assert((A >= B)(_3,_2) == True)
+        assert((A >= B)(_2,_2) == True)
+        assert((A >= B)(_2,_3) == False)
+        assert((A >= _1)(_2) == True)
+        assert((A >= _1)(_0) == False)
 
-    print(A < B)
-    print(~(A < B))
+        # Addition
+        assert(str(A + B) == "A + B")
+        assert(str(A + _1) == f"A + {_1}")
+        assert(str(_1 + A) == f"{_1} + A")
+        assert((A + B)(_2,_3) == 5)
+        assert(((A + B) + _1)(_2,_3) == 6)
+        assert((_1 + (A + B))(_2,_3) == 6)
+        
+        # Subtraction
+        assert(str(A - B) == "A - B")
+        assert(str(A - _1) == f"A - {_1}")
+        assert(str(_1 - A) == f"{_1} - A")
+        assert((A - B)(_2,_3) == -1)
+        assert(((A - B) - _1)(_2,_3) == -2)
+        assert((_1 - (A - B))(_2,_3) == 2)
+        
+        # Multiplication
+        assert(str(A * B) == "A * B")
+        assert(str(A * _2) == f"A * {_2}")
+        assert(str(_2 * A) == f"{_2} * A")
+        assert((A * B)(_2,_3) == 6)
+        assert(((A * B) * _2)(_2,_3) == 12)
+        assert((_2 * (A * B))(_2,_3) == 12)
+        
+        # # True division
+        assert(str(A / B) == "A / B")
+        assert(str(A / _2) == f"A / {_2}")
+        assert(str(_2 / A) == f"{_2} / A")
+        print((A / B)(_2,_3))
+        assert((A / B)(_2,_3) == pytest.approx(2/3))
+        assert(((A / B) / _2)(_2,_3) == pytest.approx(1/3))
+        assert((_2 / (A / B))(_2,_3) == 3)
+        
+        # Floor division
+        assert(str(A // B) == "A // B")
+        assert(str(A // _2) == f"A // {_2}")
+        assert(str(_2 // A) == f"{_2} // A")
+        assert((A // B)(_2,_3) == 0)
+        assert(((A // B) // _2)(_2,_3) == 0)
+        assert((_2 // (A // B + _1))(_2,_3) == 2)
+        
+        # Modulo
+        assert(str(A % B) == "A % B")
+        assert(str(A % _2) == f"A % {_2}")
+        assert(str(_2 % A) == f"{_2} % A")
+        assert((A % B)(_2,_3) == _2)
+        assert(((A % B) % _2)(_2,_3) == 0)
+        assert((_2 % (A % B))(_2,_3) == 0)
+        
+        # Power
+        assert(str(A ** B) == "A ** B")
+        assert(str(A ** _2) == f"A ** {_2}")
+        assert(str(_2 ** A) == f"{_2} ** A")
+        assert((A ** B)(_2,_3) == 8)
+        assert(((A ** B) ** _2)(_2,_3) == 64)
+        assert((_2 ** (A ** B))(_2,_3) == 256)
+        
+        # Negation
+        assert(str(-A) == "-A")
+        assert(str(-(A + B)) == "-(A + B)")
+        assert((-A)(_2) == -2)
+        assert((-(A + B))(_2,_3) == -5)
+
+        # Inversion - Note: Use ~A because "not" cannot be overloaded
+        assert(str(~(A + B)) == "~(A + B)")
+        print((~(A + B))(_2,_3))
+        assert((~(A + B))(_2,_3) == False)
+
+    S0, S1 = Var(str, "S0"), Var(str, "S1")
+    print(str(S0 + S1))
+    assert(str(S0 + S1) == "S0 + S1")
+    assert((S0 + S1)("A", "B") == "AB")
 
 
 def test_name_resolution():
@@ -196,10 +207,44 @@ def test_name_resolution():
 
     print(conds)
 
+def test_var_types():
+    A = Var(float, "A")
+    B = Not(float, "B")
+    C = Exists(float, "C")
+    D = Bound(float, "D")
+    E = Optional(float, "E")
+    print(repr(A))
+    print(repr(B))
+    print(repr(C))
+    print(repr(D))
+    print(repr(E))
+
+def test_semantic_var():
+    A = Var(float,"A")
+    _A = Var(float,"A")
+
+    print("-----------")
+    f = A + _A
+    print("f REFCNT", f.get_refcount())
+    print(f(1))
+    print("f REFCNT", f.get_refcount())
+    print("REFCNT", A.get_refcount())
+    f = None
+    print("REFCNT", A.get_refcount())
+    A = None
+    _A = None
+
+
+    # print(f(1))
+
+
+
 
 if __name__ == "__main__":
     import faulthandler; faulthandler.enable()
     
     # test_logic()
-    test_arith()
+    # test_arith()
     # test_name_resolution()
+    # test_var_types()
+    test_semantic_var()

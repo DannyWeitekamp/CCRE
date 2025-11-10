@@ -30,7 +30,7 @@ extern FuncRef GreaterThanOrEqual;
 extern FuncRef And;
 extern FuncRef Or;
 extern FuncRef Xor;
-extern FuncRef Not;
+extern FuncRef NotFunc;
 extern FuncRef AddInts;
 extern FuncRef Add;
 extern FuncRef SubtractInts;

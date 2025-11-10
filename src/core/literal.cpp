@@ -3,6 +3,7 @@
 #include "../include/func.h"
 #include "../include/alloc_buffer.h"
 #include <regex>
+#include <algorithm>
 
 struct Fact;
 struct Var;
@@ -27,7 +28,7 @@ namespace cre {
 			Func* func = (Func*) obj;			
 			for(auto hrng : func->head_ranges){
 				// for(uint16_t j=hrng.start; j < hrng.end; ++j){
-				HeadInfo head_info = func->head_infos[hrng.start];		
+				HeadInfo& head_info = func->head_infos[hrng.start];		
 				vars.push_back(head_info.var_ptr->base);		
 			}
 			break;
@@ -36,8 +37,13 @@ namespace cre {
 		{
 			kind = LIT_KIND_FACT;
 			for(auto mbr: (Fact*) obj){
-				if(mbr.get_t_id() == T_ID_VAR){
-					vars.push_back((Var*) mbr._as<Var*>());		
+				if(mbr.get_t_id()){
+					Var* v = (Var*) mbr._as<Var*>();
+					bool found = false;
+					for(auto var : vars){
+						if(bases_semantically_equal(var, v)){found = true; break;}
+					}
+					if(!found) vars.push_back(v->base);
 				}
 			}
 			break;
@@ -60,7 +66,6 @@ namespace cre {
 	    Literal* lit = new (addr) Literal(obj, negated);
 		return lit;
 	}
-
 
 
 	std::string Literal::to_string(uint8_t verbosity) {
@@ -106,6 +111,18 @@ namespace cre {
 		return out << lit.get()->to_string();
 	}
 
+
+	CRE_Type* Literal::eval_type() const {
+		if(is_func()){
+			return ((Func*) obj.get())->return_type;
+		} else {
+			throw std::runtime_error("Cannot evaluate type of non-func literal");
+		}
+		return nullptr;
+	}
+	uint16_t Literal::eval_t_id() const {
+		return eval_type()->get_t_id();
+	}
 
 
 } // NAMESPACE_END(cre)

@@ -31,6 +31,13 @@ struct Literal : public CRE_Obj{
 
 	Literal(CRE_Obj* obj, bool negated=false);
 	std::string to_string(uint8_t verbosity=DEFAULT_VERBOSITY);
+
+	inline bool is_func() const {
+		return kind == LIT_KIND_FUNC || kind == LIT_KIND_EQ;
+	}
+
+	CRE_Type* eval_type() const;
+	uint16_t eval_t_id() const;
 };
 
 

@@ -134,6 +134,22 @@ ref<Var> new_var(
 	// var->dtor = Var_dtor;
 	return var;
 }
+
+
+
+ref<Var> Not(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
+	return new_var(alias, type, VAR_KIND_NOT, deref_infos, length, buffer);
+}
+ref<Var> Exists(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
+	return new_var(alias, type, VAR_KIND_EXIST, deref_infos, length, buffer);
+}
+ref<Var> Bound(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
+	return new_var(alias, type, VAR_KIND_BOUND, deref_infos, length, buffer);
+}
+ref<Var> Optional(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
+	return new_var(alias, type, VAR_KIND_OPTIONAL, deref_infos, length, buffer);
+}
+
 // ref<Var> new_var(
 // 			const std::string_view& _alias,
 // 			CRE_Type* _type,
@@ -282,7 +298,7 @@ std::string Var::get_alias_str(){
 	return "";
 }
 
-std::string Var::to_string(){
+std::string Var::get_deref_str() {
 	std::vector<std::string> deref_strs = {};
 	deref_strs.reserve(length);
 
@@ -307,7 +323,19 @@ std::string Var::to_string(){
 		}
 		type = fact_type->get_item_type(mbr_ind);	
 	}
-	return fmt::format("{}{}", get_alias_str(), fmt::join(deref_strs, ""));		
+	return fmt::format("{}", fmt::join(deref_strs, ""));
+}
+
+std::string Var::to_string() {
+	return fmt::format("{}{}", get_alias_str(), get_deref_str());		
+}
+
+std::string Var::repr(bool use_alias) {
+	if(use_alias){
+		return fmt::format("{}({},'{}'){}", VAR_PREFIXES[kind], base_type->to_string(), get_alias_str(), get_deref_str());
+	}else{
+		return fmt::format("{}({}){}", VAR_PREFIXES[kind], base_type->to_string(), get_deref_str());
+	}
 }
 
 std::ostream& operator<<(std::ostream& out, Var* var){
@@ -361,6 +389,35 @@ Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length){
 
 Item* Var::apply_deref(CRE_Obj* obj){
 	return deref_multiple(obj, this->deref_infos, this->length);
+}
+
+
+
+bool vars_semantically_equal(Var* var1, Var* var2){
+	if(uint64_t(var1) == uint64_t(var2)) return true;
+	
+	// Don't use full item equality because aliases of vars are always interned.
+	cout << "ALIAS:" << var1->alias.val << " " << var2->alias.val << endl;
+	if(var1->alias.val == var2->alias.val && var1->alias.get_t_id() == var2->alias.get_t_id()){
+		if(var1->base_type != var2->base_type ||
+		   var1->head_type != var2->head_type ||
+		   var1->kind != var2->kind){
+			throw std::runtime_error(
+				fmt::format("Same alias, different types or kinds for Var instances in expression:"
+						    " {} != {}.", var1->repr(), var2->repr())
+			);
+		}
+		return true;
+	}
+	return false;
+}
+
+bool bases_semantically_equal(Var* var1, Var* var2){
+	return vars_semantically_equal(var1->base, var2->base);
+}
+
+bool SemanticVarPtr::operator ==(const SemanticVarPtr& other) const { 
+	return vars_semantically_equal(var_ptr, other.var_ptr);
 }
 
 bool Var::operator==(const Var& other) const {

@@ -6,6 +6,7 @@
 #include "../include/fact.h"
 #include "../include/var.h"
 #include "../include/func.h"
+#include "../include/literal.h"
 #include "../include/objs_hash_eq.h"
 #include <bit>
 #include <sstream>
@@ -134,7 +135,10 @@ Item::Item(const std::string_view& arg) :
     if(t_id == other_t_id && val == other.val){
         return true;
     }else{
-        if(t_id_is_numerical(t_id) && t_id_is_numerical(other_t_id)){
+        if(is_interned() && other.is_interned()){
+            // If both interned, then should have matched above
+            return false;
+        }else if(t_id_is_numerical(t_id) && t_id_is_numerical(other_t_id)){
             if(t_id == T_ID_FLOAT || other_t_id == T_ID_FLOAT){
                 return as<double>() == other.as<double>();
             }else{
@@ -149,12 +153,23 @@ Item::Item(const std::string_view& arg) :
             if(t_id != other_t_id){
                 return false;
             }
-            cout << "t_id:" << t_id << ", other_t_id:" << other_t_id << endl;
+            // cout << "t_id:" << t_id << ", other_t_id:" << other_t_id << endl;
             // Defined in seperate translation unit
             return CRE_Objs_equal(_as<CRE_Obj*>(), other._as<CRE_Obj*>());                
         }
     }
  }
+
+//  bool InternItem::operator==(const InternItem& other) const{
+//     uint16_t t_id = get_t_id();
+//     uint16_t other_t_id = other.get_t_id();
+//     // Handles all Interned cases
+//     if(t_id == other_t_id && val == other.val){
+//         return true;
+//     }else{
+//         return false;
+//     }
+//  }
     // cout << "SV str_to_item " << arg.length() << endl;
     // cout << uint64_t(-1) << arg.length() << endl;
     // cout << "BEFORE INTERN" << endl;
@@ -551,6 +566,23 @@ uint64_t hash_item(const Item& x){
 
     // x.hash = hash;
     return hash;
+}
+
+CRE_Type* Item::eval_type() const {
+    switch(t_id){
+    case T_ID_VAR:
+        return ((Var*) get_ptr())->eval_type();
+    case T_ID_FUNC:
+        return ((Func*) get_ptr())->eval_type();
+    case T_ID_LITERAL:
+        return ((Literal*) get_ptr())->eval_type();
+    default:
+        return get_cre_type(t_id);
+    }
+    return nullptr;
+}
+uint16_t Item::eval_t_id() const {
+    return eval_type()->get_t_id();
 }
 
 // explicit operator bool() const {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <stddef.h>              // for size_t, NULL
 #include <stdint.h>              // for uint16_t, int16_t, uint32_t, uint64_t
 #include <iosfwd>                // for ostream
@@ -25,6 +26,8 @@ const uint8_t VAR_KIND_OPTIONAL = 3;
 const uint8_t VAR_KIND_EXIST = 4;
 const uint8_t VAR_KIND_NOT = 5;
 // const uint8_t VAR_KIND_ALL = 4;
+
+const std::string VAR_PREFIXES[6] = {"","Var", "Bound", "Opt", "Exist", "Not"};
 
 
 const uint16_t DEREF_KIND_ATTR = 1;
@@ -96,14 +99,24 @@ struct Var : public CRE_Obj{
 	inline size_t is_existential(){
 		return kind > VAR_KIND_EXIST;
 	}
+
+	inline CRE_Type* eval_type() const {
+		return head_type;
+	}
+	inline uint16_t eval_t_id() const {
+		return head_type->get_t_id();
+	}
 	// inline size_t is_universal(){
 	// 	return kind & 4;
 	// }
 	std::string get_alias_str();
+	std::string get_deref_str() ;
 	std::string to_string();
+	std::string repr(bool use_alias=true) ;
 	bool operator==(const Var& other) const;
 
 };
+
 
 
 
@@ -115,6 +128,13 @@ ref<Var> new_var(const Item& alias,
  			size_t length=0,
  			AllocBuffer* buffer=nullptr);
 
+ref<Var> Not(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
+ref<Var> Exists(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
+ref<Var> Bound(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
+ref<Var> Optional(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
+
+bool bases_semantically_equal(Var* var1, Var* var2);
+bool vars_semantically_equal(Var* var1, Var* var2);
 // ref<Var> new_Exists(const Item& alias,
 //  			CRE_Type* type=nullptr,
 //  			DerefInfo* deref_infos=NULL,
@@ -145,6 +165,22 @@ Member* deref_multiple(CRE_Obj* obj, DerefInfo* deref_infos, size_t length);
 
 
 InternStr InventVarName(Var* var, const std::vector<Var*>& other_vars);
+
+
+// A wrapper over Var* that checks that Vars have the same alias.
+//  and throws an error if Vars with the same alias have different types or kinds.
+struct SemanticVarPtr {
+	Var* var_ptr;
+
+	SemanticVarPtr(Var* _var_ptr) : var_ptr(_var_ptr) {}
+	operator Var*() const { return var_ptr; }
+	operator ref<Var>() const { return ref<Var>(var_ptr); }
+
+	bool operator ==(const SemanticVarPtr& other) const;
+	bool operator <(const SemanticVarPtr& other) const{
+		return uint64_t(var_ptr->alias.val) < uint64_t(other.var_ptr->alias.val);
+	}
+};
 
 
 #define SIZEOF_VAR(n) (sizeof(Var)+(n)*sizeof(DerefInfo))

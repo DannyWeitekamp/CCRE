@@ -81,6 +81,9 @@ nb::object py_Literal__call__(Literal* lit, nb::args args, nb::kwargs kwargs) {
     }
 }
 
+ref<Literal> py_literal_invert(Literal* lit) {
+    return new_literal(lit->obj.get(), !lit->negated);
+}
 void init_logic(nb::module_ & m) {
 
     cout << "INIT LOGIC" << endl;
@@ -99,6 +102,29 @@ void init_logic(nb::module_ & m) {
         .def_ro("obj", &Literal::obj)
         .def_ro("vars", &Literal::vars)
         .def_ro("var_inds", &Literal::var_inds) 
+
+        .def("__eq__", [](Literal* self, nb::handle other){return py_cre_equals(self,other);}, nb::rv_policy::reference)
+        .def("__ne__", [](Literal* self, nb::handle other){return py_cre_not_equals(self,other);}, nb::rv_policy::reference)
+        .def("__lt__", [](Literal* self, nb::handle other){return py_cre_less_than(self,other);}, nb::rv_policy::reference)
+        .def("__gt__", [](Literal* self, nb::handle other){return py_cre_greater_than(self,other);}, nb::rv_policy::reference)
+        .def("__le__", [](Literal* self, nb::handle other){return py_cre_less_than_or_equal(self,other);}, nb::rv_policy::reference)
+        .def("__ge__", [](Literal* self, nb::handle other){return py_cre_greater_than_or_equal(self,other);}, nb::rv_policy::reference)
+        .def("__add__", [](Literal* self, nb::handle other){return py_cre_add(self,other);}, nb::rv_policy::reference)
+        .def("__radd__", [](Literal* self, nb::handle other){return py_cre_radd(self,other);}, nb::rv_policy::reference)
+        .def("__sub__", [](Literal* self, nb::handle other){return py_cre_sub(self,other);}, nb::rv_policy::reference)
+        .def("__rsub__", [](Literal* self, nb::handle other){return py_cre_rsub(self,other);}, nb::rv_policy::reference)
+        .def("__mul__", [](Literal* self, nb::handle other){return py_cre_mul(self,other);}, nb::rv_policy::reference)
+        .def("__rmul__", [](Literal* self, nb::handle other){return py_cre_rmul(self,other);}, nb::rv_policy::reference)
+        .def("__truediv__", [](Literal* self, nb::handle other){return py_cre_truediv(self,other);}, nb::rv_policy::reference)
+        .def("__rtruediv__", [](Literal* self, nb::handle other){return py_cre_rtruediv(self,other);}, nb::rv_policy::reference)
+        .def("__floordiv__", [](Literal* self, nb::handle other){return py_cre_floordiv(self,other);}, nb::rv_policy::reference)
+        .def("__rfloordiv__", [](Literal* self, nb::handle other){return py_cre_rfloordiv(self,other);}, nb::rv_policy::reference)
+        .def("__mod__", [](Literal* self, nb::handle other){return py_cre_mod(self,other);}, nb::rv_policy::reference)
+        .def("__rmod__", [](Literal* self, nb::handle other){return py_cre_rmod(self,other);}, nb::rv_policy::reference)
+        .def("__pow__", [](Literal* self, nb::handle other){return py_cre_pow(self,other);}, nb::rv_policy::reference)
+        .def("__rpow__", [](Literal* self, nb::handle other){return py_cre_rpow(self,other);}, nb::rv_policy::reference)
+        .def("__neg__", [](Literal* self){return py_cre_neg(self);}, nb::rv_policy::reference)
+        .def("__invert__", py_literal_invert, nb::rv_policy::reference)
         ;
         
     // Define Logic class
