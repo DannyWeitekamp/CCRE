@@ -1,6 +1,7 @@
 #include "../include/alloc_buffer.h"
 #include "cre_obj.h"           // for CRE_Obj, alloc_cre_obj, CRE_Obj_dtor
 #include "types.h"             // for T_ID
+#include <cstddef>
 #include <sstream>              // for stringstream
 #include <stdexcept>           // for runtime_error
 #include "../include/logic.h"  // for Logic
@@ -257,30 +258,35 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
 
     size_t v_ind = 0;
     size_t L = items.size();
-    auto [start, end] = standard_var_spans[v_ind];
+    size_t start = -1;
+    size_t end = -1;
     // for(size_t j : standard_order){
     for(size_t i=0; i<L; i++){
         if(prev_endl) ss << indent;
-
         CRE_Obj* item = items[standard_order[i]].get();
-        while(item->get_t_id() != T_ID_LOGIC &&
-              i >= start && i < end && v_ind < vars.size()){
-            // cout << "V_IND: " << v_ind << "SIZE" << vars.size() << endl;
-            Var* v = vars[v_ind];
 
-            if(!covered->contains(v)){
-                ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
-                if(start != end) ss << ", ";
-                covered->insert(v);
+        if(v_ind < standard_var_spans.size()){
+            std::tie(start, end) = standard_var_spans[v_ind];
+            
+            while(item->get_t_id() != T_ID_LOGIC &&
+                i >= start && i < end && v_ind < vars.size()){
+                // cout << "V_IND: " << v_ind << "SIZE" << vars.size() << endl;
+                Var* v = vars[v_ind];
+
+                if(!covered->contains(v)){
+                    ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
+                    if(start != end) ss << ", ";
+                    covered->insert(v);
+                }
+
+                ++v_ind;
+                if(v_ind < standard_var_spans.size()){
+                    std::tie(start, end) = standard_var_spans[v_ind];
+                }else{
+                    start = -1;
+                    end = -1;
+                }   
             }
-
-            ++v_ind;
-            if(v_ind < standard_var_spans.size()){
-                std::tie(start, end) = standard_var_spans[v_ind];    
-            }else{
-                start = -1;
-                end = -1;
-            }   
         }
         
         switch(item->get_t_id()){

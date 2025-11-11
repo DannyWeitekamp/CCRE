@@ -415,88 +415,79 @@ std::string item_to_string(const Item& item) {
     uint16_t t_id = item.get_t_id();
     // std::cout << "TO STR: " << t_id << std::endl;
     std::stringstream ss;
+
+    bool expired = item.is_expired();
+    if(expired){
+        ControlBlock* cb = item.get_cb();
+
+        if(cb->unique_id == nullptr || cb->unique_id[0] == '\0'){
+            ss << "expired[??]";   
+        }else{
+            ss << "expired[@" << cb->unique_id << "]";
+        }
+        return ss.str();
+    }
         
     bool known_type = true;
-    if(!item.is_ref()){
-        switch(t_id) {
+    switch(t_id) {
 
-        case T_ID_UNDEF:
-            ss << "Undef";
-            break;
-        case T_ID_NONE:
-            ss << "None";
-            break;
-        case T_ID_BOOL:
-            ss <<  (item._as<bool>() ? "True" : "False");
-            break;
-        case T_ID_INT:
-            ss << int_to_str(item._as<int64_t>());
-            break;
-        case T_ID_FLOAT:
-            ss << flt_to_str(item._as<double>());
-            break;
-        case T_ID_STR:
-            // cout << "??: " << std::string(item.as_string()) << endl;
-            ss << "'" << item._as<std::string>() << "'";
-            break;
-        default:
-            known_type = false;
-        }
-    }else{
-        bool expired = item.is_expired();
-        if(expired){
-            ControlBlock* cb = item.get_cb();
+    case T_ID_UNDEF:
+        ss << "Undef";
+        break;
+    case T_ID_NONE:
+        ss << "None";
+        break;
+    case T_ID_BOOL:
+        ss <<  (item._as<bool>() ? "True" : "False");
+        break;
+    case T_ID_INT:
+        ss << int_to_str(item._as<int64_t>());
+        break;
+    case T_ID_FLOAT:
+        ss << flt_to_str(item._as<double>());
+        break;
+    case T_ID_STR:
+        // cout << "??: " << std::string(item.as_string()) << endl;
+        ss << "'" << item._as<std::string_view>() << "'";
+        break;
+    case T_ID_FACT:
+        {
+            Fact* fact = item._as<Fact*>();
+                    
+            if(fact->type != nullptr){
+                std::string unq_id = fact->get_unique_id();
 
-            if(cb->unique_id == nullptr || cb->unique_id[0] == '\0'){
-                ss << "expired[??]";   
-            }else{
-                ss << "expired[@" << cb->unique_id << "]";
-            }
-            return ss.str();
-        }
-        switch(t_id) {
-
-        case T_ID_FACT:
-            {
-                Fact* fact = item._as<Fact*>();
-                        
-                if(fact->type != nullptr){
-                    std::string unq_id = fact->get_unique_id();
-
-                    if(!unq_id.empty()){
-                        ss << "@" << unq_id;
-                        break;
-                    }else{
-                        cout << "UNIQUE ID FAIL" << endl;
-                    }
-                }
-
-                // TODO: Needs testing
-                if( uint64_t(&item) >= uint64_t(fact) + sizeof(Fact) && 
-                    uint64_t(&item) < uint64_t(fact) + SIZEOF_FACT(fact->length)){
-                    ss << "self";
+                if(!unq_id.empty()){
+                    ss << "@" << unq_id;
                     break;
-                }
-
-                if(fact->immutable){
-                    ss << fact->to_string(2);
                 }else{
-                    ss << "<fact f_id=" << fact->f_id << ">";    
+                    cout << "UNIQUE ID FAIL" << endl;
                 }
+            }
+
+            // TODO: Needs testing
+            if( uint64_t(&item) >= uint64_t(fact) + sizeof(Fact) && 
+                uint64_t(&item) < uint64_t(fact) + SIZEOF_FACT(fact->length)){
+                ss << "self";
                 break;
             }
-        case T_ID_VAR:
-            ss << item._as<Var*>();
+
+            if(fact->immutable){
+                ss << fact->to_string(2);
+            }else{
+                ss << "<fact f_id=" << fact->f_id << ">";    
+            }
             break;
-        case T_ID_FUNC:
-            ss << item._as<Func*>();
-            break;
-        default:
-            known_type = false;
-            // " @" << std::bit_cast<uint64_t>(&item) << ">"; 
-    }}
-    if(!known_type){
+        }
+    case T_ID_VAR:
+        ss << item._as<Var*>();
+        break;
+    case T_ID_FUNC:
+        ss << item._as<Func*>();
+        break;
+    default:
         ss << "<item t_id=" << t_id << " val=" << item.val << ">";
+        // " @" << std::bit_cast<uint64_t>(&item) << ">"; 
     }
 
     return ss.str();

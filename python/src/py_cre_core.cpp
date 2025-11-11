@@ -71,13 +71,13 @@ Item Item_from_py(nb::handle py_obj){
         return Item(intern_str);
 
     } else if (nb::isinstance<Fact>(py_obj)) {
-    	return Item(nb::cast<Fact*>(py_obj));
+    	return Item(ref<Fact>(nb::cast<Fact*>(py_obj)));
 
     }else if (nb::isinstance<Var>(py_obj)) {
-        return Item(nb::cast<Var*>(py_obj));
+        return Item(ref<Var>(nb::cast<Var*>(py_obj)));
 
     }else if (nb::isinstance<Func>(py_obj)) {
-        return Item(nb::cast<Func*>(py_obj));
+        return Item(ref<Func>(nb::cast<Func*>(py_obj)));
 
     }else if (py_obj.is_none()){
         return Item();
@@ -191,6 +191,15 @@ FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
             if(tuple.size() >= 2){
                 py_flags = nb::cast<nb::dict>(tuple[1]);
             }
+        }else if(nb::isinstance<nb::dict>(val)){
+            auto val_dict = nb::cast<nb::dict>(val);
+
+            if(val_dict.contains("type")){
+                type_handle = val_dict["type"];
+                nb::del(val_dict["type"]);
+            }
+            
+            py_flags = val_dict;
         }
 
         // CRE_Type* mbr_type = nullptr;

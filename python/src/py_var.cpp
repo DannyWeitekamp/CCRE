@@ -41,26 +41,26 @@ std::string_view locate_py_name_fast(PyObject* py_proxy, PyObject* dict){
 
 // This is a 
 void py_Var_locate_alias_fast(Var* var){
-    if(var->alias != ""){
+    if(var->alias.get_t_id() != T_ID_UNDEF){
         return;
     }
 
     PyObject* py_proxy = (PyObject*) var->get_proxy_obj();
 
-    std::string_view alias = "";
-    if(alias == "" && py_proxy != nullptr){
+    std::string_view alias_str = "";
+    if(alias_str == "" && py_proxy != nullptr){
         // Search for proxy in locals
         nb::handle locals_handle = PyEval_GetLocals();
         // nb::dict locals = nb::cast<nb::dict>(locals_handle);
-        alias = locate_py_name_fast(py_proxy, locals_handle.ptr());
+        alias_str = locate_py_name_fast(py_proxy, locals_handle.ptr());
 
-        if(alias == ""){
+        if(alias_str == ""){
             nb::handle globals_handle = PyEval_GetGlobals();
-            alias = locate_py_name_fast(py_proxy, globals_handle.ptr());    
+            alias_str = locate_py_name_fast(py_proxy, globals_handle.ptr());    
         }
 
-        if(alias != ""){
-            var->alias = Item(intern(alias));
+        if(alias_str != ""){
+            var->alias = Item(intern(alias_str));
             // cout << "Var found: " << alias << endl;
             return;
         }
@@ -139,9 +139,36 @@ void py_Var_locate_alias(Var* var){
     }
 }
 
+
+ref<Var> _py_Var_new_or_locate_self(Item alias, CRE_Type* type, uint8_t kind=VAR_KIND_ABSOLUTE){
+    std::string key = fmt::format("__CRE_Var_{}", alias.as<std::string>());
+    nb::str py_key = nb::str(key.c_str());
+    nb::dict locals = nb::cast<nb::dict>((nb::handle) PyEval_GetLocals());
+    nb::handle result = locals.get(py_key, nb::none());
+    ref<Var> self = nullptr;
+    if(!result.is_none()){
+        self = nb::cast<Var*>(result);
+
+        if(type == cre_undef ||
+           (self->base_type == type && self->kind == kind)){
+            return self;    
+        }
+            // throw std::domain_error(
+            //     fmt::format("Different types or kinds for Var '{0}' in expression. "
+            //        "Definition of {1} != Var({2},{0}).", alias.as<std::string>(), self->repr(), type->to_string())
+            // );
+    }
+        
+    // If cannot reuse Var then make a new one 
+    self = new_var(alias, type, kind);
+    locals[py_key] = nb::cast(self);
+    
+    return self;
+}
+
 ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_ABSOLUTE) {
     CRE_Type* type = cre_undef;
-    std::string_view alias = "";
+    Item alias = Item();
     bool error = false;
     bool has_type_kwarg = false;
     bool has_alias_kwarg = false;
@@ -162,6 +189,8 @@ ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_AB
         if(nb::isinstance<nb::str>(py_alias)) {
             has_alias_kwarg = true;
             alias = nb::cast<std::string_view>(py_alias);
+        }else if(nb::isinstance<nb::int_>(py_alias)){
+            alias = nb::cast<int64_t>(py_alias);
         } else {
             error = true;
         }
@@ -199,7 +228,9 @@ ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_AB
                 if(!has_type_kwarg) type = Type_from_py(args[0]);                    
                 if(args.size()==2){
                     if(nb::isinstance<nb::str>(args[1])){
-                        if(!has_alias_kwarg) alias = nb::cast<std::string_view>(args[1]);
+                        if(!has_alias_kwarg) alias = intern(nb::cast<std::string_view>(args[1]));
+                    }else if(nb::isinstance<nb::int_>(args[1])){
+                        if(!has_alias_kwarg) alias = nb::cast<int64_t>(args[1]);
                     } else {
                         error = true;
                     }    
@@ -207,8 +238,14 @@ ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_AB
             } catch(...) {
                 error = true;
             }
-        } else if(nb::isinstance<nb::str>(args[0])){
-            if(!has_alias_kwarg) alias = nb::cast<std::string_view>(args[0]);
+        } else if(nb::isinstance<nb::str>(args[0]) || nb::isinstance<nb::int_>(args[0])){
+            if(!has_alias_kwarg){
+                if(nb::isinstance<nb::str>(args[0])){
+                    alias = intern(nb::cast<std::string_view>(args[0]));
+                }else if(nb::isinstance<nb::int_>(args[0])){
+                    alias = nb::cast<int64_t>(args[0]);
+                }
+            }
             if(args.size()==2){
                 if(nb::isinstance<CRE_Type>(args[1]) || args[1].is_type()){
                     try {
@@ -226,8 +263,10 @@ ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_AB
     }
 
     if(error) throw std::invalid_argument("Var constructor: optional positional arguments must be CRE_Type for 'type' and string for 'alias'");
-    
+
     return new_var(alias, type, kind);
+    // if(self != nullptr) return self;       
+    // return new_var(alias, type, kind);
 }
 
 ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
@@ -311,5 +350,5 @@ void init_var(nb::module_ & m){
     m.def("Not", &py_Not, nb::rv_policy::reference);
     m.def("Exists", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_EXIST);}, nb::rv_policy::reference);
     m.def("Bound", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_BOUND);}, nb::rv_policy::reference);
-    m.def("Optional", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_OPTIONAL);}, nb::rv_policy::reference);
+    m.def("Opt", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_OPTIONAL);}, nb::rv_policy::reference);
 }

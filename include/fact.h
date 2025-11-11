@@ -77,7 +77,7 @@ public:
   template<class T>
   inline Member borrow_val_as_member(T&& val){
     // Convert to Member, always intern strings, always hash on assignment;
-    cout << "borrow_val_as_member: " << val << endl;
+    // cout << "borrow_val_as_member: " << val << endl;
     Member member;
     if constexpr (std::is_same_v<T, Member>) {
       member = val;
@@ -85,12 +85,12 @@ public:
     }else if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
       InternStr intern_str(intern(val));
       member = Member(intern_str);
-      cout << "MEMBER: " << member << endl;
+      // cout << "MEMBER: " << member << endl;
 
     }else if constexpr (std::is_same_v<T, Item>) {
       if(val.get_t_id() == T_ID_STR){
 
-        cout << "MEMBER: " << member << endl;
+        // cout << "MEMBER: " << member << endl;
         const Item& val_item = val;
         InternStr intern_str(intern(val_item._as<std::string_view>()));
         member = Member(intern_str);  
@@ -105,7 +105,7 @@ public:
       //   // Fact reference members are always weak
       //   member = Member(wref<Fact>(val), hash);
       // }else{
-      cout << "Before: " << val << endl;
+      // cout << "Before: " << val << endl;
       member = Member(std::forward<T>(val));
       // }
     }
@@ -132,14 +132,17 @@ public:
       // if(member.get_t_id() == T_ID_NULL){
       //   member.get_t_id() = mbr_type->t_id;
       // }
-      if(item.get_t_id() != T_ID_UNDEF && // Members can always be Undef
-         item.get_t_id() != T_ID_NONE && // Members can always be None
-         mbr_type->t_id != item.get_t_id() &&
+
+      // The item's t_id or the type it evaluates to (i.e. Var(int)->int)
+      uint16_t eval_t_id = item.eval_t_id();
+      if(eval_t_id != T_ID_UNDEF && // Members can always be Undef
+        eval_t_id != T_ID_NONE && // Members can always be None
+         mbr_type->t_id != eval_t_id &&
          mbr_type->t_id != 0){
 
-        CRE_Type* type = current_context->types[item.get_t_id()-1];
-        throw std::invalid_argument("Setting item[" + std::to_string(ind) + "] with type '" + mbr_type->name + "' to value " \
-          + item_to_string(item) + " with type '" + type->name + "'");
+        CRE_Type* type = get_cre_type(eval_t_id);
+        throw std::invalid_argument(fmt::format("Setting member[{}] with type {} to value {} with type {}",
+                                    ind, mbr_type->name, item_to_string(item), type->name));
       }
       // return true;
     }

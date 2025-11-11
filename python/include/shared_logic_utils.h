@@ -67,9 +67,7 @@ ref<Func> py_cre_greater_than_or_equal(T* self, nb::handle other) {
 template<typename T>
 ref<Func> py_cre_add(T* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    cout << "Add: " << self->to_string() << " + " << other_item.to_string() << " Self t_id: " << get_obj_t_id(self) << " Other t_id: " << other_item.eval_t_id() << endl;
     if(get_obj_t_id(self) == T_ID_STR && other_item.eval_t_id() == T_ID_STR){
-        cout << "CONCAT!!" << endl;
         return Concat->compose(self, other_item);
     }else{
         return Add->compose(self, other_item);

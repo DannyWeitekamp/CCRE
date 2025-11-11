@@ -37,7 +37,7 @@ namespace cre {
 		{
 			kind = LIT_KIND_FACT;
 			for(auto mbr: (Fact*) obj){
-				if(mbr.get_t_id()){
+				if(mbr.get_t_id() == T_ID_VAR){
 					Var* v = (Var*) mbr._as<Var*>();
 					bool found = false;
 					for(auto var : vars){

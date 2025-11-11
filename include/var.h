@@ -89,6 +89,8 @@ struct Var : public CRE_Obj{
 	ref<Var> _extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_item(int16_t mbr_ind, 			   AllocBuffer* alloc_buffer);
+
+	void swap_base(Var* new_base);
 	// uint8_t is_not;
 
 	Item* apply_deref(CRE_Obj* obj);
@@ -131,8 +133,9 @@ ref<Var> new_var(const Item& alias,
 ref<Var> Not(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
 ref<Var> Exists(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
 ref<Var> Bound(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
-ref<Var> Optional(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
+ref<Var> Opt(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
 
+bool vars_same_type_kind(Var* var1, Var* var2);
 bool bases_semantically_equal(Var* var1, Var* var2);
 bool vars_semantically_equal(Var* var1, Var* var2);
 // ref<Var> new_Exists(const Item& alias,
@@ -176,10 +179,8 @@ struct SemanticVarPtr {
 	operator Var*() const { return var_ptr; }
 	operator ref<Var>() const { return ref<Var>(var_ptr); }
 
-	bool operator ==(const SemanticVarPtr& other) const;
-	bool operator <(const SemanticVarPtr& other) const{
-		return uint64_t(var_ptr->alias.val) < uint64_t(other.var_ptr->alias.val);
-	}
+	bool operator==(const SemanticVarPtr& other) const;
+	bool operator<(const SemanticVarPtr& other) const;
 };
 
 

@@ -29,6 +29,11 @@ ref<Fact> NewFact(nb::args args, nb::kwargs kwargs) {
     return _py_new_fact(fact_type, args.size()-1, it, args.end(), kwargs, false);  
 }
 
+
+ref<Fact> py_Tuple_ctor(nb::args args) {
+    nb::kwargs kwargs; // stub 
+    return _py_new_fact(nullptr, args.size(), args.begin(), args.end(), kwargs, true);
+}
 nb::object py_fact_getitem_index(Fact* fact, int64_t index) {
     if(index < 0) index += fact->length;
     if(index < 0 || index >= fact->length){
@@ -149,4 +154,5 @@ void init_fact(nb::module_ & m){
 
     m.def("NewFact", &NewFact, nb::rv_policy::reference);
     m.def("iFact", &py_iFact_ctor, nb::rv_policy::reference);
+    m.def("Tuple", &py_Tuple_ctor, nb::rv_policy::reference);
 }

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <vector>
 #include <bit>
 #include <cstdint>
@@ -666,8 +667,10 @@ void Func::set_arg(size_t i, const Item& val){
             	// 	throw std::invalid_argument("Var's head_type doesn't match composing CREFunc's argument type.");
         		// }
 				// cout << "VAR: " << var->to_string() << ", head_type=" << head_info.base_type->to_string() << ", var->head_type=" << var->head_type->to_string() << endl;
-        		if(not cast_allowed(var->head_type, head_info.base_type)){
-        			throw_bad_arg(i, var, head_info.base_type, var->head_type, false);
+        		if(!var->head_type->get_t_id() == T_ID_UNDEF &&
+				   !cast_allowed(var->head_type, head_info.base_type)){
+				   cout << "BAD ARG: " << var->to_string() << ", " << head_info.base_type->to_string() << ", " << var->head_type->to_string() << endl;
+        		   throw_bad_arg(i, var, head_info.base_type, var->head_type, false);
         		}
 
             	ref<Var> head_var;
@@ -1450,7 +1453,20 @@ void Func::reinitialize(){
 			arg_stack_offsets.push_back(args_stack_length);
 			args_stack_length += head_info.base_type->byte_width;
 		}else{
-
+			// If a base var was used with the same alias as a previously used base var,
+			//  but it's type is undefined then swap out the base for the well-defined one.
+			if(uint64_t(var->base) != uint64_t(it->first.var_ptr)){
+				cout << "SWAP BASE: " << var->repr() << " " << it->first.var_ptr->repr() << endl;
+				if(var->length > 0){
+					var = it->first.var_ptr;
+					var = var->_extend_unsafe(var->deref_infos, var->length);
+				}else{
+					var = it->first.var_ptr;
+				}
+				head_info.var_ptr = var;
+				head_info.cf_ptr->set(head_info.arg_ind, Item(var));
+				// cout << "NEW Var: " << var->repr() << endl;
+			}
 		}
 		std::get<1>(base_vars[it->second]).push_back(head_info);
 	};
@@ -1472,40 +1488,12 @@ void Func::reinitialize(){
 			switch(head_info.kind){
 				// For ARGINFO_VAR kinds insert base_ptr into the base_var_map
 				case ARGINFO_CONST: {
-				// arg_stack_offsets.push_back(stack_offset);
-				// stack_offset += head_info.base_type->byte_width;
-					// bytecode_len += sizeof_load_const();
-
 					break;
 				}
 
 				case ARGINFO_VAR: {				
 					_try_insert_var(head_info);
 					break;
-					// Var* var = head_info.var_ptr;
-					// SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
-
-					// cout << "VP:" << uint64_t(var->base) << endl;
-
-					// auto [it, inserted] = base_var_map.try_emplace(
-					// 	base_ptr, n_vars);
-					// if(inserted){
-					// 	std::vector<HeadInfo> var_head_info = {};
-					// 	base_vars.push_back({base_ptr, var_head_info});
-					// 	++n_vars;
-
-					// 	// cout << "PB stack_offset:" << stack_offset <<  endl;
-					// 	arg_stack_offsets.push_back(args_stack_length);
-					// 	args_stack_length += head_info.base_type->byte_width;
-					// }else{
-
-					// }
-					// cout << "INSERTED:" << inserted << endl;
-					// // if(var->size() > 0){
-					// // 	bytecode_len += sizeof_deref_var(var);	
-					// // }
-					// std::get<1>(base_vars[it->second]).push_back(head_info);
-					// break;
 				}
 
 			// For ARGINFO_FUNC_UNEXPANDED kind insert the base_ptrs of all of the
@@ -1520,23 +1508,6 @@ void Func::reinitialize(){
 							// HeadInfo& head_info_n = cf->head_infos[n];
 							_try_insert_var(cf->head_infos[n]);
 
-							// Var* var = head_info_n.var_ptr;
-							// // cout << var << endl;
-							// // cout << "n=" << n << " UVP:" << uint64_t(head_info_n.var_ptr) << endl;
-							// SemanticVarPtr base_ptr = SemanticVarPtr(var->base);
-
-							// // std::vector<HeadInfo> var_head_info = {};
-							// auto [it, inserted] = base_var_map.try_emplace(
-							// 	base_ptr, n_vars);
-							// if(inserted){
-							// 	std::vector<HeadInfo> var_head_info = {};
-							// 	base_vars.push_back({base_ptr, var_head_info});
-							// 	++n_vars;
-
-							// 	arg_stack_offsets.push_back(args_stack_length);
-							// 	args_stack_length += head_info_n.base_type->byte_width;
-							// }
-							// std::get<1>(base_vars[it->second]).push_back(head_info_n);							
 						}
 						max_arg_depth = std::max(cf->depth, max_arg_depth);
 					}

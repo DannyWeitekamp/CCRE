@@ -4,7 +4,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__)))
 from t_utils import *
 import pytest
 
-from cre import Var, AND, OR, Not, Exists, Bound, Optional
+from cre import Var, AND, OR, Not, Exists, Bound, Opt, Tuple, define_fact
+
+
+Person = define_fact("Person", 
+    {"id": {"type" : str, "unique_id" : True},
+     "money": float,
+     "mom": "Person",
+     "dad": "Person",
+     "best_bud": "Person"
+    }
+);
 
 import time
 class PrintElapse():
@@ -212,7 +222,7 @@ def test_var_types():
     B = Not(float, "B")
     C = Exists(float, "C")
     D = Bound(float, "D")
-    E = Optional(float, "E")
+    E = Opt(float, "E")
     print(repr(A))
     print(repr(B))
     print(repr(C))
@@ -222,18 +232,56 @@ def test_var_types():
 def test_semantic_var():
     A = Var(float,"A")
     _A = Var(float,"A")
+    iA = Var(int,"A")
+    uA = Var("A")
+    print(repr(uA))
 
     print("-----------")
     f = A + _A
-    g = (A + _A) + 1
-    print("f REFCNT", f.get_refcount())
+    
+    assert(f(1) == 2)
+    with pytest.raises(ValueError):
+        f = A + iA
+
+    f = A + uA
+    print(repr(f))
     print(f(1))
-    print("f REFCNT", f.get_refcount())
-    print("REFCNT", A.get_refcount())
-    f = None
-    print("REFCNT", A.get_refcount())
-    A = None
-    _A = None
+    
+    print(repr(uA))
+    f = uA + uA
+    print(f)
+    print(f(2))
+
+    f = uA + A
+    print(AND(f))
+    print(f(2))
+
+    # print("f REFCNT", f.get_refcount())
+    # print(f(1))
+    # print("f REFCNT", f.get_refcount())
+    # print("REFCNT", A.get_refcount())
+    # f = None
+    # print("REFCNT", A.get_refcount())
+    # A = None
+    # _A = None
+
+def test_fact_literals():
+    A = Var(str,"A")
+    z0 = Var(str, 0)
+
+    t = Tuple(1,"A","B");
+    print(AND(t));
+
+    t = Tuple(1,A,"B");
+    print(AND(t));
+
+    t = Tuple(1,z0,"B");
+    print(AND(t));
+
+    print(AND(Person(id="bob", money=100.0)));
+
+    P = Var(Person)
+    print(AND(Person(id=A, money=100.0)));
 
 
     # print(f(1))
@@ -248,4 +296,5 @@ if __name__ == "__main__":
     # test_arith()
     # test_name_resolution()
     # test_var_types()
-    test_semantic_var()
+    # test_semantic_var()
+    test_fact_literals()

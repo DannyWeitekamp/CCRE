@@ -22,7 +22,7 @@ namespace cre {
 void Var_dtor(const CRE_Obj* x){
 	Var* var = (Var*) x;
 
-	if(var->base != 0 && var->base != var){
+	if(var->base != nullptr && var->base != var){
 		var->base->dec_ref();
 	}
 
@@ -60,7 +60,10 @@ Var::Var(const Item& _alias,
 		memcpy(deref_infos, _deref_infos, _length*sizeof(DerefInfo));
 	}
 
-	if(_alias.get_t_id() != T_ID_STR && _alias.get_t_id() != T_ID_INT){
+
+	if(_alias.get_t_id() != T_ID_STR &&
+	   _alias.get_t_id() != T_ID_INT &&
+	   _alias.get_t_id() != T_ID_UNDEF){
 		std::stringstream ss;
 		ss << "Var alias must be string or integer. Got: " << _alias << ".";
 		throw std::invalid_argument(ss.str());
@@ -146,7 +149,7 @@ ref<Var> Exists(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_
 ref<Var> Bound(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
 	return new_var(alias, type, VAR_KIND_BOUND, deref_infos, length, buffer);
 }
-ref<Var> Optional(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
+ref<Var> Opt(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
 	return new_var(alias, type, VAR_KIND_OPTIONAL, deref_infos, length, buffer);
 }
 
@@ -174,50 +177,12 @@ ref<Var> Optional(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, siz
 // }
 
 ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer){
-	// Allocate a new var 
-	// Var* new_var = _alloc_extension(var, 1);
-	// Var* __restrict nv;
-	// bool did_malloc = true;
-
 	size_t new_len = length+n_derefs;
-
-	// cout << "SIZEOF VAR" << sizeof(Var) << ", " << SIZEOF_VAR(length+1) << endl;
-
 	auto [var_addr, did_malloc] = alloc_cre_obj(SIZEOF_VAR(new_len), &Var_dtor, T_ID_VAR, alloc_buffer);
-	// nv = (Var*) var_addr;
-	// bool did_malloc = true;
-	// Var* var;
-	// if(alloc_buffer != nullptr){
-	// 	var = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(_length), did_malloc);	
-	// }else{
-	// 	var = (Var*) malloc(SIZEOF_VAR(_length)); 
-	// }
-    
-    // Var* var = new (var_addr) Var(alias, type, deref_infos, length);
-
-	// nv = new_var(alias, base_type, deref_infos, new_len, alloc_buffer);
-	// if(alloc_buffer != nullptr){
-	// 	nv = (Var*) alloc_buffer->alloc_bytes(SIZEOF_VAR(new_len), did_malloc);	
-	// }else{
-	// 	nv = (Var*) malloc(SIZEOF_VAR(new_len)); 
-	// }
-
+	
 	ref<Var> nv = new (var_addr) Var(alias, base_type, kind, nullptr, new_len);
 
-	// if(!did_malloc){
-	// 	nv->control_block->alloc_buffer = alloc_buffer;
-	// 	alloc_buffer->inc_ref();
-	// }
-
-	// Var* nv = new_var(base_type, alias, deref_infos, length+1);
-	// cout << "size=" << sizeof(Var) << " d_infs=" << uint64_t(nv->deref_infos)-uint64_t(nv) 
-	// 	 << " end=" << SIZEOF_VAR(length+1) << " [len]= " << uint64_t(&nv->deref_infos[length])-uint64_t(nv) << endl;
-	// for(uint i=0; i < length; i++){
-	// 	nv->deref_infos[i] = deref_infos[i]; 		
-	// }
-
 	memcpy(nv->deref_infos, deref_infos, length*sizeof(DerefInfo));
-
 
 	FactType* hf_type = (FactType*) head_type;
 
@@ -226,22 +191,6 @@ ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* al
 		nv->deref_infos[length+i] = derefs[i];
 
 	}
-	
-
-	
-	
-
-	// cout << "head_type: " << uint64_t(hf_type) << " " << int(hf_type->kind) << endl;
-	// Set the trailing deref_info
-
-	
-	// CRE_Type* deref_type = hf_type->get_item_type(mbr_ind);
-	
-	// new_deref_inf->deref_type = deref_type;
-	// new_deref_inf->mbr_ind = mbr_ind;
-	// new_deref_inf->deref_kind = deref_kind;
-
-	// Modify the new var 
 
 	nv->base = this->base; this->base->inc_ref();
 	nv->head_type = derefs[n_derefs-1].deref_type;//deref_type;
@@ -287,11 +236,28 @@ ref<Var> Var::extend_item(int16_t mbr_ind, AllocBuffer* alloc_buffer){
 	return _extend_unsafe(deref, 1, alloc_buffer);	
 }
 
+void Var::swap_base(Var* new_base){
+	new_base->inc_ref();
+	if(this->base != nullptr){
+		this->base->dec_ref();
+	}
+	
+	base = new_base;
+	alias = new_base->alias;
+	base_type = new_base->base_type;
+	kind = new_base->kind;
+	bound_obj = new_base->bound_obj;
+
+	hash = CREHash{}(this);
+}
+
 std::string Var::get_alias_str(){
 	if(alias.get_t_id() == T_ID_STR){
 		return alias.as<std::string>();
 	}else if(alias.get_t_id() == T_ID_INT){
 		return fmt::format("F{}", alias.as<int64_t>());	
+	}else if(alias.get_t_id() == T_ID_UNDEF){
+		return "Var()";
 	}else{
 		throw std::runtime_error("Var has unknown alias type t_id=" + std::to_string(alias.get_t_id()));
 	}
@@ -328,14 +294,19 @@ std::string Var::get_deref_str() {
 
 std::string Var::to_string() {
 	return fmt::format("{}{}", get_alias_str(), get_deref_str());		
+	
 }
 
 std::string Var::repr(bool use_alias) {
-	if(use_alias){
-		return fmt::format("{}({},'{}'){}", VAR_PREFIXES[kind], base_type->to_string(), get_alias_str(), get_deref_str());
-	}else{
-		return fmt::format("{}({}){}", VAR_PREFIXES[kind], base_type->to_string(), get_deref_str());
+	std::stringstream ss;
+	std::vector<std::string> inner_parts = {};
+	if(base_type != cre_undef){
+		inner_parts.push_back(base_type->to_string());
 	}
+	if(use_alias && alias.get_t_id() != T_ID_UNDEF){
+		inner_parts.push_back(fmt::format("'{}'", get_alias_str()));
+	}
+	return fmt::format("{}({}){}", VAR_PREFIXES[kind], fmt::join(inner_parts, ", "), get_deref_str());
 }
 
 std::ostream& operator<<(std::ostream& out, Var* var){
@@ -391,20 +362,28 @@ Item* Var::apply_deref(CRE_Obj* obj){
 	return deref_multiple(obj, this->deref_infos, this->length);
 }
 
-
+bool vars_same_type_kind(Var* var1, Var* var2){
+	if(var1->kind == var2->kind){
+		return (var1->base_type == var2->base_type ||
+		        var1->head_type->get_t_id() == T_ID_UNDEF ||
+		        var2->head_type->get_t_id() == T_ID_UNDEF) &&
+		       (var1->head_type == var2->head_type ||
+		        var1->head_type->get_t_id() == T_ID_UNDEF ||
+		        var2->head_type->get_t_id() == T_ID_UNDEF);
+	}
+	return false;
+}
 
 bool vars_semantically_equal(Var* var1, Var* var2){
+	// cout << "ALIAS:" << var1->alias.val << " " << var2->alias.val << endl;
 	if(uint64_t(var1) == uint64_t(var2)) return true;
 	
 	// Don't use full item equality because aliases of vars are always interned.
-	cout << "ALIAS:" << var1->alias.val << " " << var2->alias.val << endl;
 	if(var1->alias.val == var2->alias.val && var1->alias.get_t_id() == var2->alias.get_t_id()){
-		if(var1->base_type != var2->base_type ||
-		   var1->head_type != var2->head_type ||
-		   var1->kind != var2->kind){
-			throw std::runtime_error(
-				fmt::format("Same alias, different types or kinds for Var instances in expression:"
-						    " {} != {}.", var1->repr(), var2->repr())
+		if(!vars_same_type_kind(var1, var2)){
+			throw std::domain_error(
+				fmt::format("Different types or kinds for Var instances with same alias in expression. "
+						    "Cannot reconcile {} and {}.", var1->repr(), var2->repr())
 			);
 		}
 		return true;
@@ -416,8 +395,20 @@ bool bases_semantically_equal(Var* var1, Var* var2){
 	return vars_semantically_equal(var1->base, var2->base);
 }
 
-bool SemanticVarPtr::operator ==(const SemanticVarPtr& other) const { 
+bool SemanticVarPtr::operator==(const SemanticVarPtr& other) const { 
 	return vars_semantically_equal(var_ptr, other.var_ptr);
+}
+
+bool SemanticVarPtr::operator<(const SemanticVarPtr& other) const{
+	if(uint64_t(var_ptr->alias.val) == uint64_t(other.var_ptr->alias.val)){
+		if(!vars_same_type_kind(var_ptr, other.var_ptr)){
+			throw std::domain_error(
+				fmt::format("Different types or kinds for Var instances with same alias in expression. "
+							"Cannot reconcile {} and {}.", var_ptr->repr(), other.var_ptr->repr())
+			);
+		}
+	}
+	return uint64_t(var_ptr->alias.val) < uint64_t(other.var_ptr->alias.val);
 }
 
 bool Var::operator==(const Var& other) const {
