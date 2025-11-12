@@ -79,6 +79,12 @@ Item Item_from_py(nb::handle py_obj){
     }else if (nb::isinstance<Func>(py_obj)) {
         return Item(ref<Func>(nb::cast<Func*>(py_obj)));
 
+    }else if (nb::isinstance<Literal>(py_obj)) {
+        return Item(ref<Literal>(nb::cast<Literal*>(py_obj)));
+
+    }else if (nb::isinstance<Logic>(py_obj)) {
+        return Item(ref<Logic>(nb::cast<Logic*>(py_obj)));
+
     }else if (py_obj.is_none()){
         return Item();
     } else {

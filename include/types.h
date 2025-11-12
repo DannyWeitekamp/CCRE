@@ -152,7 +152,7 @@ struct MemberSpec {
 
 
 // Type declaration
-struct FactType : public CRE_Type{
+struct FactType : public CRE_Type {
     vector<MemberSpec> members;
     uint64_t builtin_flags;
     HashMap<std::string, Item> flags;
@@ -181,7 +181,7 @@ struct FactType : public CRE_Type{
         return make_fact(this, inputs...);
     }
 
-    std::string to_string();
+    // std::string to_string();
 
 };
 

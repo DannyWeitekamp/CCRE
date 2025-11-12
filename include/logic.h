@@ -37,6 +37,21 @@ struct VarInfo {
         var(var), kind(kind), first_item(first_item) {}
 };
 
+const uint8_t LIT_SEMANTICS_REG = 1;
+const uint8_t LIT_SEMANTICS_FACT = 2;
+const uint8_t LIT_SEMANTICS_OR_CONSTS = 2;
+
+struct LiteralSemantics {
+    
+    size_t first_item=-1;
+    size_t last_item=-1;
+    uint8_t kind;
+
+    LiteralSemantics() : kind(LIT_SEMANTICS_REG){}
+    LiteralSemantics(uint8_t kind, size_t first_item, size_t last_item) :
+    kind(kind), first_item(first_item), last_item(last_item) {}
+};
+
 
 typedef std::map<Var*, VarInfo> VarMapType;
 
@@ -44,12 +59,13 @@ struct Logic : public CRE_Obj {
 	static constexpr uint16_t T_ID = T_ID_LOGIC;
 
 	// -- Members --
-	std::vector<ref<CRE_Obj>> items = {};
+	std::vector<Item> items = {};
     VarMapType var_map = {};
     std::vector<Var*> vars = {};
     std::vector<size_t> standard_order = {};
     std::vector<std::tuple<size_t, size_t>> standard_var_spans = {};
     std::vector<VarMapType::iterator> var_map_iters = {};
+    std::vector<LiteralSemantics> lit_semantics = {};
 
     size_t n_abs_vars = 0;
     // Absolute Vars: Regular Vars that must be bound in a match to the Logic pattern.
@@ -68,11 +84,12 @@ struct Logic : public CRE_Obj {
 
 	// -- Methods --
 	Logic(uint8_t kind);
-
-
-    void _insert_literal(ref<Literal> lit);
+    
+    void _insert_arg(const Item& arg, LiteralSemantics semantics=LiteralSemantics());
     void _insert_var(Var* var, bool part_of_item=false, uint8_t kind=uint8_t(-1));
-    void _insert_arg(CRE_Obj* obj);
+    void _insert_literal(ref<Literal> lit, const LiteralSemantics& semantics=LiteralSemantics());
+    // void _insert_fact_as_literals(ref<Fact> fact);
+    void _insert_other_kind(ref<Logic> logic);
     void _extend_same_kind(ref<Logic> conj);
     void _finalize();
 
@@ -91,12 +108,13 @@ struct Logic : public CRE_Obj {
     
 };
 
+
 ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer = nullptr);
+ref<Logic> fact_to_conjunct(Fact* fact, AllocBuffer* alloc_buffer=nullptr);
 
 std::ostream& operator<<(std::ostream& out, Logic* logic);
 std::ostream& operator<<(std::ostream& out, ref<Logic> logic);
 
-extern void (*ext_locate_var_alias)(Var*);
 
 
 template<typename... Args>

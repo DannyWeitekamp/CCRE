@@ -15,6 +15,8 @@
 #include "../../include/fact.h"
 #include "../../include/var.h"
 #include "../../include/func.h"
+#include "../../include/literal.h"
+#include "../../include/logic.h"
 
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>

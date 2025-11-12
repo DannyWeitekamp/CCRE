@@ -257,7 +257,12 @@ std::string Var::get_alias_str(){
 	}else if(alias.get_t_id() == T_ID_INT){
 		return fmt::format("F{}", alias.as<int64_t>());	
 	}else if(alias.get_t_id() == T_ID_UNDEF){
-		return "Var()";
+		if(base_type != cre_undef){
+			return fmt::format("Var({})", base_type->to_string());
+		}else{
+			return "Var()";
+		}
+		
 	}else{
 		throw std::runtime_error("Var has unknown alias type t_id=" + std::to_string(alias.get_t_id()));
 	}
@@ -295,6 +300,10 @@ std::string Var::get_deref_str() {
 std::string Var::to_string() {
 	return fmt::format("{}{}", get_alias_str(), get_deref_str());		
 	
+}
+
+std::string Var::get_prefix_str() {
+	return VAR_PREFIXES[kind];
 }
 
 std::string Var::repr(bool use_alias) {

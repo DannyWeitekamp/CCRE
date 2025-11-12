@@ -283,6 +283,12 @@ def test_fact_literals():
     P = Var(Person)
     print(AND(Person(id=A, money=100.0)));
 
+    print(AND(
+        P0:=Var(Person(id="bob", money=100.0)),
+        ))
+
+    print(AND(P0:=Var(Person), P0.money < 105.0, P0==Person(id="bob", money=100.0)))
+
 
     # print(f(1))
 
@@ -292,6 +298,7 @@ def test_fact_literals():
 if __name__ == "__main__":
     import faulthandler; faulthandler.enable()
     
+    test_basic_logic()
     # test_logic()
     # test_arith()
     # test_name_resolution()

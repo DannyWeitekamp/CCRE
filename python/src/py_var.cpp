@@ -169,36 +169,91 @@ ref<Var> _py_Var_new_or_locate_self(Item alias, CRE_Type* type, uint8_t kind=VAR
 ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_ABSOLUTE) {
     CRE_Type* type = cre_undef;
     Item alias = Item();
+    Item fact = Item();
     bool error = false;
     bool has_type_kwarg = false;
     bool has_alias_kwarg = false;
-    
-    // Check for kwargs first
-    if(kwargs.contains("type")) {
-        nb::handle py_type = kwargs["type"];    
-        if(nb::isinstance<CRE_Type>(py_type) || py_type.is_type()){
-            has_type_kwarg = true;
-            type = Type_from_py(py_type);
-        } else {
+
+    // Resolve kwargs first
+    nb::handle py_type = kwargs.get("type", nb::none());
+    nb::handle py_alias = kwargs.get("alias", nb::none());
+
+    // Try args next
+    if(args.size() > 0){
+        if(nb::isinstance<CRE_Type>(args[0]) || args[0].is_type()){
+            if(py_type.is_none()) py_type = args[0];
+        }else if(nb::isinstance<nb::str>(args[0]) || 
+                 nb::isinstance<nb::int_>(args[0])){
+            if(py_alias.is_none()) py_alias = args[0];
+        }else if(nb::isinstance<Fact>(args[0])){
+            fact = Item_from_py(args[0]);
+        }else{
             error = true;
         }
+        if(args.size() > 1){
+            if(nb::isinstance<CRE_Type>(args[1]) || args[1].is_type()){
+                if(py_type.is_none()) py_type = args[1];
+            }else if(nb::isinstance<nb::str>(args[1]) || 
+                     nb::isinstance<nb::int_>(args[1])){
+                if(py_alias.is_none()) py_alias = args[1];
+            }else{
+                error = true;
+            }
+        }
     }
-    
-    if(kwargs.contains("alias")) {
-        nb::handle py_alias = kwargs["alias"];
-        if(nb::isinstance<nb::str>(py_alias)) {
-            has_alias_kwarg = true;
-            alias = nb::cast<std::string_view>(py_alias);
-        }else if(nb::isinstance<nb::int_>(py_alias)){
-            alias = nb::cast<int64_t>(py_alias);
-        } else {
+
+    // Resolve alias
+    if(nb::isinstance<nb::str>(py_alias)){
+        alias = intern(nb::cast<std::string_view>(py_alias));
+    }else if(nb::isinstance<nb::int_>(py_alias)){
+        alias = nb::cast<int64_t>(py_alias);
+    }
+
+    // Resolve type
+    if(!py_type.is_none()){
+        try {
+            type = Type_from_py(py_type);
+        } catch(...) {
             error = true;
         }
     }
 
     if(error){
-        throw std::invalid_argument("Var constructor: 'type' must be a Python type or CRE_Type, and 'alias' must be string");    
+        throw std::invalid_argument("Invalid arguments for Var(type, alias) constructor:"
+            " 'type' must be a Python type or CRE_Type, and 'alias' must be string or integer.");   
     }
+
+    ref<Var> var = new_var(alias, type, kind);
+
+    if(!fact.is_undef()){
+        ref<Logic> fact_conj = fact_to_conjunct(fact.as<Fact*>());
+        var->bound_obj = Item(fact_conj);
+    }
+    return var;
+    // // Check for kwargs first
+    // if(kwargs.contains("type")) {
+    //     nb::handle py_type = kwargs["type"];    
+    //     if(nb::isinstance<CRE_Type>(py_type) || py_type.is_type()){
+    //         has_type_kwarg = true;
+    //         type = Type_from_py(py_type);
+    //     } else {
+    //         error = true;
+    //     }
+    // }
+    
+    // if(kwargs.contains("alias")) {
+    //     nb::handle py_alias = kwargs["alias"];
+    //     if(nb::isinstance<nb::str>(py_alias)) {
+    //         has_alias_kwarg = true;
+    //         alias = nb::cast<std::string_view>(py_alias);
+    //     }else if(nb::isinstance<nb::int_>(py_alias)){
+    //         alias = nb::cast<int64_t>(py_alias);
+    //     } else {
+    //         error = true;
+    //     }
+    // }
+
+    
 
     // // If both kwargs are provided, use them and ignore positional args
     // if(has_type_kwarg && has_alias_kwarg) {
@@ -221,50 +276,50 @@ ref<Var> _py_Var_ctor(nb::args args, nb::kwargs kwargs, uint8_t kind=VAR_KIND_AB
     //     throw std::runtime_error("Var constructor expects exactly 2 arguments (CRE_Type and string), got " + std::to_string(args.size()));
     // }
 
-    // Check first argument
-    if(args.size() > 0){
-        if(nb::isinstance<CRE_Type>(args[0]) || args[0].is_type()) {
-            try {
-                if(!has_type_kwarg) type = Type_from_py(args[0]);                    
-                if(args.size()==2){
-                    if(nb::isinstance<nb::str>(args[1])){
-                        if(!has_alias_kwarg) alias = intern(nb::cast<std::string_view>(args[1]));
-                    }else if(nb::isinstance<nb::int_>(args[1])){
-                        if(!has_alias_kwarg) alias = nb::cast<int64_t>(args[1]);
-                    } else {
-                        error = true;
-                    }    
-                }
-            } catch(...) {
-                error = true;
-            }
-        } else if(nb::isinstance<nb::str>(args[0]) || nb::isinstance<nb::int_>(args[0])){
-            if(!has_alias_kwarg){
-                if(nb::isinstance<nb::str>(args[0])){
-                    alias = intern(nb::cast<std::string_view>(args[0]));
-                }else if(nb::isinstance<nb::int_>(args[0])){
-                    alias = nb::cast<int64_t>(args[0]);
-                }
-            }
-            if(args.size()==2){
-                if(nb::isinstance<CRE_Type>(args[1]) || args[1].is_type()){
-                    try {
-                        if(!has_type_kwarg) type = Type_from_py(args[1]);
-                    } catch(...) {
-                        error = true;
-                    }    
-                } else {
-                    error = true;
-                }
-            }
-        } else {
-            error = true;
-        }
-    }
+    // // Check first argument
+    // if(args.size() > 0){
+    //     if(nb::isinstance<CRE_Type>(args[0]) || args[0].is_type()) {
+    //         try {
+    //             if(!has_type_kwarg) type = Type_from_py(args[0]);                    
+    //             if(args.size()==2){
+    //                 if(nb::isinstance<nb::str>(args[1])){
+    //                     if(!has_alias_kwarg) alias = intern(nb::cast<std::string_view>(args[1]));
+    //                 }else if(nb::isinstance<nb::int_>(args[1])){
+    //                     if(!has_alias_kwarg) alias = nb::cast<int64_t>(args[1]);
+    //                 } else {
+    //                     error = true;
+    //                 }    
+    //             }
+    //         } catch(...) {
+    //             error = true;
+    //         }
+    //     } else if(nb::isinstance<nb::str>(args[0]) || nb::isinstance<nb::int_>(args[0])){
+    //         if(!has_alias_kwarg){
+    //             if(nb::isinstance<nb::str>(args[0])){
+    //                 alias = intern(nb::cast<std::string_view>(args[0]));
+    //             }else if(nb::isinstance<nb::int_>(args[0])){
+    //                 alias = nb::cast<int64_t>(args[0]);
+    //             }
+    //         }
+    //         if(args.size()==2){
+    //             if(nb::isinstance<CRE_Type>(args[1]) || args[1].is_type()){
+    //                 try {
+    //                     if(!has_type_kwarg) type = Type_from_py(args[1]);
+    //                 } catch(...) {
+    //                     error = true;
+    //                 }    
+    //             } else {
+    //                 error = true;
+    //             }
+    //         }
+    //     } else {
+    //         error = true;
+    //     }
+    // }
 
-    if(error) throw std::invalid_argument("Var constructor: optional positional arguments must be CRE_Type for 'type' and string for 'alias'");
+    // if(error) throw std::invalid_argument("Var constructor: optional positional arguments must be CRE_Type for 'type' and string for 'alias'");
 
-    return new_var(alias, type, kind);
+    
     // if(self != nullptr) return self;       
     // return new_var(alias, type, kind);
 }

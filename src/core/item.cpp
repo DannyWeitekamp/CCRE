@@ -428,7 +428,6 @@ std::string item_to_string(const Item& item) {
         return ss.str();
     }
         
-    bool known_type = true;
     switch(t_id) {
 
     case T_ID_UNDEF:
@@ -484,6 +483,12 @@ std::string item_to_string(const Item& item) {
         break;
     case T_ID_FUNC:
         ss << item._as<Func*>();
+        break;
+    case T_ID_LITERAL:
+        ss << item._as<Literal*>();
+        break;
+    case T_ID_LOGIC:
+        ss << item._as<Logic*>();
         break;
     default:
         ss << "<item t_id=" << t_id << " val=" << item.val << ">";

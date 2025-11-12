@@ -11,7 +11,7 @@ ref<Logic> py_Logic_ctor(uint8_t kind, nb::args args) {
     
     // Convert all arguments to CRE_Obj* and insert them
     for (auto it = args.begin(); it != args.end(); ++it) {
-        CRE_Obj* obj = py_to_cre_obj(*it);
+        Item obj = Item_from_py(*it);
         logic->_insert_arg(obj);
     }
     
@@ -24,7 +24,7 @@ ref<Logic> py_AND(nb::args args) {
     ref<Logic> logic = new_logic(CONDS_KIND_AND);
     
     for (auto it = args.begin(); it != args.end(); ++it) {
-        CRE_Obj* obj = py_to_cre_obj(*it);
+        Item obj = Item_from_py(*it);
         logic->_insert_arg(obj);
     }
     
@@ -37,7 +37,7 @@ ref<Logic> py_OR(nb::args args) {
     ref<Logic> logic = new_logic(CONDS_KIND_OR);
     
     for (auto it = args.begin(); it != args.end(); ++it) {
-        CRE_Obj* obj = py_to_cre_obj(*it);
+        Item obj = Item_from_py(*it);
         logic->_insert_arg(obj);
     }
     

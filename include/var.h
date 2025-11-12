@@ -67,7 +67,7 @@ struct Var : public CRE_Obj{
 	DerefInfo* deref_infos;
 	size_t length; // Note: could be smaller than size_t
 
-	Item bound_obj;
+	Item bound_obj = Item();
 
 	uint64_t hash;
 
@@ -88,7 +88,7 @@ struct Var : public CRE_Obj{
 	// ref<Var> _extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> _extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer=nullptr);
-	ref<Var> extend_item(int16_t mbr_ind, 			   AllocBuffer* alloc_buffer);
+	ref<Var> extend_item(int16_t mbr_ind, 			   AllocBuffer* alloc_buffer=nullptr);
 
 	void swap_base(Var* new_base);
 	// uint8_t is_not;
@@ -113,6 +113,7 @@ struct Var : public CRE_Obj{
 	// }
 	std::string get_alias_str();
 	std::string get_deref_str() ;
+	std::string get_prefix_str();
 	std::string to_string();
 	std::string repr(bool use_alias=true) ;
 	bool operator==(const Var& other) const;
@@ -129,6 +130,7 @@ ref<Var> new_var(const Item& alias,
  			DerefInfo* deref_infos=NULL,
  			size_t length=0,
  			AllocBuffer* buffer=nullptr);
+
 
 ref<Var> Not(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
 ref<Var> Exists(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
