@@ -408,12 +408,11 @@ std::string Func::to_string(uint8_t verbosity, bool negated){
 					Var* var =  (*cf->get(i))._as<Var*>();
 					// Var* var = (*arg_info.ptr).as_var();
 					// cout << "VAR:" << uint64_t(arg_info.ptr) << endl;
+
+					// cout << "+VAR: " << var->get_alias_str() << endl;
 					
-					if(use_derefs){
-						arg_strs->push_back(var->to_string());
-					}else{
-						arg_strs->push_back(var->alias.to_string());
-					}
+					arg_strs->push_back(var->to_string());
+					
 				}else if(arg_info.kind == ARGINFO_CONST){
 					// cout << "CONST:" << uint64_t(arg_info.ptr) << endl;
 					Item& item = *cf->get(i);

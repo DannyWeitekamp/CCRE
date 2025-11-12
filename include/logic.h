@@ -110,7 +110,7 @@ struct Logic : public CRE_Obj {
 
 
 ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer = nullptr);
-ref<Logic> fact_to_conjunct(Fact* fact, AllocBuffer* alloc_buffer=nullptr);
+ref<Logic> fact_to_conjunct(Fact* fact, Var* var=nullptr, AllocBuffer* alloc_buffer=nullptr);
 
 std::ostream& operator<<(std::ostream& out, Logic* logic);
 std::ostream& operator<<(std::ostream& out, ref<Logic> logic);

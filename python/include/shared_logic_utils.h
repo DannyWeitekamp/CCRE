@@ -1,5 +1,6 @@
 #include "../include/py_cre_core.h"
 #include "../include/builtin_funcs.h"
+#include "../include/logic.h"
 
 
 
@@ -31,7 +32,11 @@ uint16_t get_obj_t_id(T* obj) {
 template<typename T>
 ref<Func> py_cre_equals(T* self, nb::handle other) {
     Item other_item = Item_from_py(other);
-    return Equals->compose(self, other_item);
+    if(self->get_t_id() == T_ID_STR && other_item.get_t_id() == T_ID_STR){
+        return EqualsStr->compose(self, other_item).get();
+    }else{
+        return Equals->compose(self, other_item).get();
+    }
 }
 
 template<typename T>

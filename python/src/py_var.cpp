@@ -61,7 +61,7 @@ void py_Var_locate_alias_fast(Var* var){
 
         if(alias_str != ""){
             var->alias = Item(intern(alias_str));
-            // cout << "Var found: " << alias << endl;
+            // cout << "Var found: " << var->get_alias_str() << endl;
             return;
         }
 
@@ -78,8 +78,6 @@ void py_Var_locate_alias_fast(Var* var){
         // }    
 
         // cout << "Alias not found!" << endl;
-    }else{
-        cout << "NO PROXY" << endl;
     }
 }
 
@@ -328,6 +326,20 @@ ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
     return _py_Var_ctor(args, kwargs);
 }
 
+ref<Var> py_Var_getattr(Var* self, std::string_view attr) {
+    return self->extend_attr(attr);
+}
+
+ref<Var> py_Var_getitem(Var* self, nb::handle attr) {
+    if(nb::isinstance<nb::int_>(attr)){
+        return self->extend_item(nb::cast<int64_t>(attr));
+    } else if(nb::isinstance<nb::str>(attr)){
+        return self->extend_attr(nb::cast<std::string_view>(attr));
+    }else{
+        throw std::invalid_argument("Invalid argument for Var.__getitem__: must be integer or string");
+    }
+}
+
 nb::object py_Not(nb::args args, nb::kwargs kwargs) {
     if(args.size() == 1) {
         Item arg_item = Item_from_py(args[0]);
@@ -374,8 +386,17 @@ void init_var(nb::module_ & m){
     .def("__str__", &Var::to_string)
     .def("__repr__", [](Var* self){return self->repr(true);}, nb::rv_policy::reference)
     .def("__len__", &Var::size)
+    .def("__getattr__", &py_Var_getattr)
+    .def("__getitem__", &py_Var_getitem)
     // Arithmetic operators
-    .def("__eq__", [](Var* self, nb::handle other){return py_cre_equals(self,other);}, nb::rv_policy::reference)
+    .def("__eq__", [](Var* self, nb::handle other){
+        if(nb::isinstance<Fact>(other)){
+            Fact* fact = nb::cast<Fact*>(other);
+            return nb::cast(fact_to_conjunct(fact, self));
+        }else{
+            return nb::cast(py_cre_equals(self,other));
+        }
+    }, nb::rv_policy::reference)
     .def("__ne__", [](Var* self, nb::handle other){return py_cre_not_equals(self,other);}, nb::rv_policy::reference)
     .def("__lt__", [](Var* self, nb::handle other){return py_cre_less_than(self,other);}, nb::rv_policy::reference)
     .def("__gt__", [](Var* self, nb::handle other){return py_cre_greater_than(self,other);}, nb::rv_policy::reference)

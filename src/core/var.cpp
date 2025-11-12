@@ -252,17 +252,18 @@ void Var::swap_base(Var* new_base){
 }
 
 std::string Var::get_alias_str(){
-	if(alias.get_t_id() == T_ID_STR){
-		return alias.as<std::string>();
-	}else if(alias.get_t_id() == T_ID_INT){
-		return fmt::format("F{}", alias.as<int64_t>());	
-	}else if(alias.get_t_id() == T_ID_UNDEF){
+	Item& _alias = length > 0 ? base->alias : alias;
+	
+	if(_alias.get_t_id() == T_ID_STR){
+		return _alias.as<std::string>();
+	}else if(_alias.get_t_id() == T_ID_INT){
+		return fmt::format("F{}", _alias.as<int64_t>());	
+	}else if(_alias.get_t_id() == T_ID_UNDEF){
 		if(base_type != cre_undef){
 			return fmt::format("Var({})", base_type->to_string());
 		}else{
 			return "Var()";
 		}
-		
 	}else{
 		throw std::runtime_error("Var has unknown alias type t_id=" + std::to_string(alias.get_t_id()));
 	}

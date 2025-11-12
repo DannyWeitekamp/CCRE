@@ -46,7 +46,7 @@ void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
         auto [_it, inserted] = var_map.insert({var, info});
         var_map_iters.push_back(_it);
 
-        if(var->alias == "" && ext_locate_var_alias != nullptr){
+        if(var->alias.is_undef() && ext_locate_var_alias != nullptr){
             ext_locate_var_alias(var);
         }
     }else{
@@ -90,9 +90,10 @@ void Logic::_insert_other_kind(ref<Logic> logic) {
     items.push_back(Item(logic));
 }
 
-ref<Logic> fact_to_conjunct(Fact* fact, AllocBuffer* alloc_buffer) {
+ref<Logic> fact_to_conjunct(Fact* fact, Var* var, AllocBuffer* alloc_buffer) {
     FactType* f_type = fact->type;
-    ref<Var> subj_var = new_var(Item(), f_type);
+
+    ref<Var> subj_var = var == nullptr ? new_var(Item(), f_type) : ref<Var>(var);
 
     size_t L = 0;
     for (uint16_t i=0; i<fact->length; i++){
@@ -351,7 +352,7 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
     ss << (kind == CONDS_KIND_AND ? "AND(" : "OR(");
 
     bool mult_vars = vars.size() > 1;
-    cout << "MV:" << mult_vars << "SIZE:" << vars.size() << endl;
+    // cout << "MV:" << mult_vars << "SIZE:" << vars.size() << endl;
     if(mult_vars) ss << "\n";
     bool prev_endl = mult_vars;        
 
@@ -370,7 +371,7 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
         LiteralSemantics semantics = i < lit_semantics.size() ? lit_semantics[i] : LiteralSemantics();
 
         // Write the var definitions (i.e. x:=Var(FactType))
-        bool did_define_semanti = false;
+        bool did_define_semantic = false;
         if(v_ind < standard_var_spans.size()){
             std::tie(start, end) = standard_var_spans[v_ind];
             
@@ -382,7 +383,7 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
                 if(!covered->contains(v)){
                     if(semantics.kind == LIT_SEMANTICS_FACT){
                         ss << fmt::format("{}:=", v->get_alias_str());
-                        did_define_semanti = true;
+                        did_define_semantic = true;
                     }else{
                         ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
                         if(start != end) ss << ", ";
@@ -411,7 +412,11 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
                 Item& attr_val = *func->get(1);
                 FactType* fact_type = (FactType*) attr_var->base_type;
                 if(i == semantics.first_item){
-                    ss << fmt::format("{}({}(", attr_var->get_prefix_str(), fact_type->to_string());
+                    if(did_define_semantic){
+                        ss << fmt::format("{}({}(", attr_var->get_prefix_str(), fact_type->to_string());
+                    }else{
+                        ss << fmt::format("{} == {}(", attr_var->get_alias_str(), fact_type->to_string());
+                    }
                 }
                 
                 if(deref.deref_kind == DEREF_KIND_ATTR){       

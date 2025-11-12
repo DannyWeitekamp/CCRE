@@ -287,7 +287,7 @@ def test_fact_literals():
         P0:=Var(Person(id="bob", money=100.0)),
         ))
 
-    print(AND(P0:=Var(Person), P0.money < 105.0, P0==Person(id="bob", money=100.0)))
+    print(AND(P0:=Var(Person), P0.money < 105.0, P0 == Person(id="bob", money=100.0)))
 
 
     # print(f(1))
