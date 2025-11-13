@@ -96,7 +96,7 @@ struct Logic : public CRE_Obj {
     void _finalize();
 
     std::string basic_str();
-    std::string _stream_item(std::stringstream& ss, size_t i, bool is_first=false);
+    bool _stream_item(std::stringstream& ss, size_t i, bool is_first=false);
     std::string standard_str(std::string_view indent="  ", 
                              HashSet<Var*>* = nullptr);
     std::string to_string();
