@@ -5,6 +5,7 @@
 #include "../../include/func.h"
 #include "../../include/literal.h"
 #include "../../include/ref.h"
+#include "../../include/logic.h"
 
 void do_nothing(){
 
@@ -326,11 +327,11 @@ ref<Var> py_Var_ctor(nb::args args, nb::kwargs kwargs) {
     return _py_Var_ctor(args, kwargs);
 }
 
-ref<Var> py_Var_getattr(Var* self, std::string_view attr) {
+ref<Var> py_Var_getattr(ref<Var> self, std::string_view attr) {
     return self->extend_attr(attr);
 }
 
-ref<Var> py_Var_getitem(Var* self, nb::handle attr) {
+ref<Var> py_Var_getitem(ref<Var> self, nb::handle attr) {
     if(nb::isinstance<nb::int_>(attr)){
         return self->extend_item(nb::cast<int64_t>(attr));
     } else if(nb::isinstance<nb::str>(attr)){
@@ -386,13 +387,16 @@ void init_var(nb::module_ & m){
     .def("__str__", &Var::to_string)
     .def("__repr__", [](Var* self){return self->repr(true);}, nb::rv_policy::reference)
     .def("__len__", &Var::size)
-    .def("__getattr__", &py_Var_getattr)
-    .def("__getitem__", &py_Var_getitem)
+    .def("__getattr__", &py_Var_getattr, nb::rv_policy::reference)
+    .def("__getitem__", &py_Var_getitem, nb::rv_policy::reference )
     // Arithmetic operators
     .def("__eq__", [](Var* self, nb::handle other){
         if(nb::isinstance<Fact>(other)){
             Fact* fact = nb::cast<Fact*>(other);
             return nb::cast(fact_to_conjunct(fact, self));
+        }else if(nb::isinstance<Logic>(other)){
+            ref<Logic> logic = distribute_OR_const(nb::cast<Logic*>(other), self);
+            return nb::cast(logic);
         }else{
             return nb::cast(py_cre_equals(self,other));
         }

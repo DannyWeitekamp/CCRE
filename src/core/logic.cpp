@@ -22,7 +22,10 @@ void Logic_dtor(const CRE_Obj* x) {
 }
 
 Logic::Logic(uint8_t kind) :
-	kind(kind)
+	kind(kind),
+	is_pure_conj(kind == CONDS_KIND_AND),
+	is_pure_disj(kind == CONDS_KIND_OR),
+	is_pure_const_or(kind == CONDS_KIND_OR)
 {}
 
 ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer) {
@@ -31,25 +34,41 @@ ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer) {
 	return logic;
 }
 
+void Logic::_insert_const(const Item& arg) {
+    // size_t s = items.size();
+    items.push_back(arg);
+    // lit_semantics.push_back(LiteralSemantics(LIT_SEMANTICS_OR_CONSTS, s, s));
+    lit_semantics.push_back(LiteralSemantics());
+    
+}
 
 void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
     // cout << "INSERT VAR: " << var->get_alias_str() << ", PART OF ITEM: " << part_of_item << endl;
     auto it = var_map.find(var);
     if(it == var_map.end()) {
-
+        // cout << "  NOT IN MAP" << endl;
         if(kind == uint8_t(-1)) kind = var->kind;
         
         VarInfo info = VarInfo(var, kind, items.size());
         if(part_of_item){
             info.item_inds.push_back(items.size());
         }
-        auto [_it, inserted] = var_map.insert({var, info});
-        var_map_iters.push_back(_it);
 
+        // Ensure that the var has a unique alias
         if(var->alias.is_undef() && ext_locate_var_alias != nullptr){
             ext_locate_var_alias(var);
         }
+        if(var->alias.is_undef()){
+            find_unique_var_alias(var, var_map);
+        }
+
+        // Insert the var into the var_map
+        auto [_it, inserted] = var_map.insert({var, info});
+        var_map_iters.push_back(_it);
+
+        
     }else{
+        // cout << "  IN MAP" << endl;
         if(part_of_item){
             VarInfo& info = it->second;
             info.item_inds.push_back(items.size());
@@ -77,6 +96,7 @@ void Logic::_extend_same_kind(ref<Logic> logic) {
 }
 
 void Logic::_insert_other_kind(ref<Logic> logic) {
+    // cout << "INSERT OTHER KIND: " << logic->to_string() << "SIZE:" << logic->vars.size() << endl;
     for(size_t i=0; i<logic->vars.size(); i++){
     // for(auto inner_var : item_logic->vars){
         Var* inner_var = logic->vars[i];
@@ -87,7 +107,19 @@ void Logic::_insert_other_kind(ref<Logic> logic) {
             _insert_var(inner_var, true);
         }
     }
+    if(logic->is_pure_const_or){
+        size_t s = items.size();
+        lit_semantics.push_back(LiteralSemantics(LIT_SEMANTICS_OR_CONSTS, s, s + 1));
+    }else{
+        lit_semantics.push_back(LiteralSemantics());
+    }
     items.push_back(Item(logic));
+
+    if(logic->kind == CONDS_KIND_OR){
+        is_pure_conj = false;
+    }else{
+        is_pure_disj = false;
+    }
 }
 
 ref<Logic> fact_to_conjunct(Fact* fact, Var* var, AllocBuffer* alloc_buffer) {
@@ -122,7 +154,20 @@ ref<Logic> fact_to_conjunct(Fact* fact, Var* var, AllocBuffer* alloc_buffer) {
         ref<Literal> mbr_lit = new_literal(Equals->compose(mbr_var, mbr));
         conjuct->_insert_literal(mbr_lit, LiteralSemantics(LIT_SEMANTICS_FACT, 0, L - 1));
     }
+    conjuct->_finalize();
     return conjuct;
+}
+
+ref<Logic> distribute_OR_const(Logic* disj, Var* var, AllocBuffer* alloc_buffer) {
+    
+    ref<Logic> new_disj = new_logic(CONDS_KIND_OR, alloc_buffer);
+    size_t L = disj->items.size();
+    for(size_t i=0; i<disj->items.size(); i++){
+        ref<Literal> lit = new_literal(Equals->compose(var, disj->items[i]));
+        new_disj->_insert_literal(lit, LiteralSemantics(LIT_SEMANTICS_OR_CONSTS, 0, L-1));
+    }
+    new_disj->_finalize();
+    return new_disj;
 }
 
 // void Logic::_insert_fact_as_literals(ref<Fact> fact) {
@@ -161,7 +206,7 @@ ref<Logic> fact_to_conjunct(Fact* fact, Var* var, AllocBuffer* alloc_buffer) {
 
 void Logic::_insert_arg(const Item& arg, LiteralSemantics semantics) {
     // cout << "ARG T_ID: " << obj->get_t_id() << endl;
-
+    bool was_const = false;
     switch(arg.get_t_id()) {
     case T_ID_LITERAL:
         _insert_literal(arg._as<Literal*>(), semantics);
@@ -207,9 +252,17 @@ void Logic::_insert_arg(const Item& arg, LiteralSemantics semantics) {
         break;
     }
     default:
-        std::stringstream ss;
-        ss << "Argument to Logic with type " << arg.get_type() << " is not supported.";
-        throw std::invalid_argument(ss.str());
+        if(t_id_is_primitive(arg.get_t_id())){
+            _insert_const(arg);
+            was_const = true;
+        }else{
+            std::stringstream ss;
+            ss << "Argument to Logic with type " << arg.get_type() << " is not supported.";
+            throw std::invalid_argument(ss.str());
+        }
+    }
+    if(!was_const && kind == CONDS_KIND_OR){
+        is_pure_const_or = false;
     }
 }
 
@@ -290,19 +343,28 @@ void Logic::_ensure_standard_order(){
         std::vector<bool> covered(items.size(), false);
 
         size_t c = 0;
+        size_t last_end = 0;
         for(auto var : vars){
             VarInfo& info = var_map.at(var);
-            size_t start = c;
-            // cout << "Item Inds: " << info.item_inds << endl;
+            // size_t start = c;
+            // cout << "VAR: " << var->get_alias_str() << " Item Inds: " << info.item_inds << endl;
+            size_t min_ind = std::numeric_limits<size_t>::max();
+            size_t max_ind = last_end;
             for(auto ind : info.item_inds){
-                if(!covered[ind]){
-                    standard_order[c] = ind;
-                    covered[ind] = true;
-                    c++;
-                }
+                // cout << "IND: " << ind << endl;
+                min_ind = std::min(min_ind, ind);
+                max_ind = std::max(max_ind, ind);
+                // if(!covered[ind]){
+                //     standard_order[c] = ind;
+                //     covered[ind] = true;
+                //     c++;
+                // }
             }
-            // cout << "++START: " << start << ", END: " << c << endl;
-            standard_var_spans.emplace_back(start, c);
+            if(min_ind > max_ind) min_ind = max_ind;
+            // cout << "++START: " << min_ind << ", END: " << max_ind << endl;
+            standard_var_spans.emplace_back(min_ind, max_ind);
+            last_end = max_ind;
+            // if(info.item_inds.size() >= 1) last_end = max_ind+1;
         }
         for(size_t i=0; i<standard_order.size(); i++){
             if(!covered[i]){
@@ -358,46 +420,56 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
 
     size_t v_ind = 0;
     size_t L = items.size();
-    size_t start = -1;
-    size_t end = -1;
+    int64_t start = -1;
+    int64_t end = -1;
+    bool did_define_semantic = false;
 
+    auto write_next_var_def = [&](size_t i, LiteralSemantics semantics, bool is_last=false){
+        
+        Var* v = vars[v_ind];
+
+        if(!covered->contains(v)){
+            if(semantics.kind == LIT_SEMANTICS_FACT){
+                // cout << "THIS ONE!!" << endl;
+                ss << fmt::format("{}:=", v->get_alias_str());
+                did_define_semantic = true;
+            }else{
+                ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
+                if(!is_last) ss << ", ";
+            }
+            covered->insert(v);
+        }
+
+        ++v_ind;
+        if(v_ind < standard_var_spans.size()){
+            std::tie(start, end) = standard_var_spans[v_ind];
+        }else{
+            start = -1;
+            end = -1;
+        }   
+    };
 
     
     // for(size_t j : standard_order){
     for(size_t i=0; i<L; i++){
-        if(prev_endl) ss << indent;
+        // if(prev_endl) ss << indent;
         Item& item = items[standard_order[i]];
         // cout << "SEMANTICS L:" << lit_semantics.size() << endl;
         LiteralSemantics semantics = i < lit_semantics.size() ? lit_semantics[i] : LiteralSemantics();
 
-        // Write the var definitions (i.e. x:=Var(FactType))
-        bool did_define_semantic = false;
+        // Write the var definition for this item (i.e. x:=Var(FactType))
+        did_define_semantic = false;
         if(v_ind < standard_var_spans.size()){
             std::tie(start, end) = standard_var_spans[v_ind];
-            
-            while(item.get_t_id() != T_ID_LOGIC &&
-                i >= start && i < end && v_ind < vars.size()){
-                // cout << "V_IND: " << v_ind << "SIZE" << vars.size() << endl;
-                Var* v = vars[v_ind];
-
-                if(!covered->contains(v)){
-                    if(semantics.kind == LIT_SEMANTICS_FACT){
-                        ss << fmt::format("{}:=", v->get_alias_str());
-                        did_define_semantic = true;
-                    }else{
-                        ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
-                        if(start != end) ss << ", ";
-                    }
-                    covered->insert(v);
-                }
-
-                ++v_ind;
-                if(v_ind < standard_var_spans.size()){
-                    std::tie(start, end) = standard_var_spans[v_ind];
-                }else{
-                    start = -1;
-                    end = -1;
-                }   
+            // cout << i << " STD SPANS: " << start << ", " << end << endl;
+            if((item.get_t_id() != T_ID_LOGIC ||
+                   semantics.kind == LIT_SEMANTICS_OR_CONSTS) &&
+                   i >= start && v_ind < vars.size()){
+                // cout << "V_IND: " << v_ind << ", START: " << start << ", END: " << end << endl;
+                ss << indent;
+                write_next_var_def(i, semantics, false);
+                // if(end < i) ss << "\n";
+                // cout << "END OF LOOP, V_IND: " << v_ind << ", START: " << start << ", END: " << end << endl;
             }
         }
 
@@ -429,14 +501,43 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
                     ss << fmt::format("{}", attr_val.to_string());
                 }
                 // cout << "LAST ITEM: " << semantics.last_item << ", I: " << i << endl;
-                if(i == semantics.last_item){
-                    ss << "))";
-                    if(i < L-1) ss << ", ";
-                }else{
-                    ss << ", ";
-                }
+                if(i != semantics.last_item) ss << ", ";                    
                 i++;
             }
+            ss << "))";
+            if(i < L-1) ss << ", ";
+        }else if(semantics.kind == LIT_SEMANTICS_OR_CONSTS){
+            // cout << "OR CONST SEMANTICS: " << semantics.first_item << ", " << semantics.last_item << endl;
+            size_t j =0;
+            std::vector<Item>& const_items = items;
+            LiteralSemantics& const_semantics = semantics;
+
+            if(item.get_t_id() == T_ID_LOGIC){
+                Logic* inner_logic = item._as<Logic*>();
+                const_items = inner_logic->items;
+                // cout << "SEMANTICS SIZE: " << inner_logic->lit_semantics.size() << endl;
+                const_semantics = inner_logic->lit_semantics[0];
+            }else{
+                j = i;
+            }
+            while(j <= const_semantics.last_item){
+                Item& const_item = const_items[j];
+                Literal* lit = const_item._as<Literal*>();
+                Func* func = (Func*) lit->obj.get();
+                Var* var = func->get(0)->_as<Var*>();
+                Item const_val = *func->get(1);
+                if(j == const_semantics.first_item){
+                    ss << fmt::format("{} == OR(", var->to_string());
+                }
+                // cout << j << ", " << const_val << endl;
+                ss << const_val;
+                if(j != const_semantics.last_item) ss << ", ";
+                j++;
+            }
+            if(item.get_t_id() != T_ID_LOGIC){
+                i = j;
+            }
+            ss << ")";
             // cout << "END SEMANTIC :" << i << ", " << ss.str() << endl;
         }else{
             switch(item.get_t_id()){
@@ -446,9 +547,9 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
 
                 prev_endl = false;
                 if(mult_vars && 
-                    ((i+1 >= start && i+1 < end) ||
-                    i+1 >= L ||
-                    items[standard_order[i+1]].get_t_id() == T_ID_LOGIC)){
+                    (i+1 >= end ||
+                     i+1 >= L ||
+                     items[standard_order[i+1]].get_t_id() == T_ID_LOGIC)){
                     ss << "\n";
                     prev_endl = true;
                 }
@@ -466,13 +567,21 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
                 break;
             }
             default:
-                ss << "??";
+                ss << item.to_string();
                 if(i < L-1) ss << ", ";
                 prev_endl = false;
                 break;
             }
         }
+        // Write any remaining var definitions not associated with items
+        while(i >= start && v_ind < vars.size()){
+            ss << indent;
+            write_next_var_def(i, LiteralSemantics(), v_ind == vars.size()-1);
+            ss << "\n";
+        }
     }
+
+    
     
     if(is_outermost){
         ss << ")";

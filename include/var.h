@@ -185,6 +185,34 @@ struct SemanticVarPtr {
 	bool operator<(const SemanticVarPtr& other) const;
 };
 
+const size_t MAX_UNIQUE_VAR_ALIAS_TRIES = 1000;
+template<typename T>
+void find_unique_var_alias(Var* var, const T& other_vars){
+	size_t ind = 0;
+	fmt::basic_memory_buffer<char, 20> buffer;
+	char first_letter = toupper(var->base_type->name[0]);
+
+	bool is_unique = false;
+	do {
+		auto result = fmt::format_to_n(buffer.data(), buffer.capacity(),
+		 				 "{}{}", first_letter, ind);
+		var->alias = Item(intern(std::string_view(buffer.data(), result.size)));
+		++ind;
+		auto it = other_vars.find(SemanticVarPtr(var));
+
+		is_unique = (it == other_vars.end());
+	}while (!is_unique && ind < MAX_UNIQUE_VAR_ALIAS_TRIES);
+
+	if(ind >= MAX_UNIQUE_VAR_ALIAS_TRIES){
+		throw std::runtime_error(
+		"A logical expression failed to generate a unique variable alias. "
+		"This can happen if the expression contains a huge number of variables "
+		"(>4.29 trillon) and no alias was explicitly provided for at least one of them."
+	);
+	}
+}
+
+
 
 #define SIZEOF_VAR(n) (sizeof(Var)+(n)*sizeof(DerefInfo))
 

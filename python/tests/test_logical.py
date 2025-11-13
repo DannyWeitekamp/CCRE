@@ -265,6 +265,21 @@ def test_semantic_var():
     # A = None
     # _A = None
 
+def test_anon_vars_to_names():
+    # print(Var(Person).money)
+    # print(Var(Person))
+    # print(Var(Person).money==100.0)
+    # print(Var(Person).money<100.0)
+    # print("--------------------------------")
+    _vars = [Var(Person).money==100.0]
+    for i in range(20):
+        _vars.append(Var(Person))
+    _vars.append(Var(Person).money==100.0)
+    print(_vars)
+    print("LL", len(_vars))
+
+    print(AND(*_vars))
+
 def test_fact_literals():
     A = Var(str,"A")
     z0 = Var(str, 0)
@@ -283,11 +298,15 @@ def test_fact_literals():
     P = Var(Person)
     print(AND(Person(id=A, money=100.0)));
 
-    print(AND(
-        P0:=Var(Person(id="bob", money=100.0)),
-        ))
+    print(AND(P0:=Var(Person(id="bob", money=100.0))))
 
     print(AND(P0:=Var(Person), P0.money < 105.0, P0 == Person(id="bob", money=100.0)))
+
+    print(OR(1, 2, 3))
+
+    print("--------")
+    print(AND(P0:=Var(Person), P0.money==OR(100.5, 200, 300)))
+    print(P0.money==OR(100.5, 200, 300))
 
 
     # print(f(1))
@@ -298,10 +317,12 @@ def test_fact_literals():
 if __name__ == "__main__":
     import faulthandler; faulthandler.enable()
     
+
+    # test_anon_vars_to_names()
     test_basic_logic()
     # test_logic()
     # test_arith()
     # test_name_resolution()
     # test_var_types()
     # test_semantic_var()
-    test_fact_literals()
+    # test_fact_literals()

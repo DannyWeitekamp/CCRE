@@ -39,7 +39,7 @@ struct VarInfo {
 
 const uint8_t LIT_SEMANTICS_REG = 1;
 const uint8_t LIT_SEMANTICS_FACT = 2;
-const uint8_t LIT_SEMANTICS_OR_CONSTS = 2;
+const uint8_t LIT_SEMANTICS_OR_CONSTS = 3;
 
 struct LiteralSemantics {
     
@@ -53,7 +53,7 @@ struct LiteralSemantics {
 };
 
 
-typedef std::map<Var*, VarInfo> VarMapType;
+typedef std::map<SemanticVarPtr, VarInfo> VarMapType;
 
 struct Logic : public CRE_Obj {
 	static constexpr uint16_t T_ID = T_ID_LOGIC;
@@ -80,11 +80,13 @@ struct Logic : public CRE_Obj {
     // std::vector<Var*> ext_vars = {};
 
 	uint8_t kind;  // CONDS_KIND_AND or CONDS_KIND_OR
-    uint8_t is_pure_conj;  
+    uint8_t is_pure_conj = true;  
+    uint8_t is_pure_disj = true;
+    uint8_t is_pure_const_or = true;  
 
 	// -- Methods --
 	Logic(uint8_t kind);
-    
+    void _insert_const(const Item& arg);
     void _insert_arg(const Item& arg, LiteralSemantics semantics=LiteralSemantics());
     void _insert_var(Var* var, bool part_of_item=false, uint8_t kind=uint8_t(-1));
     void _insert_literal(ref<Literal> lit, const LiteralSemantics& semantics=LiteralSemantics());
@@ -111,6 +113,7 @@ struct Logic : public CRE_Obj {
 
 ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer = nullptr);
 ref<Logic> fact_to_conjunct(Fact* fact, Var* var=nullptr, AllocBuffer* alloc_buffer=nullptr);
+ref<Logic> distribute_OR_const(Logic* disj, Var* var, AllocBuffer* alloc_buffer=nullptr);
 
 std::ostream& operator<<(std::ostream& out, Logic* logic);
 std::ostream& operator<<(std::ostream& out, ref<Logic> logic);

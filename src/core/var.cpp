@@ -1,5 +1,7 @@
 #include "../include/var.h"
 #include <alloca.h>             // for alloca
+#include <cctype>               // for toupper
+#include <cstddef>
 #include <fmt/format.h>         // for format
 #include <fmt/ranges.h>         // for join, join_view
 #include <string.h>             // for size_t, memcpy
@@ -410,12 +412,17 @@ bool SemanticVarPtr::operator==(const SemanticVarPtr& other) const {
 }
 
 bool SemanticVarPtr::operator<(const SemanticVarPtr& other) const{
+	if(uint64_t(var_ptr) == uint64_t(other.var_ptr)) return false;
+
 	if(uint64_t(var_ptr->alias.val) == uint64_t(other.var_ptr->alias.val)){
 		if(!vars_same_type_kind(var_ptr, other.var_ptr)){
 			throw std::domain_error(
 				fmt::format("Different types or kinds for Var instances with same alias in expression. "
 							"Cannot reconcile {} and {}.", var_ptr->repr(), other.var_ptr->repr())
 			);
+		}
+		if(var_ptr->alias.get_t_id() == T_ID_UNDEF || other.var_ptr->alias.get_t_id() == T_ID_UNDEF){
+			return uint64_t(var_ptr) < uint64_t(other.var_ptr);
 		}
 	}
 	return uint64_t(var_ptr->alias.val) < uint64_t(other.var_ptr->alias.val);
@@ -474,6 +481,9 @@ uint64_t CREHash::operator()(Var* var){
   var->hash = hash;
   return hash; 
 }
+
+
+
 
 void (*ext_locate_var_alias)(Var*) = nullptr;
 
