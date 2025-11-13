@@ -401,12 +401,116 @@ std::string Logic::basic_str() {
 	return ss.str();
 }
 
-std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered) {
+bool Logic::_stream_item(std::stringstream& ss, size_t i, bool is_first) {
+    Item& item = items[i];
+    LiteralSemantics semantics = lit_semantics[i];
+    if(semantics.kind == LIT_SEMANTICS_FACT && item.get_t_id() == T_ID_LITERAL){
+        // cout << "+SEMANTIC :" << i << endl;
+        while(i <= semantics.last_item){
+            item = items[standard_order[i]];
+            Literal* lit = item._as<Literal*>();
+            Func* func = (Func*) lit->obj.get();
+            Var* attr_var = func->get(0)->_as<Var*>();
+            DerefInfo& deref = attr_var->deref_infos[0];
+            Item& attr_val = *func->get(1);
+            FactType* fact_type = (FactType*) attr_var->base_type;
+            if(i == semantics.first_item){
+                if(is_first){
+                    ss << fmt::format("{}({}(", attr_var->get_prefix_str(), fact_type->to_string());
+                }else{
+                    ss << fmt::format("{} == {}(", attr_var->get_alias_str(), fact_type->to_string());
+                }
+            }
+            
+            if(deref.deref_kind == DEREF_KIND_ATTR){       
+                // cout << "ATTR: " << fact_type->get_item_attr(deref.mbr_ind) << endl;         
+                ss << fmt::format("{}={}", 
+                    fact_type->get_item_attr(deref.mbr_ind),
+                    attr_val.to_string());
+            }else{
+                // cout << "ITEM: " << deref.deref_kind << endl;
+                ss << fmt::format("{}", attr_val.to_string());
+            }
+            // cout << "LAST ITEM: " << semantics.last_item << ", I: " << i << endl;
+            // if(i != semantics.last_item) ss << ", ";                    
+            i++;
+        }
+        ss << "))";
+        // if(i < L-1) ss << ", ";
+    }else if(semantics.kind == LIT_SEMANTICS_OR_CONSTS){
+        // cout << "OR CONST SEMANTICS: " << semantics.first_item << ", " << semantics.last_item << endl;
+        size_t j =0;
+        std::vector<Item>& const_items = items;
+        LiteralSemantics& const_semantics = semantics;
+
+        if(item.get_t_id() == T_ID_LOGIC){
+            Logic* inner_logic = item._as<Logic*>();
+            const_items = inner_logic->items;
+            // cout << "SEMANTICS SIZE: " << inner_logic->lit_semantics.size() << endl;
+            const_semantics = inner_logic->lit_semantics[0];
+        }else{
+            j = i;
+        }
+        while(j <= const_semantics.last_item){
+            Item& const_item = const_items[j];
+            Literal* lit = const_item._as<Literal*>();
+            Func* func = (Func*) lit->obj.get();
+            Var* var = func->get(0)->_as<Var*>();
+            Item const_val = *func->get(1);
+            if(j == const_semantics.first_item){
+                ss << fmt::format("{} == OR(", var->to_string());
+            }
+            // cout << j << ", " << const_val << endl;
+            ss << const_val;
+            // if(j != const_semantics.last_item) ss << ", ";
+            j++;
+        }
+        if(item.get_t_id() != T_ID_LOGIC){
+            i = j;
+        }
+        ss << ")";
+        // cout << "END SEMANTIC :" << i << ", " << ss.str() << endl;
+    }else{
+        switch(item.get_t_id()){
+        case T_ID_LITERAL:
+            ss << item._as<Literal*>()->to_string();
+            // if(i < L-1) ss << ", ";
+
+            // prev_endl = false;
+            // if(mult_vars && 
+            //     (i+1 >= end ||
+            //      i+1 >= L ||
+            //      items[standard_order[i+1]].get_t_id() == T_ID_LOGIC)){
+            //     ss << "\n";
+            //     prev_endl = true;
+            // }
+            break;
+        case T_ID_LOGIC:
+        {
+            Logic* inner_logic = item._as<Logic*>();
+            std::string next_indent = fmt::format("{}{}", indent, indent);
+            ss << inner_logic->standard_str(next_indent, covered);
+            if(inner_logic->vars.size() > 1) ss << indent;
+            ss << ")";
+            // if(i < L-1) ss << ", ";
+            // ss << "\n";
+            break;
+        }
+        default:
+            ss << item.to_string();
+            if(i < L-1) ss << ", ";
+            break;
+        }
+    }
+}
+
+std::string Logic::standard_str(std::string_view indent, std::vector<bool>* covered) {
     _ensure_standard_order();
 
     bool is_outermost = false;
+    
     if(covered == nullptr){
-        covered = new HashSet<Var*>();
+        covered = new std::vector<bool>(items.size(), false);
         is_outermost = true;
     }
 
@@ -419,170 +523,32 @@ std::string Logic::standard_str(std::string_view indent, HashSet<Var*>* covered)
     bool prev_endl = mult_vars;        
 
     size_t v_ind = 0;
-    size_t L = items.size();
-    int64_t start = -1;
-    int64_t end = -1;
-    bool did_define_semantic = false;
-
-    auto write_next_var_def = [&](size_t i, LiteralSemantics semantics, bool is_last=false){
-        
-        Var* v = vars[v_ind];
-
-        if(!covered->contains(v)){
-            if(semantics.kind == LIT_SEMANTICS_FACT){
-                // cout << "THIS ONE!!" << endl;
-                ss << fmt::format("{}:=", v->get_alias_str());
-                did_define_semantic = true;
-            }else{
-                ss << fmt::format("{}:={}", v->get_alias_str(), v->repr(false));
-                if(!is_last) ss << ", ";
-            }
-            covered->insert(v);
-        }
-
-        ++v_ind;
-        if(v_ind < standard_var_spans.size()){
-            std::tie(start, end) = standard_var_spans[v_ind];
-        }else{
-            start = -1;
-            end = -1;
-        }   
-    };
-
-    
-    // for(size_t j : standard_order){
+    size_t L = vars.size();
+    // int64_t start = -1;
+    // int64_t end = -1;   
     for(size_t i=0; i<L; i++){
-        // if(prev_endl) ss << indent;
-        Item& item = items[standard_order[i]];
-        // cout << "SEMANTICS L:" << lit_semantics.size() << endl;
-        LiteralSemantics semantics = i < lit_semantics.size() ? lit_semantics[i] : LiteralSemantics();
+        Var* v = vars[i];
+        VarInfo& info = var_map.at(var);
 
-        // Write the var definition for this item (i.e. x:=Var(FactType))
-        did_define_semantic = false;
-        if(v_ind < standard_var_spans.size()){
-            std::tie(start, end) = standard_var_spans[v_ind];
-            // cout << i << " STD SPANS: " << start << ", " << end << endl;
-            if((item.get_t_id() != T_ID_LOGIC ||
-                   semantics.kind == LIT_SEMANTICS_OR_CONSTS) &&
-                   i >= start && v_ind < vars.size()){
-                // cout << "V_IND: " << v_ind << ", START: " << start << ", END: " << end << endl;
-                ss << indent;
-                write_next_var_def(i, semantics, false);
-                // if(end < i) ss << "\n";
-                // cout << "END OF LOOP, V_IND: " << v_ind << ", START: " << start << ", END: " << end << endl;
-            }
+        std::stringstream lit_ss; 
+        bool first_is_fact_semantics = false;
+        for(size_t j=0; j<info.item_inds.size(); j++){
+            size_t ind = info.item_inds[j];
+            _stream_item(lit_ss, ind, first_is_fact_semantics && j==0);
+            if(j==0) first_is_fact_semantics = lit_semantics[ind].kind == LIT_SEMANTICS_FACT;                
+            if(j < info.item_inds.size()-1) lit_ss << ", ";
+            if(items[ind].get_t_id() == T_ID_LOGIC) << "\n";
         }
 
-        if(semantics.kind == LIT_SEMANTICS_FACT && item.get_t_id() == T_ID_LITERAL){
-            // cout << "+SEMANTIC :" << i << endl;
-            while(i <= semantics.last_item){
-                item = items[standard_order[i]];
-                Literal* lit = item._as<Literal*>();
-                Func* func = (Func*) lit->obj.get();
-                Var* attr_var = func->get(0)->_as<Var*>();
-                DerefInfo& deref = attr_var->deref_infos[0];
-                Item& attr_val = *func->get(1);
-                FactType* fact_type = (FactType*) attr_var->base_type;
-                if(i == semantics.first_item){
-                    if(did_define_semantic){
-                        ss << fmt::format("{}({}(", attr_var->get_prefix_str(), fact_type->to_string());
-                    }else{
-                        ss << fmt::format("{} == {}(", attr_var->get_alias_str(), fact_type->to_string());
-                    }
-                }
-                
-                if(deref.deref_kind == DEREF_KIND_ATTR){       
-                    // cout << "ATTR: " << fact_type->get_item_attr(deref.mbr_ind) << endl;         
-                    ss << fmt::format("{}={}", 
-                        fact_type->get_item_attr(deref.mbr_ind),
-                        attr_val.to_string());
-                }else{
-                    // cout << "ITEM: " << deref.deref_kind << endl;
-                    ss << fmt::format("{}", attr_val.to_string());
-                }
-                // cout << "LAST ITEM: " << semantics.last_item << ", I: " << i << endl;
-                if(i != semantics.last_item) ss << ", ";                    
-                i++;
-            }
-            ss << "))";
-            if(i < L-1) ss << ", ";
-        }else if(semantics.kind == LIT_SEMANTICS_OR_CONSTS){
-            // cout << "OR CONST SEMANTICS: " << semantics.first_item << ", " << semantics.last_item << endl;
-            size_t j =0;
-            std::vector<Item>& const_items = items;
-            LiteralSemantics& const_semantics = semantics;
-
-            if(item.get_t_id() == T_ID_LOGIC){
-                Logic* inner_logic = item._as<Logic*>();
-                const_items = inner_logic->items;
-                // cout << "SEMANTICS SIZE: " << inner_logic->lit_semantics.size() << endl;
-                const_semantics = inner_logic->lit_semantics[0];
-            }else{
-                j = i;
-            }
-            while(j <= const_semantics.last_item){
-                Item& const_item = const_items[j];
-                Literal* lit = const_item._as<Literal*>();
-                Func* func = (Func*) lit->obj.get();
-                Var* var = func->get(0)->_as<Var*>();
-                Item const_val = *func->get(1);
-                if(j == const_semantics.first_item){
-                    ss << fmt::format("{} == OR(", var->to_string());
-                }
-                // cout << j << ", " << const_val << endl;
-                ss << const_val;
-                if(j != const_semantics.last_item) ss << ", ";
-                j++;
-            }
-            if(item.get_t_id() != T_ID_LOGIC){
-                i = j;
-            }
-            ss << ")";
-            // cout << "END SEMANTIC :" << i << ", " << ss.str() << endl;
+        if(first_is_fact_semantics){
+            // cout << "THIS ONE!!" << endl;
+            ss << fmt::format("{}:={}", v->get_alias_str(), lit_ss.str());
         }else{
-            switch(item.get_t_id()){
-            case T_ID_LITERAL:
-                ss << item._as<Literal*>()->to_string();
-                if(i < L-1) ss << ", ";
-
-                prev_endl = false;
-                if(mult_vars && 
-                    (i+1 >= end ||
-                     i+1 >= L ||
-                     items[standard_order[i+1]].get_t_id() == T_ID_LOGIC)){
-                    ss << "\n";
-                    prev_endl = true;
-                }
-                break;
-            case T_ID_LOGIC:
-            {
-                Logic* inner_logic = item._as<Logic*>();
-                std::string next_indent = fmt::format("{}{}", indent, indent);
-                ss << inner_logic->standard_str(next_indent, covered);
-                if(inner_logic->vars.size() > 1) ss << indent;
-                ss << ")";
-                if(i < L-1) ss << ", ";
-                ss << "\n";
-                prev_endl = true;
-                break;
-            }
-            default:
-                ss << item.to_string();
-                if(i < L-1) ss << ", ";
-                prev_endl = false;
-                break;
-            }
+            ss << fmt::format("{}:={}, {}", v->get_alias_str(), v->repr(false), lit_ss.str());
         }
-        // Write any remaining var definitions not associated with items
-        while(i >= start && v_ind < vars.size()){
-            ss << indent;
-            write_next_var_def(i, LiteralSemantics(), v_ind == vars.size()-1);
-            ss << "\n";
-        }
+        if(i < L-1) ss << ", ";
     }
 
-    
-    
     if(is_outermost){
         ss << ")";
         delete covered;
