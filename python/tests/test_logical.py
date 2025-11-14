@@ -325,4 +325,4 @@ if __name__ == "__main__":
     # test_name_resolution()
     # test_var_types()
     # test_semantic_var()
-    # test_fact_literals()
+    test_fact_literals()

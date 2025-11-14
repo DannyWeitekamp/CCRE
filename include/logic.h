@@ -10,7 +10,7 @@
 #include "../include/ref.h"      // for ref
 #include "../include/literal.h"  // for Literal, new_literal
 #include "../include/t_ids.h"    // for T_ID_CONDITIONS
-
+#include "../include/hash.h"   // for HashSet
 
 // Forward declarations
 namespace cre {
@@ -61,9 +61,10 @@ struct Logic : public CRE_Obj {
 	// -- Members --
 	std::vector<Item> items = {};
     VarMapType var_map = {};
-    std::vector<Var*> vars = {};
+    std::vector<ref<Var>> vars = {};
     std::vector<size_t> standard_order = {};
-    std::vector<std::tuple<size_t, size_t>> standard_var_spans = {};
+    // std::vector<std::tuple<size_t, size_t>> standard_var_spans = {};
+    std::vector<size_t> const_item_inds = {};
     std::vector<VarMapType::iterator> var_map_iters = {};
     std::vector<LiteralSemantics> lit_semantics = {};
 
@@ -95,10 +96,11 @@ struct Logic : public CRE_Obj {
     void _extend_same_kind(ref<Logic> conj);
     void _finalize();
 
-    std::string basic_str();
-    bool _stream_item(std::stringstream& ss, size_t i, bool is_first=false);
+std::string basic_str();
+    size_t _stream_item(std::stringstream& ss, size_t i, std::string_view indent,
+         HashSet<void*>* var_covered, bool is_first=false);
     std::string standard_str(std::string_view indent="  ", 
-                             HashSet<Var*>* = nullptr);
+        HashSet<void*>* var_covered = nullptr);
     std::string to_string();
     void _ensure_standard_order();
 

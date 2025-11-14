@@ -7,6 +7,7 @@
 #include "../include/var.h"
 #include "../include/func.h"
 #include "../include/literal.h"
+#include "../include/logic.h"
 #include "../include/objs_hash_eq.h"
 #include <bit>
 #include <sstream>
@@ -479,16 +480,16 @@ std::string item_to_string(const Item& item) {
             break;
         }
     case T_ID_VAR:
-        ss << item._as<Var*>();
+        ss << item._as<Var*>()->to_string();
         break;
     case T_ID_FUNC:
-        ss << item._as<Func*>();
+        ss << item._as<Func*>()->to_string();
         break;
     case T_ID_LITERAL:
-        ss << item._as<Literal*>();
+        ss << item._as<Literal*>()->to_string();
         break;
     case T_ID_LOGIC:
-        ss << item._as<Logic*>();
+        ss << item._as<Logic*>()->to_string();
         break;
     default:
         ss << "<item t_id=" << t_id << " val=" << item.val << ">";
