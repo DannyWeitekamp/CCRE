@@ -98,9 +98,9 @@ struct Logic : public CRE_Obj {
 
 std::string basic_str();
     size_t _stream_item(std::stringstream& ss, size_t i, std::string_view indent,
-         HashSet<void*>* var_covered, bool is_first=false);
+         HashSet<void*>* var_covered, std::vector<bool>& item_covered, size_t& n_items_covered, bool is_first=false);
     std::string standard_str(std::string_view indent="  ", 
-        HashSet<void*>* var_covered = nullptr);
+        std::string_view prev_indent="", HashSet<void*>* var_covered = nullptr);
     std::string to_string();
     void _ensure_standard_order();
 

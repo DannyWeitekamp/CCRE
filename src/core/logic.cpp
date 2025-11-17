@@ -59,9 +59,11 @@ void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
         // Ensure that the var has a unique alias
         if(var->alias.is_undef() && ext_locate_var_alias != nullptr){
             ext_locate_var_alias(var);
+            // cout << "EXT LOC VAR ALIAS: " << var->get_alias_str() << endl;
         }
         if(var->alias.is_undef()){
             find_unique_var_alias(var, var_map);
+            // cout << "FIND UNIQUE VAR ALIAS: " << var->get_alias_str() << endl;
         }
 
         // Insert the var into the var_map
@@ -404,15 +406,23 @@ std::string Logic::basic_str() {
 }
 
 size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view indent,
-        HashSet<void*>* var_covered, bool is_first) {
+        HashSet<void*>* var_covered, std::vector<bool>& item_covered, size_t& n_items_covered, bool is_first) {
+    
     size_t n_adv = 0;
     Item& item = items[i];
     LiteralSemantics semantics = lit_semantics[i];
     // cout << "STREAM ITEM: " << i << ", SEMANTICS: " << semantics.kind << endl;
+
+    
     if(semantics.kind == LIT_SEMANTICS_FACT && item.get_t_id() == T_ID_LITERAL){
         // cout << "+SEMANTIC :" << i << endl;
+        
         while(i <= semantics.last_item){
+            item_covered[i] = true;
+            n_items_covered++;
             item = items[i];
+            
+
             Literal* lit = item._as<Literal*>();
             Func* func = (Func*) lit->obj.get();
             Var* attr_var = func->get(0)->_as<Var*>();
@@ -442,7 +452,8 @@ size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view ind
             n_adv++;
         }
         --n_adv;
-        ss << "))";
+        ss << ")";
+        if(is_first) ss << ")";
         // if(i < L-1) ss << ", ";
     }else if(semantics.kind == LIT_SEMANTICS_OR_CONSTS){
         // cout << "OR CONST SEMANTICS: " << semantics.first_item << ", " << semantics.last_item << endl;
@@ -459,7 +470,11 @@ size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view ind
             j = i;
         }
         while(j <= const_semantics.last_item){
+            item_covered[j] = true;
+            n_items_covered++;
+
             Item& const_item = const_items[j];
+
             Literal* lit = const_item._as<Literal*>();
             Func* func = (Func*) lit->obj.get();
             Var* var = func->get(0)->_as<Var*>();
@@ -478,6 +493,8 @@ size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view ind
         ss << ")";
         // cout << "END SEMANTIC :" << i << ", " << ss.str() << endl;
     }else{
+        item_covered[i] = true;
+        n_items_covered++;
         
         switch(item.get_t_id()){
         case T_ID_LITERAL:
@@ -500,9 +517,10 @@ size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view ind
             // cout << "LOGIC: " << i << endl;
             Logic* inner_logic = item._as<Logic*>();
             std::string next_indent = fmt::format("{}{}", indent, indent);
-            ss << inner_logic->standard_str(next_indent, var_covered);
-            if(inner_logic->vars.size() > 1) ss << indent;
-            ss << ")";
+            // ss << indent;
+            ss << inner_logic->standard_str(next_indent, indent, var_covered);
+            // if(inner_logic->vars.size() > 1) ss << indent;
+            // ss << indent << ")";
             // if(i < L-1) ss << ", ";
             // ss << "\n";
             break;
@@ -551,7 +569,7 @@ bool _all_true(std::vector<bool> arr){
 }
 
 std::string Logic::standard_str(
-    std::string_view indent, 
+    std::string_view indent, std::string_view prev_indent,
     HashSet<void*>* var_covered) {
 
     _ensure_standard_order();
@@ -559,50 +577,86 @@ std::string Logic::standard_str(
     bool is_outermost = false;
     size_t n_items_covered = 0;
     size_t n_vars_covered = 0;
+    size_t L = vars.size();
+    // size_t n_lines = 0;
     
     std::vector<bool> item_covered = std::vector<bool>(items.size(), false);
     if(var_covered == nullptr){
         var_covered = new HashSet<void*>();
         is_outermost = true;
+
+        for(size_t i=0; i<L; i++){
+            Var* v = vars[i];
+
+            // bool var_will_cover = !inner_covers_var && var_covered->find((void*) v) == var_covered->end();            
+
+            // Skip over 
+            if(v->kind == VAR_KIND_BOUND){
+                var_covered->insert((void*) v);
+                ++n_vars_covered;
+            }//else if(var_will_cover || v.item_inds.size() >= 1){
+                // ++n_lines;
+            // }
+        }
     }else{
+        // n_explicit_vars = L;
         n_vars_covered = _count_vars_covered(vars, var_covered);
     }
 
-    std::stringstream ss;
-    ss << (kind == CONDS_KIND_AND ? "AND(" : "OR(");
+    // bool is_multiline = n_lines > 1;
 
-    bool mult_vars = vars.size() > 1;
+    
+
+    
     // cout << "MV:" << mult_vars << "SIZE:" << vars.size() << endl;
-    if(mult_vars) ss << "\n";
-    bool prev_endl = mult_vars;        
+    // if(is_multiline) ss << "\n";
+    
 
     size_t v_ind = 0;
-    size_t L = vars.size();
+    
     // int64_t start = -1;
     // int64_t end = -1;   
 
+    std::vector<std::string> lines;
+
     // Handle any const items first
+    std::stringstream const_ss;
     for(size_t j=0; j<const_item_inds.size(); j++){
+        std::stringstream ss;
         size_t ind = const_item_inds[j];
         if(!item_covered[ind]){
-            _stream_item(ss, ind, indent, var_covered, false);
-            if(j < const_item_inds.size()-1) ss << ", ";
-            item_covered[ind] = true;
-        }            
+            _stream_item(const_ss, ind, indent, var_covered, item_covered, n_items_covered, false);
+            if(j < const_item_inds.size()-1) const_ss << ", ";
+        }
     }
+    if(const_ss.str().size() > 0) lines.push_back(const_ss.str());
 
     for(size_t i=0; i<L; i++){
+
+        std::stringstream ss;
         Var* v = vars[i];
+        // cout << "VAR: " << v->get_alias_str() << endl;
         VarInfo& info = var_map.at(v);
+        bool write_any = false;
 
         std::stringstream var_ss; 
         std::stringstream lit_ss; 
 
-        bool var_was_covered = var_covered->find((void*) v) == var_covered->end();
-        if(var_was_covered){
+        bool inner_covers_var = false;
+        if(info.item_inds.size() == 1){
+            Item& item = items[info.item_inds[0]];
+            
+            inner_covers_var = item.get_t_id() == T_ID_LOGIC;
+            // if(inner_covers_var) cout << "BLAH: " << item << endl;
+        }
+        // cout << "VAR TO INNER: " << inner_covers_var << " @" << info.item_inds[0] << endl;
+
+        bool var_will_cover = !inner_covers_var && var_covered->find((void*) v) == var_covered->end();
+        if(var_will_cover){
             var_covered->insert((void*) v);
             ++n_vars_covered;
             finished = n_items_covered == items.size() && n_vars_covered == vars.size();
+            write_any = true;
         }
 
         bool first_is_fact_semantics = false;
@@ -612,28 +666,27 @@ std::string Logic::standard_str(
             Item& item = items[ind];
             
             bool has_var_prereqs = _all_vars_covered(item, var_covered);
-            if(!item_covered[ind] && has_var_prereqs){
-                item_covered[ind] = true;
-                ++n_items_covered;
-
-                bool item_is_logic = item.get_t_id() == T_ID_LOGIC;
-                bool item_is_multiline = item_is_logic && item._as<Logic*>()->vars.size() > 1;
+            if(!item_covered[ind] && (has_var_prereqs || inner_covers_var)){
+                // bool item_is_logic = item.get_t_id() == T_ID_LOGIC;
+                // bool item_is_multiline = item_is_logic && item._as<Logic*>()->vars.size() > 1;
                 
-                if(item_is_multiline) lit_ss << "\n" << indent;
-                size_t n_adv = _stream_item(lit_ss, ind, indent, var_covered, first_is_fact_semantics && j==0);
+                // if(item_is_multiline) lit_ss << "\n" << indent;
                 if(j==0) first_is_fact_semantics = lit_semantics[ind].kind == LIT_SEMANTICS_FACT;                
+                size_t n_adv = _stream_item(lit_ss, ind, indent, var_covered, item_covered, n_items_covered, first_is_fact_semantics && j==0);
                 j += n_adv;
 
                 finished = n_items_covered == items.size() && n_vars_covered == vars.size();
+                // if(!finished && item_is_multiline) lit_ss << ")";
                 if(!finished) lit_ss << ", ";
-                if(!finished && item_is_multiline) lit_ss << "\n" << indent;
+                // if(!finished && item_is_multiline) lit_ss << "\n";
+                write_any = true;
             }
             // if(!all_vars_covered) cout << "NOT ALL VARS COVERED: " << items[ind].get_t_id() << endl;
             // if(!all_vars_covered) cout << "NOT ALL VARS COVERED: " << items[ind] << endl;
         }
-        if(mult_vars) ss << indent;
         
-        if(var_was_covered){
+        // cout << "First is fact semantics: " << first_is_fact_semantics << endl;
+        if(var_will_cover){
             if(first_is_fact_semantics){
                 var_ss << fmt::format("{}:=", v->get_alias_str());
             }else{
@@ -641,19 +694,39 @@ std::string Logic::standard_str(
             }
         }
         
-        ss << var_ss.str() << lit_ss.str();
+        
+        // if(is_multiline && write_any) ss << indent;}
+        if(write_any){
+            ss << var_ss.str() << lit_ss.str();
+            lines.push_back(ss.str());
+        }
+        
 
         // bool finished = _all_true(item_covered);
 
         // if(!finished) ss << ", ";
-        if(mult_vars) ss << "\n";
+        // if(is_multiline && write_any) ss << "\n";
 
         if(finished) break;
         
     }
 
+    std::stringstream ss;
+    ss << (kind == CONDS_KIND_AND ? "AND(" : "OR(");
+
+    if(lines.size() > 1) ss << "\n";
+
+    for(size_t i=0; i<lines.size(); i++){
+        if(lines.size() > 1) ss << indent;
+        ss << lines[i];
+        if(lines.size() > 1 && i < lines.size()-1) ss << "\n";
+    }
+
+    if(lines.size() > 1) ss << "\n";
+    if(lines.size() > 1) ss << prev_indent;
+    ss << ")";
+    
     if(is_outermost){
-        ss << ")";
         delete var_covered;
     }
 
