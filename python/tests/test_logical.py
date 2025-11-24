@@ -4,10 +4,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__)))
 from t_utils import *
 import pytest
 
-from cre import Var, AND, OR, Not, Exists, Bound, Opt, Tuple, define_fact
+from cre import Var, AND, OR, Not, Exists, Bound, Opt, Tuple, FactType
 
 
-Person = define_fact("Person", 
+Person = FactType("Person", 
     {"id": {"type" : str, "unique_id" : True},
      "money": float,
      "mom": "Person",

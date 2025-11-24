@@ -23,11 +23,11 @@ namespace cre {
 const uint8_t VAR_KIND_ABSOLUTE = 1;
 const uint8_t VAR_KIND_BOUND = 2;
 const uint8_t VAR_KIND_OPTIONAL = 3; 
-const uint8_t VAR_KIND_EXIST = 4;
+const uint8_t VAR_KIND_EXISTS = 4;
 const uint8_t VAR_KIND_NOT = 5;
 // const uint8_t VAR_KIND_ALL = 4;
 
-const std::string VAR_PREFIXES[6] = {"","Var", "Bound", "Opt", "Exist", "Not"};
+const std::string VAR_PREFIXES[6] = {"","Var", "Bound", "Opt", "Exists", "Not"};
 
 
 const uint16_t DEREF_KIND_ATTR = 1;
@@ -99,7 +99,7 @@ struct Var : public CRE_Obj{
 		return length;
 	}
 	inline size_t is_existential(){
-		return kind > VAR_KIND_EXIST;
+		return kind > VAR_KIND_EXISTS;
 	}
 
 	inline CRE_Type* eval_type() const {

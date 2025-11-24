@@ -428,7 +428,7 @@ void init_var(nb::module_ & m){
     m.def("resolve_alias_fast", &py_Var_locate_alias_fast);
     m.def("do_nothing", &do_nothing);
     m.def("Not", &py_Not, nb::rv_policy::reference);
-    m.def("Exists", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_EXIST);}, nb::rv_policy::reference);
+    m.def("Exists", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_EXISTS);}, nb::rv_policy::reference);
     m.def("Bound", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_BOUND);}, nb::rv_policy::reference);
     m.def("Opt", [](nb::args args, nb::kwargs kwargs){return _py_Var_ctor(args, kwargs, VAR_KIND_OPTIONAL);}, nb::rv_policy::reference);
 }

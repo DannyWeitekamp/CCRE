@@ -146,7 +146,7 @@ ref<Var> Not(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t l
 	return new_var(alias, type, VAR_KIND_NOT, deref_infos, length, buffer);
 }
 ref<Var> Exists(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
-	return new_var(alias, type, VAR_KIND_EXIST, deref_infos, length, buffer);
+	return new_var(alias, type, VAR_KIND_EXISTS, deref_infos, length, buffer);
 }
 ref<Var> Bound(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t length, AllocBuffer* buffer){
 	return new_var(alias, type, VAR_KIND_BOUND, deref_infos, length, buffer);

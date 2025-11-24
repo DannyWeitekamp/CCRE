@@ -267,7 +267,10 @@ void init_core(nb::module_& m) {
     ;
 
     // -- FactType ---
-    nb::class_<FactType, CRE_Type>(m, "Fact_Type", nb::type_slots(cre_obj_slots))
+    nb::class_<FactType, CRE_Type>(m, "FactType", nb::type_slots(cre_obj_slots))
+    .def(nb::new_([](nb::str name, nb::dict member_infos){
+        return py_define_fact(name, member_infos);
+    }), "name"_a, "member_infos"_a, nb::rv_policy::reference)
     .def("__call__", [](FactType& self, nb::args args, nb::kwargs kwargs){
         return _py_new_fact(&self, args.size(), args.begin(), args.end(), kwargs);
     }, nb::rv_policy::reference)

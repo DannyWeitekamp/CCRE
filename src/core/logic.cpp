@@ -82,6 +82,11 @@ void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
 
 void Logic::_insert_literal(ref<Literal> lit, const LiteralSemantics& semantics) {
     // cout << "INSERT LITERAL:" << lit << endl;
+    if(lit->vars.size() == 0){
+        _insert_const(Item(lit));
+        return;
+    }
+
     for(auto var : lit->vars) {
         _insert_var(var, true);
     }
@@ -655,7 +660,7 @@ std::string Logic::standard_str(
         if(var_will_cover){
             var_covered->insert((void*) v);
             ++n_vars_covered;
-            finished = n_items_covered == items.size() && n_vars_covered == vars.size();
+            // finished = n_items_covered == items.size() && n_vars_covered == vars.size();
             write_any = true;
         }
 
@@ -675,9 +680,10 @@ std::string Logic::standard_str(
                 size_t n_adv = _stream_item(lit_ss, ind, indent, var_covered, item_covered, n_items_covered, first_is_fact_semantics && j==0);
                 j += n_adv;
 
-                finished = n_items_covered == items.size() && n_vars_covered == vars.size();
+                // finished = n_items_covered == items.size() && n_vars_covered == vars.size();
                 // if(!finished && item_is_multiline) lit_ss << ")";
-                if(!finished) lit_ss << ", ";
+                // if(!finished) lit_ss << ", ";
+                if(j < info.item_inds.size()-1) lit_ss << ", ";
                 // if(!finished && item_is_multiline) lit_ss << "\n";
                 write_any = true;
             }
@@ -719,7 +725,7 @@ std::string Logic::standard_str(
     for(size_t i=0; i<lines.size(); i++){
         if(lines.size() > 1) ss << indent;
         ss << lines[i];
-        if(lines.size() > 1 && i < lines.size()-1) ss << "\n";
+        if(lines.size() > 1 && i < lines.size()-1) ss << ",\n";
     }
 
     if(lines.size() > 1) ss << "\n";
