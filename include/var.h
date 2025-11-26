@@ -111,11 +111,13 @@ struct Var : public CRE_Obj{
 	// inline size_t is_universal(){
 	// 	return kind & 4;
 	// }
-	std::string get_alias_str();
-	std::string get_deref_str() ;
-	std::string get_prefix_str();
-	std::string to_string();
-	std::string repr(bool use_alias=true) ;
+	std::string get_alias_str() const;
+	std::string get_deref_str() const;
+	std::string get_prefix_str() const;
+	std::string to_string() const;
+	std::string repr(bool use_alias=true) const;
+
+	
 	bool operator==(const Var& other) const;
 
 };
@@ -137,9 +139,11 @@ ref<Var> Exists(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_info
 ref<Var> Bound(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
 ref<Var> Opt(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=NULL, size_t length=0, AllocBuffer* buffer=nullptr);
 
-bool vars_same_type_kind(Var* var1, Var* var2);
-bool bases_semantically_equal(Var* var1, Var* var2);
-bool vars_semantically_equal(Var* var1, Var* var2);
+bool vars_same_type_kind(const Var* var1, const Var* var2);
+bool bases_semantically_equal(const Var* var1, const Var* var2);
+bool vars_semantically_equal(const Var* var1, const Var* var2);
+bool vars_equal(const Var* var1, const Var* var2, bool check_base=true, bool semantic=true);
+// bool vars_equal(Var* var1, Var* var2, bool semantic=true);
 // ref<Var> new_Exists(const Item& alias,
 //  			CRE_Type* type=nullptr,
 //  			DerefInfo* deref_infos=NULL,

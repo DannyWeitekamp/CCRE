@@ -253,8 +253,8 @@ void Var::swap_base(Var* new_base){
 	hash = CREHash{}(this);
 }
 
-std::string Var::get_alias_str(){
-	Item& _alias = length > 0 ? base->alias : alias;
+std::string Var::get_alias_str() const{
+	const Item& _alias = length > 0 ? base->alias : alias;
 	
 	if(_alias.get_t_id() == T_ID_STR){
 		return _alias.as<std::string>();
@@ -272,7 +272,7 @@ std::string Var::get_alias_str(){
 	return "";
 }
 
-std::string Var::get_deref_str() {
+std::string Var::get_deref_str() const{
 	std::vector<std::string> deref_strs = {};
 	deref_strs.reserve(length);
 
@@ -300,16 +300,16 @@ std::string Var::get_deref_str() {
 	return fmt::format("{}", fmt::join(deref_strs, ""));
 }
 
-std::string Var::to_string() {
+std::string Var::to_string() const{
 	return fmt::format("{}{}", get_alias_str(), get_deref_str());		
 	
 }
 
-std::string Var::get_prefix_str() {
+std::string Var::get_prefix_str() const{
 	return VAR_PREFIXES[kind];
 }
 
-std::string Var::repr(bool use_alias) {
+std::string Var::repr(bool use_alias) const{
 	std::stringstream ss;
 	std::vector<std::string> inner_parts = {};
 	if(base_type != cre_undef){
@@ -374,7 +374,7 @@ Item* Var::apply_deref(CRE_Obj* obj){
 	return deref_multiple(obj, this->deref_infos, this->length);
 }
 
-bool vars_same_type_kind(Var* var1, Var* var2){
+bool vars_same_type_kind(const Var* var1, const Var* var2){
 	if(var1->kind == var2->kind){
 		return (var1->base_type == var2->base_type ||
 		        var1->head_type->get_t_id() == T_ID_UNDEF ||
@@ -386,7 +386,7 @@ bool vars_same_type_kind(Var* var1, Var* var2){
 	return false;
 }
 
-bool vars_semantically_equal(Var* var1, Var* var2){
+bool vars_semantically_equal(const Var* var1, const Var* var2){
 	// cout << "ALIAS:" << var1->alias.val << " " << var2->alias.val << endl;
 	if(uint64_t(var1) == uint64_t(var2)) return true;
 	
@@ -403,7 +403,7 @@ bool vars_semantically_equal(Var* var1, Var* var2){
 	return false;
 }
 
-bool bases_semantically_equal(Var* var1, Var* var2){
+bool bases_semantically_equal(const Var* var1, const Var* var2){
 	return vars_semantically_equal(var1->base, var2->base);
 }
 
@@ -428,13 +428,22 @@ bool SemanticVarPtr::operator<(const SemanticVarPtr& other) const{
 	return uint64_t(var_ptr->alias.val) < uint64_t(other.var_ptr->alias.val);
 }
 
-bool Var::operator==(const Var& other) const {
-	if(uint64_t(base) != uint64_t(other.base)) return false;
-	if(length != other.length) return false;
+bool vars_equal(const Var* var1, const Var* var2, bool check_base, bool semantic){
+	if(check_base){
+		if(semantic){
+			if(var1->alias.val != var2->alias.val) return false;
+			if(var1->alias.get_t_id() != var2->alias.get_t_id()) return false;			
+			return true;
+		}else{
+			if(uint64_t(var1->base) != uint64_t(var2->base)) return false;
+		}
+	}
+	if(var1->base_type != var2->base_type) return false;
+	if(var1->length != var2->length) return false;
 
-	for(size_t i=0; i < length; i++){
-		DerefInfo& dia = this->deref_infos[i];
-		DerefInfo& dib = other.deref_infos[i];
+	for(size_t i=0; i < var1->length; i++){
+		DerefInfo& dia = var1->deref_infos[i];
+		DerefInfo& dib = var2->deref_infos[i];
 
 		if(dia.deref_type != dib.deref_type || 
 		   dia.mbr_ind != dib.mbr_ind ||
@@ -443,6 +452,10 @@ bool Var::operator==(const Var& other) const {
 		}
 	}
 	return true;
+}
+
+bool Var::operator==(const Var& other) const {
+	return vars_equal(this, &other, true, true);
 };
 
 

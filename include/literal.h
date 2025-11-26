@@ -7,6 +7,7 @@
 // #include "../include/intern.h"
 #include "../include/ref.h"
 #include "../include/var.h"
+#include "../include/func.h"
 
 namespace cre {
 
@@ -23,7 +24,7 @@ struct Literal : public CRE_Obj{
 
 	ref<CRE_Obj> obj; // A fact, func, or value
 	std::vector<ref<Var>> vars = {};
-	std::vector<int32_t> var_inds = {};
+	std::vector<uint16_t> var_inds = {};
 	float weight; 
 	bool negated;	
 	uint8_t kind;
@@ -38,6 +39,8 @@ struct Literal : public CRE_Obj{
 
 	CRE_Type* eval_type() const;
 	uint16_t eval_t_id() const;
+
+	bool operator==(const Literal& other) const;
 };
 
 
@@ -46,5 +49,12 @@ ref<Literal> new_literal(CRE_Obj* obj, bool negated=false, AllocBuffer* buffer=n
 
 std::ostream& operator<<(std::ostream& out, Literal* func);
 std::ostream& operator<<(std::ostream& out, ref<Literal> func);
+
+inline auto FuncRef::operator~() const {
+	return new_literal((CRE_Obj*) this->get(), true);
+}
+
+bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic=true);
+// bool Literal::operator==(const Literal& other) const;
 
 } // NAMESPACE_END(cre)

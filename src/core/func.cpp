@@ -1897,7 +1897,48 @@ void Func::_call_recursive(void* ret_ptr,
 	}
 }
 
+bool funcs_equal(const Func* func1, const Func* func2, bool semantic){
+	if(func1->n_args != func2->n_args) return false;
+	if(func1->origin_data != func2->origin_data) return false;
+	if(func1->n_root_args != func2->n_root_args) return false;
+	
+	for(size_t i=0; i < func1->n_root_args; ++i){
+		const ArgInfo& arg_info1 = func1->root_arg_infos[i];
+		const ArgInfo& arg_info2 = func2->root_arg_infos[i];
+		if(arg_info1.kind != arg_info2.kind) return false;
+		switch(arg_info1.kind){
+		case ARGINFO_FUNC:
+		{
+			Func* func_arg1 = (*func1->get(i))._as<Func*>();
+			Func* func_arg2 = (*func2->get(i))._as<Func*>();
+			if(!funcs_equal(func_arg1, func_arg2, semantic)) return false;
+			break;
+		}
+		case ARGINFO_VAR:
+		{
+			Var* var_arg1 = (*func1->get(i))._as<Var*>();
+			Var* var_arg2 = (*func2->get(i))._as<Var*>();
+			if(arg_info1.var_ind != arg_info2.var_ind) return false;
+			if(!vars_equal(var_arg1, var_arg2, semantic, semantic)) return false;
+			break;
+		}
+		case ARGINFO_CONST:
+		{
+			Item* const_arg1 = func1->get(i);
+			Item* const_arg2 = func2->get(i);
+			if(!items_equal(*const_arg1, *const_arg2)) return false;
+			break;
+		}
+		}
+	}
+	return true;
 
+}
+
+
+bool Func::operator==(const Func& other) const {
+	return funcs_equal((Func*) this, (Func*) &other, false);
+}
 
 // Example: 
 // a + (d + c + 1) + c 

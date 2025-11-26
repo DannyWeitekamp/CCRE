@@ -347,6 +347,8 @@ public:
   }
 };
 
+bool facts_equal(const Fact* fact1, const Fact* fact2, bool semantic);
+
 // Enable Iteration over Fact* 
 Fact::Iterator begin(const Fact* fact);
 Fact::Iterator end(const Fact* fact);

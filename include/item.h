@@ -73,7 +73,7 @@ public:
 
     // [Bytes 8-16]
     // Either a ctrl_block pointer or other data
-private:
+
     // union{
         // ControlBlock* ctrl_block;
 
@@ -184,6 +184,7 @@ public:
         return length;
     }
 
+    
     bool operator==(const Item& other) const;
 
     template<class T>
@@ -823,6 +824,8 @@ public:
     friend struct Member;
         
 };
+
+bool items_equal(const Item& item1, const Item& item2, bool semantic=true);
 
 // // Same as Item, but gaurenteed to be interned
 // struct InternItem : public Item {

@@ -4,7 +4,7 @@
 
 namespace cre {
 
-bool CRE_Objs_equal(CRE_Obj* a, CRE_Obj* b);
+bool CRE_Objs_equal(const CRE_Obj* a, const CRE_Obj* b, bool semantic=true);
 
 
 } // NAMESPACE_END(cre)

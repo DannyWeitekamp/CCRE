@@ -639,8 +639,6 @@ struct Func : CRE_Obj{
 		Item* data_ptr = std::bit_cast<Item*>(
 		    std::bit_cast<uint64_t>(this) + sizeof(Func)
 		);
-
-		// Emplacement new with Undef member to make valgrind happy
     
 		// data_ptr[ind].release();
 		new (data_ptr + ind) Item(val);
@@ -758,6 +756,8 @@ struct Func : CRE_Obj{
 	inline uint16_t eval_t_id() const {
 		return return_type->get_t_id();
 	}
+
+	bool operator==(const Func& other) const;
 	
 
 	// template <class... Ts>
@@ -766,11 +766,16 @@ struct Func : CRE_Obj{
 	// }
 };
 
+bool funcs_equal(const Func* func1, const Func* func2, bool semantic=false);
+
 
 // An alias of ref<Func> which has call operator() defined
 struct FuncRef : ref<Func> {
 	template <class ... Ts>
 	inline auto operator()(Ts && ... inputs);
+	inline auto operator~() const;
+
+	
 	// inline FuncRef operator()(Ts && ... inputs){
 	// 	return get()->compose(*this, inputs...);
 	// }

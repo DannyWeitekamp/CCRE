@@ -514,51 +514,54 @@ uint64_t CREHash::operator()(const FactView& x) const{
 // : Fact Equals 
 
 
-bool item_eq(const Item& ia, const Item& ib){
-	// cout << "ITEM A: " << ia << " ITEM B: " << ib << endl;
-	// cout << "HASH A: " << CREHash{}(ia) << " HASH B: " << CREHash{}(ib) << endl;
-	if(ia.get_t_id() != ib.get_t_id()) return false;
-	switch (ia.get_t_id()) {
-		case T_ID_FLOAT:
-			{
-				double da = ia._as<double>();
-				double db = ib._as<double>();
-				if(da != db) return false;
-				break;
-			}
-		case T_ID_FACT:
-			if(*ia._as<Fact*>() != *ib._as<Fact*>()) return false;
-			break;
-		case T_ID_VAR:
-			if(*ia._as<Var*>() != *ib._as<Var*>()) return false;
-			break;
-		case T_ID_FUNC:
-			// TODO
-			break;
-		case T_ID_LITERAL:
-			// TODO
-			break;
-		case T_ID_LOGIC:
-			// TODO
-			break;
-		// Default case should work for integer types
-		//  and interned strings
-		default:
-			if(ia.val != ib.val) return false;
-			break;
+// bool item_eq(const Item& ia, const Item& ib){
+// 	// cout << "ITEM A: " << ia << " ITEM B: " << ib << endl;
+// 	// cout << "HASH A: " << CREHash{}(ia) << " HASH B: " << CREHash{}(ib) << endl;
+// 	if(ia.get_t_id() != ib.get_t_id()) return false;
+// 	switch (ia.get_t_id()) {
+// 		case T_ID_FLOAT:
+// 			{
+// 				double da = ia._as<double>();
+// 				double db = ib._as<double>();
+// 				if(da != db) return false;
+// 				break;
+// 			}
+// 		case T_ID_FACT:
+// 			if(*ia._as<Fact*>() != *ib._as<Fact*>()) return false;
+// 			break;
+// 		case T_ID_VAR:
+// 			if(*ia._as<Var*>() != *ib._as<Var*>()) return false;
+// 			break;
+// 		case T_ID_FUNC:
+// 			// TODO
+// 			break;
+// 		case T_ID_LITERAL:
+// 			// TODO
+// 			break;
+// 		case T_ID_LOGIC:
+// 			// TODO
+// 			break;
+// 		// Default case should work for integer types
+// 		//  and interned strings
+// 		default:
+// 			if(ia.val != ib.val) return false;
+// 			break;
+// 	}
+// 	return true;
+// }
+
+bool facts_equal(const Fact* fact1, const Fact* fact2, bool semantic){
+	if(fact1->length != fact2->length) return false;
+	for(size_t i=0; i < fact1->length; i++){
+		const Item& ia = fact1->get(i);
+		const Item& ib = fact2->get(i);
+		if(!items_equal(ia, ib, semantic)) return false;
 	}
 	return true;
 }
 
 bool Fact::operator==(const Fact& other) const {
-	if(length != other.length) return false;
-
-	for(size_t i=0; i < length; i++){
-		const Item& ia = this->get(i);
-		const Item& ib = other.get(i);
-		if(!item_eq(ia, ib)) return false;
-	}
-	return true;
+	return facts_equal(this, &other, true);
 };
 
 bool FactView::operator==(const FactView& other) const {
@@ -568,7 +571,7 @@ bool FactView::operator==(const FactView& other) const {
 	for(size_t i=0; i < this->size(); i++){
 		const Item& ia = fact_a->get(this->start + i);
 		const Item& ib = fact_b->get(other.start + i);
-		if(!item_eq(ia, ib)) return false;
+		if(!items_equal(ia, ib)) return false;
 	}
 	return true;
 }

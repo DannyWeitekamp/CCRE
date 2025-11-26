@@ -135,7 +135,7 @@ void init_logic(nb::module_ & m) {
         .def("to_string", &Logic::to_string)
         .def("basic_str", &Logic::basic_str)
         .def("standard_str", [](Logic* self, std::string_view indent) {
-            return self->standard_str(indent, nullptr);
+            return self->standard_str(indent);
         }, "indent"_a = "  ")
         .def_ro("kind", &Logic::kind)
         .def_ro("n_abs_vars", &Logic::n_abs_vars)

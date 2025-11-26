@@ -128,37 +128,42 @@ Item::Item(const std::string_view& arg) :
     meta_data(0), val_kind(INTERNED) 
  {};
 
- bool Item::operator==(const Item& other) const{
-    uint16_t t_id = get_t_id();
-    uint16_t other_t_id = other.get_t_id();
+ bool items_equal(const Item& item1, const Item& item2, bool semantic){
+    uint16_t t_id1 = item1.get_t_id();
+    uint16_t t_id2 = item2.get_t_id();
 
     // This should handle Undef, None, IternStr
-    if(t_id == other_t_id && val == other.val){
+    if(t_id1 == t_id2 && item1.val == item2.val){
         return true;
     }else{
-        if(is_interned() && other.is_interned()){
+        if(item1.is_interned() && item2.is_interned()){
             // If both interned, then should have matched above
             return false;
-        }else if(t_id_is_numerical(t_id) && t_id_is_numerical(other_t_id)){
-            if(t_id == T_ID_FLOAT || other_t_id == T_ID_FLOAT){
-                return as<double>() == other.as<double>();
+        }else if(t_id_is_numerical(t_id1) && t_id_is_numerical(t_id2)){
+            if(t_id1 == T_ID_FLOAT || t_id2 == T_ID_FLOAT){
+                return item1.as<double>() == item2.as<double>();
             }else{
-                return this->val == other.val;
+                return item1.val == item2.val;
             }
-        }else if(t_id == T_ID_STR && other_t_id == T_ID_STR){
+        }else if(t_id1 == T_ID_STR && t_id2 == T_ID_STR){
             // cout << "L0: " << length << " L1: " << other.length << endl;
             // cout << "strcmp:" << std::strcmp((char*) data, (char*) other.data) << endl;
-            return (length == other.length &&
-                    std::strcmp((char*) data, (char*) other.data) == 0);
+            return (item1.get_length() == item2.get_length() &&
+                    std::strcmp((char*) item1.data, (char*) item2.data) == 0);
         }else{
-            if(t_id != other_t_id){
+            if(t_id1 != t_id2){
                 return false;
             }
             // cout << "t_id:" << t_id << ", other_t_id:" << other_t_id << endl;
             // Defined in seperate translation unit
-            return CRE_Objs_equal(_as<CRE_Obj*>(), other._as<CRE_Obj*>());                
+            return CRE_Objs_equal(item1._as<CRE_Obj*>(), item2._as<CRE_Obj*>(), semantic);                
         }
     }
+    return false;
+ }
+
+ bool Item::operator==(const Item& other) const{
+    return items_equal(*this, other, true);
  }
 
 //  bool InternItem::operator==(const InternItem& other) const{

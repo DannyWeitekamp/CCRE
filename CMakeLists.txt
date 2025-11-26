@@ -57,6 +57,8 @@ add_compile_options(-std=c++2a -lstdc++)
 add_subdirectory(external/fmt)
 add_subdirectory(external/nanobind)
 add_subdirectory(external/nanobind/ext/robin_map)
+add_subdirectory(external/eigen)
+
 # add_subdirectory(external/rapidjson)
 
 include_directories(include)
@@ -64,6 +66,7 @@ include_directories(include)
 
 # Packages
 find_package(Python 3.8 COMPONENTS Interpreter ${DEV_MODULE} REQUIRED)
+
 
 # Note: Nanobind thing
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -85,6 +88,7 @@ file(GLOB SRCS_TRANSFORM "src/transform/*.cpp")
 add_library(core_lib ${SRCS_CORE})
 target_link_libraries(core_lib fmt::fmt)
 target_link_libraries(core_lib tsl::robin_map) # for nanobind
+target_link_libraries(core_lib Eigen3::Eigen)
 
 add_library(logical_lib ${SRCS_LOGICAL})
 target_link_libraries(logical_lib fmt::fmt)
@@ -149,6 +153,13 @@ target_link_libraries(test_transform PRIVATE core_lib transform_lib)
 add_test(
   NAME test_transform
   COMMAND $<TARGET_FILE:test_transform>
+  )
+
+add_executable(test_structure_map tests/test_structure_map.cpp)
+target_link_libraries(test_structure_map PRIVATE core_lib logical_lib transform_lib)
+add_test(
+  NAME test_structure_map
+  COMMAND $<TARGET_FILE:test_structure_map>
   )
 
 #nanobind_add_module(dummy_ext python/ext/dummy_ext.cpp)
