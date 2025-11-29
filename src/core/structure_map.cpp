@@ -1,7 +1,11 @@
-
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cmath>
 #include "../include/item.h"
 #include "../include/logic.h"
 #include "../include/structure_map.h"
+#include "../include/var_inds.h" // for VarInds
 #include <vector>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <Eigen/Dense>
@@ -12,11 +16,18 @@
 namespace cre {
 
 
+struct FunctionallyEqual {
+    bool operator()(const Item& a, const Item& b) const {
+        return items_equal(a, b, false);
+    }
+};    
+using ItemMapType = ankerl::unordered_dense::map<Item, std::vector<std::tuple<int16_t, Item>>, CREHash, FunctionallyEqual> ;
+
 void fill_conjunct_like(std::vector<Item>& conj_items, ref<Logic> ls){
     if(ls->kind == CONDS_KIND_AND){
         conj_items.push_back(Item(ls));
         for(auto mbr_item : ls->items){
-            if(mbr_item.get_t_id() == T_ID_LITERAL){
+            if(mbr_item.get_t_id() == T_ID_LOGIC){
                 Logic* sub_logic = mbr_item._as<Logic*>();
                 assert(sub_logic->kind == CONDS_KIND_OR);
                 fill_conjunct_like(conj_items, sub_logic);
@@ -80,7 +91,11 @@ void fill_conjunct_like(std::vector<Item>& conj_items, ref<Logic> ls){
 //     items.push_back(item);
 //     item_map.insert({item_map, items});
 // }
-typedef HashMap<Item, std::vector<std::tuple<int16_t, Item>>> ItemMapType;
+
+
+
+
+// typedef HashMap<Item, std::vector<std::tuple<int16_t, Item>>> ItemMapType;
 
 void _insert_map(ItemMapType& item_map, int16_t index, Item& item){
     auto it = item_map.find(item);
@@ -101,7 +116,7 @@ ItemMapType _to_item_map(Item& conj_item){
     }else{
         auto logic_a = conj_item._as<Logic*>();
         for(size_t index = 0; index < logic_a->items.size(); index++){
-            auto item = logic_a->items[index];
+            Item& item = logic_a->items[index];
             _insert_map(item_map, index, item);
         }
     }
@@ -113,13 +128,18 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
     if(item_a.get_t_id() == T_ID_LITERAL){
         auto lit_a = item_a._as<Literal*>();
         auto lit_b = item_b._as<Literal*>();
-        std::vector<uint16_t>& var_inds_a = lit_a->var_inds;
-        std::vector<uint16_t>& var_inds_b = lit_b->var_inds;
+        const VarInds& var_inds_a = lit_a->var_inds;
+        const VarInds& var_inds_b = lit_b->var_inds;
         assert(var_inds_a.size() == var_inds_b.size());
+
+        
+
+        cout << "LITERAL CASE: " << item_a << " -> " << item_b << " ; " << var_inds_a.size() << " , " << var_inds_b.size() <<  endl;
         return SM_MappablePair(1.0, index_a, index_b,
                                var_inds_a.size(),
                                var_inds_a, var_inds_b);
     }else if(item_a.get_t_id() == T_ID_LOGIC){
+        cout << "LOGIC CASE: " << index_a << " -> " << index_a << endl;
         return SM_MappablePair(1.0, index_a, index_b);
     }else{
         throw std::runtime_error("NOT IMPLEMENTED");
@@ -139,6 +159,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
         auto it = item_map_a.find(item_b);
         if(it != item_map_a.end()){
             for(auto [index_a, item_a] : it->second){
+                cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
                 map_pairs.push_back(_items_to_mappable_pair(index_a, 0, item_a, item_b));
             }
         }
@@ -153,6 +174,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
                 auto it = item_map_a.find(item_b);
                 if(it != item_map_a.end()){
                     for(auto [index_a, item_a] : it->second){
+                        cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
                         map_pairs.push_back(_items_to_mappable_pair(index_a, index_b, item_a, item_b));
                     }
                 }
@@ -176,7 +198,8 @@ std::vector<SM_GroupPair> make_group_pairs(ref<Logic> l_a, ref<Logic> l_b){
         Item& conj_item_a = conj_items_a[i];
         auto item_map = _to_item_map(conj_item_a);
         for(size_t j = 0; j < conj_items_b.size(); j++){
-            Item& conj_item_b = conj_items_a[i];
+            Item& conj_item_b = conj_items_b[j];
+            // cout << "C:" << i << " -> " << j << " : " << conj_item_a << "," << conj_item_b << endl;
 
             // Use the item map to find all mappable pairs of literals between the conjuncts
             auto pairs = make_mappable_pairs(item_map, conj_item_b);
@@ -188,80 +211,8 @@ std::vector<SM_GroupPair> make_group_pairs(ref<Logic> l_a, ref<Logic> l_b){
     return group_pairs;
 }
 
-/*
-SM_Result structure_map_logic(
-    ref<Logic> l_a, ref<Logic> l_b, 
-    std::vector<int16_t>& a_fixed_inds,
-    bool drop_unconstr, bool drop_no_beta){
 
-    size_t N = l_a->vars.size();
-    size_t M = l_b->vars.size();
-    auto group_pairs = make_group_pairs(l_a, l_b);
-    
-    std::vector<int16_t> fixed_inds = std::vector<int16_t>(N, -2);
-    for(size_t i = 0; i < a_fixed_inds.size(); i++){
-        fixed_inds[a_fixed_inds[i]] = i;
-    }
 
-    auto it = nullptr;
-    size_t c = 0;
-    float score = 0.0f;
-    float best_score = 0.0f;
-    float score_bound = 0.0f;
-    float best_result = nullptr;
-
-    auto remaps = std::vector<std::vector<int16_t>>();
-    auto iter_stack = std::vector<SM_StackItem>();
-
-    ScoreMatrixType cum_score(N, M);
-    std::vector<ScoreMatrixType> score_matrices;
-    score_matrices.push_back(ScoreMatrixType(N, M));
-
-    // Outer loop handles generation of iterators over ambiguous
-    //  variable assignments. 
-    while (true) {
-        // Inner loop recalcs score matricies, from current fixed_inds.
-        //  Loops multiple times if new scores imply some previously
-        //  unfixed variable now has an unambiguous mapping.
-        while (true) {
-            // Recalculate the score matrix w/ fixed_inds
-            _calc_remap_score_matrices(score_matrices, lit_groups, fixed_inds);
-
-            // Find the alignment and cumulative score matrix. Required
-            //   for when either condition is disjoint (i.e. has an OR()).
-            _get_best_alignment(cum_score, score_matrices);
-
-            auto [fixed_inds, unamb_cnt] = get_unambiguous_inds(cum_score, fixed_inds, drop_unconstr, drop_no_beta);
-
-            if(unamb_cnt == 0){
-                break;
-            }
-        }
-
-        bool backtrack = false;
-        score_bound = score_remap(fixed_inds, cum_score);
-
-        // Case: Abandon if the upper bound on the current assignment's 
-        //  score is less than the current best score. 
-        if(score_bound < best_score){
-            backtrack = true;
-        
-        // Case: All vars fixed so store remap. Then backtrack. 
-        else if(all_fixed(fixed_inds)){
-            auto remap = fixed_inds.copy();
-            remaps.push_back(remap);
-            score = score_remap(remap, cum_score);
-            if(score > best_score){
-                best_score = score;
-                best_result = remap;
-            }
-            backtrack = true;
-        }
-
-        (i, js) = get_best_ind_iter(cum_score, fixed_inds);
-        iter_stack.push_back((i, 1, js, fixed_inds.copy()));
-    }
-}
 
 bool all_fixed(std::vector<int16_t>& fixed_inds){
     return std::all_of(fixed_inds.begin(), fixed_inds.end(), [](int16_t x){ return x != -2; });
@@ -270,31 +221,43 @@ bool all_fixed(std::vector<int16_t>& fixed_inds){
 void _calc_remap_score_matrices(
     std::vector<ScoreMatrixType>& score_matrices, 
     std::vector<SM_GroupPair>& group_pairs, 
-    std::vector<uint16_t>& a_fixed_inds){
+    std::vector<int16_t>& a_fixed_inds){
+
+    assert(score_matrices.size() > 0);
+
+    size_t M = score_matrices[0].dimension(1);
+
+    auto b_fixed_inds = std::vector<int16_t>(M, -2);
+    for(size_t i = 0; i < a_fixed_inds.size(); i++){
+        int16_t a_ind = a_fixed_inds[i];
+        if(a_ind != -2){
+            b_fixed_inds[a_ind] = i;
+        }
+    }
 
 
     for(size_t i = 0; i < group_pairs.size(); i++){
-        auto gp = group_pairs[i];
-        auto score_matrix = score_matrices[i];
+        auto& gp = group_pairs[i];
+        auto& score_matrix = score_matrices[i];
         
         // Reset Score Matrix
         score_matrix.setConstant(SM_Score(0.0,0.0));
 
     // for(size_t i = 0; i < groups_ij.size(); i++){
-        for(SM_MappablePair& mp : groups_ij){
+        for(SM_MappablePair& mp : gp.pairs){
             switch(mp.n_vars){
                 case 1:
                 {
-                    uint16_t ind_a0 = mp.var_inds_a.inds[0];
-                    uint16_t ind_b0 = mp.var_inds_b.inds[0];
-                    uint16_t fix_b0 = a_fixed_inds[ind_a0];
-                    uint16_t fix_a0 = b_fixed_inds[ind_b0];
+                    int16_t ind_a0 = mp.var_inds_a.inds[0];
+                    int16_t ind_b0 = mp.var_inds_b.inds[0];
+                    int16_t fix_b0 = a_fixed_inds[ind_a0];
+                    int16_t fix_a0 = b_fixed_inds[ind_b0];
                     if((fix_b0 == -2 or fix_b0 == ind_b0) &&
                        (fix_a0 == -2 or fix_a0 == ind_a0)){
-                        score_matrix[ind_a0, ind_b0].ub_score += 1;
+                        score_matrix(ind_a0, ind_b0).ub_score += 1;
                     }
 
-                    // for(ItemVarInds& v_inds_a : map_pair.var_inds_a){
+                    // for(VarInds& v_inds_a : map_pair.var_inds_a){
                     //     uint16_t ind_a0 = v_inds_a.ind0;
                     //     uint16_t fix_b0 = a_fixed_inds[ind_a0];
                     //     for(auto v_inds_b : var_inds_b){
@@ -310,27 +273,28 @@ void _calc_remap_score_matrices(
                 }
                 case 2:
                 {
-                    uint16_t ind_a0 = mp.var_inds_a.inds[0];
-                    uint16_t ind_b0 = mp.var_inds_b.inds[0];
-                    uint16_t ind_a1 = mp.var_inds_a.inds[1];
-                    uint16_t ind_b1 = mp.var_inds_b.inds[1];
-                    uint16_t fix_b0 = a_fixed_inds[ind_a0];
-                    uint16_t fix_a0 = b_fixed_inds[ind_b0];
-                    uint16_t fix_b1 = a_fixed_inds[ind_a1];
-                    uint16_t fix_a1 = b_fixed_inds[ind_b1];
+                    
+                    int16_t ind_a0 = mp.var_inds_a.inds[0];
+                    int16_t ind_b0 = mp.var_inds_b.inds[0];
+                    int16_t ind_a1 = mp.var_inds_a.inds[1];
+                    int16_t ind_b1 = mp.var_inds_b.inds[1];
+                    int16_t fix_b0 = a_fixed_inds[ind_a0];
+                    int16_t fix_a0 = b_fixed_inds[ind_b0];
+                    int16_t fix_b1 = a_fixed_inds[ind_a1];
+                    int16_t fix_a1 = b_fixed_inds[ind_b1];
                     if((fix_b0 == -2 or fix_b0 == ind_b0) &&
                        (fix_a0 == -2 or fix_a0 == ind_a0) &&
                        (fix_b1 == -2 or fix_b1 == ind_b1) &&
                        (fix_a1 == -2 or fix_a1 == ind_a1) ){
-                        score_matrix[ind_a0, ind_b0].ub_score += 1;
-                        score_matrix[ind_a1, ind_b1].ub_score += 1;
-                        score_matrix[ind_a0, ind_b0].beta_score += 1;
-                        score_matrix[ind_a1, ind_b1].beta_score += 1;
+                        score_matrix(ind_a0, ind_b0).ub_score += 1;
+                        score_matrix(ind_a1, ind_b1).ub_score += 1;
+                        score_matrix(ind_a0, ind_b0).beta_score += 1;
+                        score_matrix(ind_a1, ind_b1).beta_score += 1;
                     }
                     
                     
 
-                    // for(ItemVarInds& v_inds_a : map_pair.var_inds_a){
+                    // for(VarInds& v_inds_a : map_pair.var_inds_a){
                     //     uint16_t ind_a0 = v_inds_a.ind0;
                     //     uint16_t ind_a1 = v_inds_a.ind1;
                     //     uint16_t fix_b0 = a_fixed_inds[ind_a0];
@@ -351,6 +315,7 @@ void _calc_remap_score_matrices(
                     //         }
                     //     }
                     // }
+                    break;
                 }
                 default:
                     throw std::runtime_error("NOT IMPLEMENTED");
@@ -399,7 +364,8 @@ std::tuple<std::vector<int16_t>, uint16_t>
 
     size_t N = cum_score.dimension(0);
     size_t M = cum_score.dimension(1);
-    auto unamb_inds = a_fixed_inds.copy();
+    std::vector<int16_t> unamb_inds = std::vector<int16_t>(
+        a_fixed_inds.begin(), a_fixed_inds.end()); // copy of a_fixed_inds
     auto unconstr_mask = std::vector<uint8_t>(a_fixed_inds.size());
     uint16_t new_unamb = 0;
     
@@ -459,16 +425,16 @@ std::tuple<std::vector<int16_t>, uint16_t>
         }
     }
 
-    for(size_t i = 0; i < N; i++){
+    for(int64_t i = 0; i < N; i++){
         if(unconstr_mask[i] == 0){
             continue;
         }
 
-        uint16_t min_j = -1;
-        uint16_t min_dist = std::numeric_limits<uint16_t>::max();
-        for(size_t j = 0; j < M; j++){
+        int16_t min_j = -1;
+        int16_t min_dist = std::numeric_limits<int16_t>::max();
+        for(int64_t j = 0; j < M; j++){
             if(unassigned_j_mask[j] == 1){
-                uint16_t dist = abs(i-j);
+                uint16_t dist = std::abs(i-j);
                 if(dist < min_dist){
                     min_j = j;
                     min_dist = dist;
@@ -482,6 +448,8 @@ std::tuple<std::vector<int16_t>, uint16_t>
             unamb_inds[i] = -1;
         }
     }
+
+    
     return std::make_tuple(unamb_inds, new_unamb);
 }
 
@@ -491,12 +459,95 @@ float score_remap(
 
     float score = 0.0f;
     for(size_t i = 0; i < remap.size(); i++){
-        score += score_matrix(i, remap[i]).ub_score - (score_matrix(i, remap[i]).beta_score >> 1) + (score_matrix(i, remap[i]).ub_score != 0);
+        score += score_matrix(i, remap[i]).ub_score - (score_matrix(i, remap[i]).beta_score / 2) + (score_matrix(i, remap[i]).ub_score != 0);
     }
     return score;
 }
 
+// Function to get the argsort of an Eigen VectorXf
+std::vector<int16_t> descending_argsort(
+    const Eigen::Tensor<SM_Score, 1, Eigen::RowMajor>& v) {
+    // Initialize a vector of indices from 0 to v.size() - 1
+    std::vector<int16_t> indices(v.size());
+    std::iota(indices.begin(), indices.end(), 0);
 
+    // Sort the indices based on the values in v
+    std::stable_sort(indices.begin(), indices.end(),
+                     [&v](int i1, int i2) { return v[i1].ub_score >= v[i2].ub_score; });
+
+    return indices;
+}
+
+
+std::tuple<int64_t, std::vector<int16_t>> 
+  get_best_ind_iter(ScoreMatrixType& cum_score, std::vector<int16_t>& a_fixed_inds){
+    std::tuple<int64_t, std::vector<int16_t>> best_iter = std::make_tuple(-1, std::vector<int16_t>());
+    std::tuple<float, float> best_unamb = std::make_tuple(-1, 0.0);
+    for(int64_t i = 0; i < cum_score.dimension(0); i++){
+        // Skip if already assigned
+        if(a_fixed_inds[i] != -2){
+            continue;
+        }
+
+        Eigen::Tensor<SM_Score, 1, Eigen::RowMajor> row = cum_score.chip(i, 0).eval(); 
+
+
+        // auto row = cum_score_matrix[i];//.astype(np.int32);
+        auto inds = descending_argsort(row);
+        float max_score = row[inds[0]].ub_score;
+
+        //Don't make iterators for rows of all zeros
+        if(max_score == 0){
+            continue;
+        }
+        
+        // Find the first index with the lowest score
+        float row_min = row[inds.size()-1].ub_score;
+        int16_t argmin_ind = inds.size()-1;
+        for(int16_t j = inds.size()-2; j > 0; j--){
+            if(row[inds[j]].ub_score <= row_min){
+                argmin_ind = j;
+            }else{
+                break;
+            }
+        }
+
+        // If there is at least one score higher than the others 
+        std::tuple<float, float> unamb = std::make_tuple(max_score, max_score);
+        if(argmin_ind > 1){
+            // Find the mean difference between the highest score and the others
+            float mean_diff = 0.0;
+            for(size_t j = 1; j < argmin_ind+1; j++){
+                mean_diff += max_score - row[inds[j]].ub_score;
+            }
+            mean_diff /= argmin_ind - 1;
+            unamb = std::make_tuple(max_score, mean_diff);
+        }
+
+        if(unamb > best_unamb){
+            best_iter = std::make_tuple(i, std::move(inds));
+            best_unamb = unamb;
+        }
+
+        // inds = inds[:np.argmin(row[inds])]
+        // scores = row[inds]
+        // max_diff = scores[0] - scores[1:]
+        
+        // if(len(max_diff) > 0):
+        //     //# NOTE: Maybe harmonic mean is better?
+        //     //# amb = (len(scores)-1)/np.mean(1/(1+max_diff))
+        //     unamb = (scores[0], np.mean(scores[0] - scores[1:]))
+        // else:
+        //     unamb = (scores[0], scores[0])
+        // if(unamb > best_unamb):
+        //     best_iter = (i, inds)
+        //     best_unamb = unamb
+    }
+
+    return best_iter;
+}
+
+/*
 std::tuple<std::vector<bool>, std::vector<bool>> get_matched_masks(
     SM_MappablePair& group, const std::vector<int16_t>& remap){
     
@@ -589,6 +640,143 @@ std::tuple<float, std::vector<uint8_t>, std::vector<uint8_t>>
     // }
     return std::make_tuple(score, keep_mask_a, keep_mask_b);
 }
-    */
+*/
+
+SM_Result structure_map_logic(
+    ref<Logic> l_a, ref<Logic> l_b, 
+    std::vector<int16_t>* a_fixed_inds,
+    bool drop_unconstr, bool drop_no_beta){
+
+    size_t N = l_a->vars.size();
+    size_t M = l_b->vars.size();
+    auto group_pairs = make_group_pairs(l_a, l_b);
+    
+    std::vector<int16_t> fixed_inds = std::vector<int16_t>(N, -2);
+    if(a_fixed_inds != nullptr){
+        for(size_t i = 0; i < a_fixed_inds->size(); i++){
+            fixed_inds[(*a_fixed_inds)[i]] = i;
+        }
+    }
+
+    auto it = nullptr;
+    size_t c = 0;
+    float score = 0.0f;
+    float best_score = 0.0f;
+    float score_bound = 0.0f;
+    std::vector<int16_t>* best_result = nullptr;
+
+    auto remaps = std::vector<std::vector<int16_t>>();
+    auto iter_stack = std::vector<SM_StackItem>();
+    size_t unamb_cnt = 0;
+
+    ScoreMatrixType cum_score(N, M);
+    std::vector<ScoreMatrixType> score_matrices;
+    score_matrices.push_back(ScoreMatrixType(N, M));
+
+    cout << endl;
+    // Outer loop handles generation of iterators over ambiguous
+    //  variable assignments. 
+    while (true) {
+        // Inner loop recalcs score matricies, from current fixed_inds.
+        //  Loops multiple times if new scores imply some previously
+        //  unfixed variable now has an unambiguous mapping.
+        while (true) {
+            // Recalculate the score matrix w/ fixed_inds
+            _calc_remap_score_matrices(score_matrices, group_pairs, fixed_inds);
+
+            // Find the alignment and cumulative score matrix. Required
+            //   for when either condition is disjoint (i.e. has an OR()).
+            _get_best_alignment( score_matrices, cum_score);
+
+            std::tie(fixed_inds, unamb_cnt) = get_unambiguous_inds(cum_score, fixed_inds, drop_unconstr, drop_no_beta);
+
+            // cout << cum_score << endl;
+            // cout << "fixed_inds: " << fixed_inds << endl;
+
+            if(unamb_cnt == 0){
+                break;
+            }
+        }
+        
+
+        bool backtrack = false;
+        score_bound = score_remap(fixed_inds, cum_score);
+
+        cout << "fixed_inds: " << fixed_inds << endl;
+        cout << "score_bound: " << score_bound << endl;
+        // break;
+        
+        // Case: Abandon if the upper bound on the current assignment's 
+        //  score is less than the current best score. 
+        if(score_bound < best_score){
+            backtrack = true;
+        
+        // Case: All vars fixed so store remap. Then backtrack. 
+        }else if(all_fixed(fixed_inds)){
+            auto remap = std::vector<int16_t>(
+                fixed_inds.begin(), fixed_inds.end()); // copy of fixed_inds
+            remaps.push_back(remap);
+            score = score_remap(remap, cum_score);
+            if(score > best_score){
+                best_score = score;
+                best_result = &remaps[remaps.size() - 1];
+            }
+            backtrack = true;
+        }
+
+        if(backtrack){
+            if(iter_stack.size() == 0){
+                // Case: All iterators exhausted (i.e. Finished)
+                break;
+            }
+
+            while(iter_stack.size() > 0){
+                SM_StackItem& s = iter_stack[iter_stack.size() - 1];
+                auto c = s.c;
+                cout << "POP: " << s.i << ", " << s.c << ", " << s.js << ", " << s.fixed_inds << endl;
+                auto& old_fixed_inds = s.fixed_inds;
+                fixed_inds = std::vector<int16_t>(
+                    old_fixed_inds.begin(), old_fixed_inds.end()
+                ); // copy of old_fixed_inds
+                fixed_inds[s.i] = s.js[s.c]; // Fix index i to next choice in js.
+
+                cout << "Assign: " << fixed_inds << endl;
+                s.c += 1;
+                if(s.c < s.js.size()){
+                    cout << "PUSHBACK: " << s.i << ", " << s.c << ", " << s.js << ", " << old_fixed_inds << endl << endl;
+                    break;
+                    
+                }else{
+                    // cout << "--EXHAUSTED--" << endl << endl;
+                    iter_stack.pop_back();
+                }
+                
+            }
+
+            // Case: fixed_inds has been set by popping from stack
+        }else{
+            // Case: some assignments ambiguous so make next iter.
+            // 'fixed_inds' is set to the first choice of i -> j.
+            // Iterator for rest are pushed to stack. 
+            auto [i,js] = get_best_ind_iter(cum_score, fixed_inds);
+            iter_stack.push_back(SM_StackItem(i, 1, js, fixed_inds));
+            fixed_inds[i] = js[0];
+            cout << "PUSH: " << i << ", " << 1 << ", " << js << ", " << fixed_inds << endl << endl;
+        // break;
+        }
+    }
+    cout << "Best Score: " << best_score << endl;
+    cout << "Best Result: " << *best_result << endl;
+    SM_Result result(best_score, *best_result);
+    return result;
+}
+
+std::ostream& operator<<(std::ostream& os, const SM_Score& obj) {
+    os << "{" << obj.ub_score << ", " << obj.beta_score << "}";
+    return os;
+}
+
+
+    
 
 } // namespace cre

@@ -154,7 +154,7 @@ Item::Item(const std::string_view& arg) :
             if(t_id1 != t_id2){
                 return false;
             }
-            // cout << "t_id:" << t_id << ", other_t_id:" << other_t_id << endl;
+            // cout << "t_id1:" << t_id1 << ", t_id2:" << t_id2 << endl;
             // Defined in seperate translation unit
             return CRE_Objs_equal(item1._as<CRE_Obj*>(), item2._as<CRE_Obj*>(), semantic);                
         }

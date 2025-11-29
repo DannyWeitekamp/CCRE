@@ -11,6 +11,7 @@
 #include "../include/literal.h"  // for Literal, new_literal
 #include "../include/t_ids.h"    // for T_ID_CONDITIONS
 #include "../include/hash.h"   // for HashSet
+#include "../include/var_inds.h" // for VarInds
 
 // Forward declarations
 namespace cre {
@@ -51,6 +52,9 @@ struct LiteralSemantics {
     LiteralSemantics(uint8_t kind, size_t first_item, size_t last_item) :
     kind(kind), first_item(first_item), last_item(last_item) {}
 };
+
+
+
 
 
 typedef std::map<SemanticVarPtr, VarInfo> VarMapType;
@@ -106,7 +110,7 @@ std::string basic_str();
 
     template<typename... Args>
     void _populate(Args&&... args) {
-        (_insert_arg((CRE_Obj*) args), ...);
+        (_insert_arg( Item(args)), ...);
         _finalize();
     }
 

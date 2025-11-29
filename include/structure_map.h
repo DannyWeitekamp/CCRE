@@ -1,10 +1,15 @@
+#pragma once
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 #include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/src/Core/NumTraits.h>
 // #include <Eigen/Tensor>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include "../include/logic.h"
+#include "../include/var_inds.h" // for VarInds
 
 // template<typename T>
 // using RMatrix = Eigen::Matrix<T, Eigen::RowMajor>;
@@ -22,6 +27,11 @@ struct SM_Score{
     float ub_score;
     float beta_score;
 };
+
+
+
+// Overload operator<< for SM_Score
+std::ostream& operator<<(std::ostream& os, const SM_Score& obj);
 
 typedef Eigen::Tensor<SM_Score, 2, Eigen::RowMajor> ScoreMatrixType;
 
@@ -43,50 +53,31 @@ struct SM_Result{
     
 };
 
-static constexpr size_t N_ITERN_INDS = 4;
-
-struct ItemVarInds {
-    union{
-        uint16_t inds[N_ITERN_INDS];
-        std::vector<uint16_t>* inds_ptr; 
-    };
-
-    ItemVarInds(const std::vector<uint16_t>& inds_v){
-        if(inds_v.size() <= 4){
-            std::copy(inds_v.begin(), inds_v.end(), inds);
-        }else{
-            inds_ptr = new std::vector<uint16_t>(inds_v.begin(), inds_v.end());
-
-        }
-    };
-
-    ItemVarInds(): inds_ptr(nullptr) {};
-};
-
 // A single candidate pair of things with variables that can be mapped to each 
 //  other. Typically represent one pair of literals appearing in conjuncts of 
 //  two logical statement.
 struct SM_MappablePair {
     int16_t index_a;
     int16_t index_b;
+    float weight;
     // std::vector<uint16_t> lit_inds_a;
     // std::vector<uint16_t> lit_inds_b;
-    ItemVarInds var_inds_a;
-    ItemVarInds var_inds_b;
-    float weight;
+    VarInds var_inds_a;
+    VarInds var_inds_b;
+    
     uint16_t n_vars;
 
 
     SM_MappablePair(float weight, 
                    int16_t index_a, int16_t index_b, 
                    uint16_t n_vars, 
-                   const std::vector<uint16_t>& var_inds_a, 
-                   const std::vector<uint16_t>& var_inds_b):
+                   const VarInds& var_inds_a, 
+                   const VarInds& var_inds_b):
                    weight(weight), 
                    index_a(index_a), index_b(index_b), 
                    n_vars(n_vars),
-                   var_inds_a(ItemVarInds(var_inds_a)),
-                   var_inds_b(ItemVarInds(var_inds_b))
+                   var_inds_a(VarInds(var_inds_a)),
+                   var_inds_b(VarInds(var_inds_b))
     {};
 
     SM_MappablePair(float weight, 
@@ -94,16 +85,16 @@ struct SM_MappablePair {
         weight(weight), 
         index_a(index_a), index_b(index_b), 
         n_vars(0),
-        var_inds_a(ItemVarInds()),
-        var_inds_b(ItemVarInds())
+        var_inds_a(VarInds()),
+        var_inds_b(VarInds())
 {};
 
-    ~SM_MappablePair(){
-        if(n_vars > N_ITERN_INDS){
-            delete var_inds_a.inds_ptr;
-            delete var_inds_b.inds_ptr;
-        }
-    };
+    // ~SM_MappablePair(){
+    //     if(n_vars > N_ITERN_INDS){
+    //         delete var_inds_a.inds_ptr;
+    //         delete var_inds_b.inds_ptr;
+    //     }
+    // };
 };
 
 // A single candidate pair of groups.
@@ -122,6 +113,33 @@ struct SM_GroupPair {
 
 
 std::vector<SM_GroupPair> make_group_pairs(ref<Logic> l_a, ref<Logic> l_b);
-
+SM_Result structure_map_logic(
+    ref<Logic> l_a, ref<Logic> l_b, 
+    std::vector<int16_t>* a_fixed_inds = nullptr,
+    bool drop_unconstr = false, bool drop_no_beta = false);
 
 } // namespace cre
+
+
+// Define NumTraits for SM_Score Necessary to use Eigen::Tensor with SM_Score
+//  and print it properly.
+namespace Eigen {
+    template <> struct NumTraits<cre::SM_Score> 
+        : NumTraits<float> // Inherit most traits from float
+    {
+        // Override specific traits as needed
+        typedef cre::SM_Score NonInteger;
+        typedef cre::SM_Score Nested;
+        typedef float Real; // This must be a standard type std::log2 can use
+        typedef float Literal;
+        enum {
+            IsComplex = 0,
+            IsInteger = 0,
+            IsSigned = 1,
+            RequireInitialization = 1,
+            ReadCost = 1,
+            AddCost = 3,
+            MulCost = 3
+        };
+    };
+} // namespace Eigen

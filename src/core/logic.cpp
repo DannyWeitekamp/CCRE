@@ -287,8 +287,9 @@ void Logic::_finalize() {
         }
     }
 
+    // Put the absolute vars at the beginning of vars
     for(auto it : var_map_iters){
-        auto [var, info] = *it;
+        auto& [var, info] = *it;
         if(info.kind == VAR_KIND_ABSOLUTE){
             n_abs_vars++;
             info.pos = vars.size();
@@ -296,13 +297,40 @@ void Logic::_finalize() {
         }
     }
 
+    // Put the non-absolute vars at the end of vars
     for(auto it : var_map_iters){
-        auto [var, info] = *it;
+        auto& [var, info] = *it;
         if(info.kind != VAR_KIND_ABSOLUTE){
             info.pos = vars.size();
             vars.push_back(var);
         }
     }
+
+    // Assign the var_inds of each literal
+    for(Item& item : items){
+        if(item.get_t_id() == T_ID_LITERAL){
+            Literal* lit = item._as<Literal*>();
+            size_t nv = lit->vars.size();
+            cout << "nv: " << nv << endl;
+            VarInds& var_inds = lit->var_inds;
+            var_inds.reserve(nv);
+            cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
+            // uint16_t* var_inds_buff = (uint16_t*) alloca(nv * sizeof(uint16_t));
+            for(size_t i=0; i < nv; i++){
+                Var* var = lit->vars[i];
+                auto it = var_map.find(var);
+                if(it != var_map.end()) {
+                    auto& info = it->second;
+                    var_inds[i] = info.pos;
+                    cout << "WRITE:" << i << " , " << info.pos << endl;
+                } else {
+                    throw std::runtime_error("Logic::_finalize: variable not found in var_map");
+                }
+            }
+            cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
+        }
+    }
+
 
     // cout << "FSIZE:" << vars.size() << "MSIZE:" << var_map.size() << endl;
             // info.kind_pos = abs_vars.size()

@@ -8,6 +8,7 @@
 #include "../include/ref.h"
 #include "../include/var.h"
 #include "../include/func.h"
+#include "../include/var_inds.h" // for VarInds
 
 namespace cre {
 
@@ -24,7 +25,7 @@ struct Literal : public CRE_Obj{
 
 	ref<CRE_Obj> obj; // A fact, func, or value
 	std::vector<ref<Var>> vars = {};
-	std::vector<uint16_t> var_inds = {};
+	VarInds var_inds = {};
 	float weight; 
 	bool negated;	
 	uint8_t kind;
