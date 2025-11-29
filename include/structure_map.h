@@ -33,7 +33,8 @@ struct SM_Score{
 // Overload operator<< for SM_Score
 std::ostream& operator<<(std::ostream& os, const SM_Score& obj);
 
-typedef Eigen::Tensor<SM_Score, 2, Eigen::RowMajor> ScoreMatrixType;
+using ScoreMatrixType = Eigen::Tensor<SM_Score, 2, Eigen::RowMajor>;
+using ScoreRowType = Eigen::Tensor<SM_Score, 1, Eigen::RowMajor>;
 
 
 struct SM_StackItem{

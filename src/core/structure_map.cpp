@@ -465,15 +465,14 @@ float score_remap(
 }
 
 // Function to get the argsort of an Eigen VectorXf
-std::vector<int16_t> descending_argsort(
-    const Eigen::Tensor<SM_Score, 1, Eigen::RowMajor>& v) {
+std::vector<int16_t> descending_argsort(const Eigen::TensorRef<ScoreRowType>& v) {
     // Initialize a vector of indices from 0 to v.size() - 1
     std::vector<int16_t> indices(v.size());
     std::iota(indices.begin(), indices.end(), 0);
 
     // Sort the indices based on the values in v
     std::stable_sort(indices.begin(), indices.end(),
-                     [&v](int i1, int i2) { return v[i1].ub_score >= v[i2].ub_score; });
+                     [&v](int i1, int i2) { return v(i1).ub_score >= v(i2).ub_score; });
 
     return indices;
 }
@@ -489,12 +488,12 @@ std::tuple<int64_t, std::vector<int16_t>>
             continue;
         }
 
-        Eigen::Tensor<SM_Score, 1, Eigen::RowMajor> row = cum_score.chip(i, 0).eval(); 
+        Eigen::TensorRef<ScoreRowType> row = cum_score.chip(i, 0); 
 
 
         // auto row = cum_score_matrix[i];//.astype(np.int32);
         auto inds = descending_argsort(row);
-        float max_score = row[inds[0]].ub_score;
+        float max_score = row(inds[0]).ub_score;
 
         //Don't make iterators for rows of all zeros
         if(max_score == 0){
@@ -502,10 +501,10 @@ std::tuple<int64_t, std::vector<int16_t>>
         }
         
         // Find the first index with the lowest score
-        float row_min = row[inds.size()-1].ub_score;
+        float row_min = row(inds.size()-1).ub_score;
         int16_t argmin_ind = inds.size()-1;
         for(int16_t j = inds.size()-2; j > 0; j--){
-            if(row[inds[j]].ub_score <= row_min){
+            if(row(inds[j]).ub_score <= row_min){
                 argmin_ind = j;
             }else{
                 break;
@@ -518,7 +517,7 @@ std::tuple<int64_t, std::vector<int16_t>>
             // Find the mean difference between the highest score and the others
             float mean_diff = 0.0;
             for(size_t j = 1; j < argmin_ind+1; j++){
-                mean_diff += max_score - row[inds[j]].ub_score;
+                mean_diff += max_score - row(inds[j]).ub_score;
             }
             mean_diff /= argmin_ind - 1;
             unamb = std::make_tuple(max_score, mean_diff);
