@@ -24,7 +24,8 @@ void test_lit_groups(){
     cout << c1 << endl;
     cout << c2 << endl;
     cout << "--------" << endl;
-    auto group_pairs = make_group_pairs(c1, c2);
+    auto group_set = make_group_pairs(c1, c2);
+    auto& group_pairs = group_set.group_pairs;
     for(auto group_pair : group_pairs){
         cout << "C:" << group_pair.conj_ind_a << " " << group_pair.conj_ind_b << " size:" << group_pair.pairs.size() << endl;
         for(auto pair : group_pair.pairs){
@@ -35,7 +36,19 @@ void test_lit_groups(){
         }
     }
 
-    structure_map_logic(c1, c2);
+    ref<Logic> c1o = OR(AND(LessThan(x, y), ~Equals(z, x), ~Equals(y, 0)),
+          AND(LessThan(x, y), Equals(z, x), ~Equals(y, 7)),
+          AND(GreaterThan(x, y), ~Equals(z, x), ~Equals(y, 2))
+         );
+    ref<Logic> c2o = OR(AND(LessThan(a, b), Equals(c, a), ~Equals(b, 7), GreaterThan(d, 0)),
+          AND(LessThan(a, b), ~Equals(c, a), ~Equals(b, 0)),
+          AND(GreaterThan(a, b), ~Equals(c, a), ~Equals(b, 0), ~Equals(d, 7))
+         );
+
+    structure_map_logic(c1o, c2o);
+
+
+
     // cout << "score: " << result.score << endl;
     // cout << "alignment: " << result.alignment << endl;
     // cout << "remap: " << result.remap << endl;

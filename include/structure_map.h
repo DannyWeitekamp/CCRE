@@ -26,6 +26,10 @@ struct SM_Score{
 
     float ub_score;
     float beta_score;
+
+    inline cre::SM_Score operator+(const cre::SM_Score& other) const{
+        return cre::SM_Score(ub_score + other.ub_score, beta_score + other.beta_score);
+    }
 };
 
 
@@ -48,7 +52,15 @@ struct SM_StackItem{
 struct SM_Result{
     float score;
     std::vector<int16_t> alignment;
-    std::vector<int16_t> remap;
+    std::vector<int16_t> best_remap;
+    std::vector<std::tuple<float, std::vector<int16_t>>> remaps;
+
+    SM_Result(float score, 
+              const std::vector<int16_t>& alignment,
+              const std::vector<int16_t>& best_remap,
+              const std::vector<std::tuple<float, std::vector<int16_t>>>& remaps):
+        score(score), alignment(alignment), best_remap(best_remap), remaps(remaps)
+    {};
     // auto keep_mask_a;
     // auto keep_mask_b;
     
@@ -111,9 +123,20 @@ struct SM_GroupPair {
     {};
 };
 
+struct SM_GroupSet{
+    std::vector<Item> items_a;
+    std::vector<Item> items_b;
+    std::vector<SM_GroupPair> group_pairs;
+
+    SM_GroupSet(const std::vector<Item>& items_a, const std::vector<Item>& items_b, const std::vector<SM_GroupPair>& group_pairs):
+        items_a(items_a), items_b(items_b), group_pairs(group_pairs)
+    {};
+};
 
 
-std::vector<SM_GroupPair> make_group_pairs(ref<Logic> l_a, ref<Logic> l_b);
+
+SM_GroupSet make_group_pairs(ref<Logic> l_a, ref<Logic> l_b);
+
 SM_Result structure_map_logic(
     ref<Logic> l_a, ref<Logic> l_b, 
     std::vector<int16_t>* a_fixed_inds = nullptr,
@@ -143,4 +166,6 @@ namespace Eigen {
             MulCost = 3
         };
     };
+
+    
 } // namespace Eigen

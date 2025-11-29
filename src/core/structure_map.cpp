@@ -120,9 +120,9 @@ ItemMapType _to_item_map(Item& conj_item){
             _insert_map(item_map, index, item);
         }
     }
-    
     return item_map;
 }
+
 SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& item_a, Item& item_b){
 
     if(item_a.get_t_id() == T_ID_LITERAL){
@@ -185,7 +185,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
 }
 
 
-std::vector<SM_GroupPair> make_group_pairs(ref<Logic> l_a, ref<Logic> l_b){
+SM_GroupSet make_group_pairs(ref<Logic> l_a, ref<Logic> l_b){
    auto group_pairs = std::vector<SM_GroupPair>();
    auto conj_items_a = std::vector<Item>();
    fill_conjunct_like(conj_items_a, l_a);
@@ -208,7 +208,7 @@ std::vector<SM_GroupPair> make_group_pairs(ref<Logic> l_a, ref<Logic> l_b){
             }
         }
     }
-    return group_pairs;
+    return SM_GroupSet(conj_items_a, conj_items_b, group_pairs);
 }
 
 
@@ -238,7 +238,7 @@ void _calc_remap_score_matrices(
 
     for(size_t i = 0; i < group_pairs.size(); i++){
         auto& gp = group_pairs[i];
-        auto& score_matrix = score_matrices[i];
+        ScoreMatrixType& score_matrix = score_matrices[i];
         
         // Reset Score Matrix
         score_matrix.setConstant(SM_Score(0.0,0.0));
@@ -326,34 +326,97 @@ void _calc_remap_score_matrices(
     return;
 }
 
-std::vector<int16_t> _get_best_alignment(
-    std::vector<ScoreMatrixType>& score_matrices, 
-    ScoreMatrixType& cum_score){
-
+std::vector<int16_t> align_greedy(ScoreMatrixType& score_matrix){
+    size_t N = score_matrix.dimension(0);
+    size_t M = score_matrix.dimension(1);
+    auto alignment = std::vector<int16_t>(N, -1);
+    auto covered = std::vector<bool>(M, false);
     
+    size_t c = 0;
+    // Initialize a vector of indices from 0 to v.size() - 1
+    std::vector<int16_t> flat_inds(N*M);
+    std::iota(flat_inds.begin(), flat_inds.end(), 0);
+    SM_Score* data = score_matrix.data();
+
+    // Sort the indices based on the values in v
+    std::stable_sort(flat_inds.begin(), flat_inds.end(),
+                     [&data](int i1, int i2) { return data[i1].ub_score >= data[i2].ub_score; });
+
+    for(size_t flat_ind : flat_inds){
+        size_t i = flat_ind / M;
+        size_t j = flat_ind % M;
+        SM_Score& score = data[flat_ind];
+        if(score.ub_score == 0.0 or c == N){
+            break;
+        }
+        if(alignment[i] == -1 && !covered[j]){
+            alignment[i] = int16_t(j);
+            covered[j] = true;
+            c += 1;
+        }
+    }
+    return alignment;
+}
+
+float score_remap(
+    const std::vector<int16_t>& remap,
+    ScoreMatrixType& score_matrix){
+
+    float score = 0.0f;
+    for(size_t i = 0; i < remap.size(); i++){
+        score += score_matrix(i, remap[i]).ub_score - (score_matrix(i, remap[i]).beta_score / 2) + (score_matrix(i, remap[i]).ub_score != 0);
+    }
+    return score;
+}
+
+std::vector<int16_t> _get_best_alignment(
+    size_t Da, size_t Db,
+    std::vector<SM_GroupPair>& group_pairs,
+    std::vector<ScoreMatrixType>& score_matrices, 
+    ScoreMatrixType& cum_score
+    ){
+
     size_t N = cum_score.dimension(0);
     size_t M = cum_score.dimension(1);
-
     
     if(score_matrices.size() == 1){
         cum_score = score_matrices[0];
         return std::vector<int16_t>(1, 0);
-    }else{
-        throw std::runtime_error("NOT IMPLEMENTED");
     }
 
-    // cum_score.setConstant(SM_Score(0.0,0.0));
+    cout << "--- THIS CASE!! ---" << endl;
 
-    // auto upb_alignment_matrix = Eigen::MatrixXd<uint16_t, Eigen::RowMajor>(Da, Db);
-    // auto remaps = Eigen::MatrixXd<int16_t, Eigen::RowMajor>(score_matrices.size(), N);
+    cum_score.setConstant(SM_Score(0.0,0.0));
 
-    // for(size_t i = 0; i < Da; i++){
-    //     for(size_t j = 0; j < Db; j++){
-    //         score_matrices[i][j].ub_score += score_matrices[i][j].ub_score;
-    //     }
-    // }
+    auto align_matrix = ScoreMatrixType(Da, Db);
+    // auto remaps = Eigen::MatrixXd<int16_t, Eigen::RowMajor>(Da, Db, N);
 
+    for(size_t k = 0; k < group_pairs.size(); k++){
+        auto& gp = group_pairs[k];
+        auto& score_matrix = score_matrices[k];
+        auto remap = align_greedy(score_matrix);
+        size_t i = gp.conj_ind_a;
+        size_t j = gp.conj_ind_b;
+        align_matrix(i,j).ub_score = score_remap(remap, score_matrix);
+    }
 
+    auto alignment = align_greedy(align_matrix);
+
+    cout << "align matrix: " << endl << align_matrix << endl;
+    cout << "alignment: " << alignment << endl;
+
+    // Fill in cumulative score matrix
+    for(size_t k = 0; k < group_pairs.size(); k++){
+        auto& gp = group_pairs[k];
+        auto& score_matrix = score_matrices[k];
+        size_t i = gp.conj_ind_a;
+        size_t j = gp.conj_ind_b;
+        if(alignment[i] == j){
+            cum_score += score_matrix;
+        }
+    }
+
+    return alignment;
 }
 
 std::tuple<std::vector<int16_t>, uint16_t> 
@@ -453,16 +516,7 @@ std::tuple<std::vector<int16_t>, uint16_t>
     return std::make_tuple(unamb_inds, new_unamb);
 }
 
-float score_remap(
-    const std::vector<int16_t>& remap,
-    ScoreMatrixType& score_matrix){
 
-    float score = 0.0f;
-    for(size_t i = 0; i < remap.size(); i++){
-        score += score_matrix(i, remap[i]).ub_score - (score_matrix(i, remap[i]).beta_score / 2) + (score_matrix(i, remap[i]).ub_score != 0);
-    }
-    return score;
-}
 
 // Function to get the argsort of an Eigen VectorXf
 std::vector<int16_t> descending_argsort(const Eigen::TensorRef<ScoreRowType>& v) {
@@ -632,6 +686,7 @@ std::tuple<float, std::vector<uint8_t>, std::vector<uint8_t>>
 }
 */
 
+
 SM_Result structure_map_logic(
     ref<Logic> l_a, ref<Logic> l_b, 
     std::vector<int16_t>* a_fixed_inds,
@@ -639,7 +694,12 @@ SM_Result structure_map_logic(
 
     size_t N = l_a->vars.size();
     size_t M = l_b->vars.size();
-    auto group_pairs = make_group_pairs(l_a, l_b);
+    auto groups_set = make_group_pairs(l_a, l_b);
+    auto& group_pairs = groups_set.group_pairs;
+    size_t Da = groups_set.items_a.size();
+    size_t Db = groups_set.items_b.size();
+
+    std::vector<int16_t> alignment = std::vector<int16_t>(Da, -2);
     
     std::vector<int16_t> fixed_inds = std::vector<int16_t>(N, -2);
     if(a_fixed_inds != nullptr){
@@ -653,15 +713,15 @@ SM_Result structure_map_logic(
     float score = 0.0f;
     float best_score = 0.0f;
     float score_bound = 0.0f;
-    std::vector<int16_t>* best_result = nullptr;
+    std::vector<int16_t>* best_remap = nullptr;
 
-    auto remaps = std::vector<std::vector<int16_t>>();
+    auto remaps = std::vector<std::tuple<float, std::vector<int16_t>>>();
     auto iter_stack = std::vector<SM_StackItem>();
     size_t unamb_cnt = 0;
 
     ScoreMatrixType cum_score(N, M);
-    std::vector<ScoreMatrixType> score_matrices;
-    score_matrices.push_back(ScoreMatrixType(N, M));
+    std::vector<ScoreMatrixType> score_matrices = std::vector<ScoreMatrixType>(group_pairs.size(), ScoreMatrixType(N, M));
+    // score_matrices.push_back(ScoreMatrixType(N, M));
 
     cout << endl;
     // Outer loop handles generation of iterators over ambiguous
@@ -676,7 +736,7 @@ SM_Result structure_map_logic(
 
             // Find the alignment and cumulative score matrix. Required
             //   for when either condition is disjoint (i.e. has an OR()).
-            _get_best_alignment( score_matrices, cum_score);
+            alignment = _get_best_alignment(Da, Db, group_pairs, score_matrices, cum_score);
 
             std::tie(fixed_inds, unamb_cnt) = get_unambiguous_inds(cum_score, fixed_inds, drop_unconstr, drop_no_beta);
 
@@ -705,11 +765,12 @@ SM_Result structure_map_logic(
         }else if(all_fixed(fixed_inds)){
             auto remap = std::vector<int16_t>(
                 fixed_inds.begin(), fixed_inds.end()); // copy of fixed_inds
-            remaps.push_back(remap);
+            
             score = score_remap(remap, cum_score);
+            remaps.push_back(std::make_tuple(score, remap));
             if(score > best_score){
                 best_score = score;
-                best_result = &remaps[remaps.size() - 1];
+                best_remap = &(std::get<1>(remaps[remaps.size() - 1]));
             }
             backtrack = true;
         }
@@ -735,12 +796,9 @@ SM_Result structure_map_logic(
                 if(s.c < s.js.size()){
                     cout << "PUSHBACK: " << s.i << ", " << s.c << ", " << s.js << ", " << old_fixed_inds << endl << endl;
                     break;
-                    
                 }else{
-                    // cout << "--EXHAUSTED--" << endl << endl;
                     iter_stack.pop_back();
                 }
-                
             }
 
             // Case: fixed_inds has been set by popping from stack
@@ -756,8 +814,8 @@ SM_Result structure_map_logic(
         }
     }
     cout << "Best Score: " << best_score << endl;
-    cout << "Best Result: " << *best_result << endl;
-    SM_Result result(best_score, *best_result);
+    cout << "Best Remap: " << *best_remap << endl;
+    auto result = SM_Result(best_score, std::move(alignment), *best_remap, std::move(remaps));
     return result;
 }
 
