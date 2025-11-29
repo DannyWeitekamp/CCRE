@@ -481,7 +481,12 @@ std::vector<int16_t> descending_argsort(const Eigen::TensorRef<ScoreRowType>& v)
 std::tuple<int64_t, std::vector<int16_t>> 
   get_best_ind_iter(ScoreMatrixType& cum_score, std::vector<int16_t>& a_fixed_inds){
     std::tuple<int64_t, std::vector<int16_t>> best_iter = std::make_tuple(-1, std::vector<int16_t>());
-    std::tuple<float, float> best_unamb = std::make_tuple(-1, 0.0);
+
+    // Choose the best best next iterator among the still unfixed variables. Maximize firstly
+    //  the maximum score that fixing the mapping for a var i would contribute, and 
+    //  secondly the maximum difference between the max assignment and mean of the alternate
+    //  assignments, to capture how unambiguously i's max scoring assignment is best.
+    std::tuple<float, float> best_i_quality = std::make_tuple(-1, 0.0);
     for(int64_t i = 0; i < cum_score.dimension(0); i++){
         // Skip if already assigned
         if(a_fixed_inds[i] != -2){
@@ -489,9 +494,6 @@ std::tuple<int64_t, std::vector<int16_t>>
         }
 
         Eigen::TensorRef<ScoreRowType> row = cum_score.chip(i, 0); 
-
-
-        // auto row = cum_score_matrix[i];//.astype(np.int32);
         auto inds = descending_argsort(row);
         float max_score = row(inds[0]).ub_score;
 
@@ -511,8 +513,10 @@ std::tuple<int64_t, std::vector<int16_t>>
             }
         }
 
+        // Initialize i_quality to the max score and the max score
+        std::tuple<float, float> i_quality = std::make_tuple(max_score, max_score);
+
         // If there is at least one score higher than the others 
-        std::tuple<float, float> unamb = std::make_tuple(max_score, max_score);
         if(argmin_ind > 1){
             // Find the mean difference between the highest score and the others
             float mean_diff = 0.0;
@@ -520,27 +524,14 @@ std::tuple<int64_t, std::vector<int16_t>>
                 mean_diff += max_score - row(inds[j]).ub_score;
             }
             mean_diff /= argmin_ind - 1;
-            unamb = std::make_tuple(max_score, mean_diff);
+            i_quality = std::make_tuple(max_score, mean_diff);
         }
 
-        if(unamb > best_unamb){
+        // Assign the best iterator so far.
+        if(i_quality > best_i_quality){
             best_iter = std::make_tuple(i, std::move(inds));
-            best_unamb = unamb;
+            best_i_quality = i_quality;
         }
-
-        // inds = inds[:np.argmin(row[inds])]
-        // scores = row[inds]
-        // max_diff = scores[0] - scores[1:]
-        
-        // if(len(max_diff) > 0):
-        //     //# NOTE: Maybe harmonic mean is better?
-        //     //# amb = (len(scores)-1)/np.mean(1/(1+max_diff))
-        //     unamb = (scores[0], np.mean(scores[0] - scores[1:]))
-        // else:
-        //     unamb = (scores[0], scores[0])
-        // if(unamb > best_unamb):
-        //     best_iter = (i, inds)
-        //     best_unamb = unamb
     }
 
     return best_iter;
