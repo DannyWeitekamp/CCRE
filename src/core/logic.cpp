@@ -780,5 +780,87 @@ std::ostream& operator<<(std::ostream& out, ref<Logic> logic) {
 	return out << logic->to_string();
 }
 
+
+ref<Logic> Logic::_masked_copy(
+    std::vector<std::vector<uint8_t>>& keep_masks, 
+    size_t& mask_ind, AllocBuffer* alloc_buffer){
+
+    std::vector<uint8_t> empty_mask = std::vector<uint8_t>();
+
+    ref<Logic> copy = new_logic(kind, alloc_buffer);
+    if(kind == CONDS_KIND_AND){
+        auto& mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
+        ++mask_ind;
+        
+        for(size_t i=0; i<items.size(); i++){
+            auto mbr_item = items[i];
+
+            if(mbr_item.get_t_id() == T_ID_LOGIC){
+                Logic* sub_logic = mbr_item._as<Logic*>();
+                ref<Logic> sub_copy = sub_logic->_masked_copy(keep_masks, mask_ind, alloc_buffer);
+                
+                // Can mask out any disjunct in a conjunct 
+                // NOTE: we don't raise this out of the branch
+                //   because other masks might target sub-logic.
+                //   So we just construct and discard them.
+                if(i < mask.size() && !mask[i]) continue;
+                copy->_insert_arg(Item(sub_copy));
+
+                // Update the mask for the next item.
+                mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
+            }else{
+                cout << "INSERTING OTHER ITEM: " << mbr_item << endl;
+                cout << "MASK: " << mask << " " << i << " " << !mask[i] << endl;
+                // Can mask out any other item in a conjunct.
+                if(i < mask.size() && !mask[i]) continue;
+                copy->_insert_arg(mbr_item);
+            }
+        }
+    }else{
+        for(size_t i=0; i<items.size(); i++){
+            auto mbr_item = items[i];
+            if(mbr_item.get_t_id() == T_ID_LOGIC){
+                
+                Logic* sub_logic = mbr_item._as<Logic*>();
+                cout << "START SUB COPY: " << sub_logic->to_string() << endl;
+                ref<Logic> sub_copy = sub_logic->_masked_copy(keep_masks, mask_ind, alloc_buffer);
+                cout << "SUB LOGIC: " << sub_copy << endl;
+
+                // Don't add a conjunct in a disjunct if it's empty.
+                // Note: Need to decide if nullptr would be better here.
+                //   trouble is that it is simpler to handle an empty logic 
+                //   on the python side.  
+                if(sub_copy->items.size() > 0){
+                    copy->_insert_arg(Item(sub_copy));
+                }
+            } else {
+                // Can mask out any item in a disjunct that isn't a conjunct
+                if(mask_ind < keep_masks.size()){
+                    auto& mask = keep_masks[mask_ind];
+                    ++mask_ind;
+                    if(mask.size() > 0 && !mask[0]) continue;
+                }
+                copy->_insert_arg(mbr_item);
+            }
+        }
+    }
+    copy->_finalize();
+    cout << "FINAL COPY: " << copy->to_string() << endl;
+    return copy;
+}
+
+ref<Logic> Logic::masked_copy(
+    std::vector<std::vector<uint8_t>>& keep_masks, AllocBuffer* alloc_buffer){
+    size_t mask_ind = 0;
+    return _masked_copy(keep_masks, mask_ind, alloc_buffer);
+}
+
+ref<Logic> Logic::copy(
+    AllocBuffer* alloc_buffer){
+    auto empty_masks = std::vector<std::vector<uint8_t>>();
+    size_t mask_ind = 0;
+    return _masked_copy(empty_masks, mask_ind, alloc_buffer);
+}
+
 } // NAMESPACE_END(cre)
 

@@ -99,6 +99,12 @@ struct Logic : public CRE_Obj {
     void _insert_other_kind(ref<Logic> logic);
     void _extend_same_kind(ref<Logic> conj);
     void _finalize();
+    
+    ref<Logic> _masked_copy(std::vector<std::vector<uint8_t>>& keep_masks, 
+        size_t& mask_ind, AllocBuffer* alloc_buffer=nullptr);
+
+    ref<Logic> masked_copy(std::vector<std::vector<uint8_t>>& keep_masks, AllocBuffer* alloc_buffer=nullptr);
+    ref<Logic> copy(AllocBuffer* alloc_buffer=nullptr);
 
 std::string basic_str();
     size_t _stream_item(std::stringstream& ss, size_t i, std::string_view indent,
@@ -140,6 +146,8 @@ ref<Logic> OR(Args&&... args) {
     logic->_populate(std::forward<Args>(args)...);
     return logic;
 }
+
+
 
 
 } // NAMESPACE_END(cre)

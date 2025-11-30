@@ -24,11 +24,11 @@ void test_lit_groups(){
     cout << c1 << endl;
     cout << c2 << endl;
     cout << "--------" << endl;
-    auto group_set = make_group_pairs(c1, c2);
-    auto& group_pairs = group_set.group_pairs;
-    for(auto group_pair : group_pairs){
-        cout << "C:" << group_pair.conj_ind_a << " " << group_pair.conj_ind_b << " size:" << group_pair.pairs.size() << endl;
-        for(auto pair : group_pair.pairs){
+    auto group_set = logic_to_map_cands(c1, c2);
+    auto& conj_pairs = group_set.conj_pairs; 
+    for(auto conj_pair : conj_pairs){
+        cout << "C:" << conj_pair.conj_ind_a << " " << conj_pair.conj_ind_b << " size:" << conj_pair.pairs.size() << endl;
+        for(auto pair : conj_pair.pairs){
             cout << "P:(" << pair.index_a << "->" << pair.index_b << ") w: " << pair.weight << " n_vars: " << pair.n_vars << endl;
             for(size_t i = 0; i < pair.n_vars; i++){
                 cout << pair.var_inds_a.inds[i] << "->" << pair.var_inds_b.inds[i] << endl;
@@ -46,6 +46,9 @@ void test_lit_groups(){
          );
 
     structure_map_logic(c1o, c2o);
+
+    ref<Logic> auc = antiunify_logic(c1o, c2o);
+    cout << "auc: " << endl << auc << endl;
 
 
 

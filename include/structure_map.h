@@ -54,6 +54,8 @@ struct SM_Result{
     std::vector<int16_t> alignment;
     std::vector<int16_t> best_remap;
     std::vector<std::tuple<float, std::vector<int16_t>>> remaps;
+    std::vector<std::vector<uint8_t>> keep_masks_a = {};
+    std::vector<std::vector<uint8_t>> keep_masks_b = {};
 
     SM_Result(float score, 
               const std::vector<int16_t>& alignment,
@@ -113,33 +115,49 @@ struct SM_MappablePair {
 // A single candidate pair of groups.
 //  Typically represent a cadidate pair of conjuncts in one 
 //  logical statement mapped to another.
-struct SM_GroupPair {
+struct SM_ConjPair {
     uint16_t conj_ind_a;
     uint16_t conj_ind_b;
+    uint16_t conj_len_a;
+    uint16_t conj_len_b;
     std::vector<SM_MappablePair> pairs;
 
-    SM_GroupPair(uint16_t conj_ind_a, uint16_t conj_ind_b, std::vector<SM_MappablePair>& pairs):
-        conj_ind_a(conj_ind_a), conj_ind_b(conj_ind_b), pairs(pairs)
+    SM_ConjPair(uint16_t conj_ind_a, uint16_t conj_ind_b,
+                 uint16_t conj_len_a, uint16_t conj_len_b,
+                 const std::vector<SM_MappablePair>& pairs):
+        conj_ind_a(conj_ind_a), conj_ind_b(conj_ind_b),
+        conj_len_a(conj_len_a), conj_len_b(conj_len_b),
+        pairs(pairs)
     {};
 };
 
-struct SM_GroupSet{
-    std::vector<Item> items_a;
-    std::vector<Item> items_b;
-    std::vector<SM_GroupPair> group_pairs;
+struct SM_MapCandSet{
+    size_t N; // The number of variables in l_a
+    size_t M; // The number of variables in l_b
+    std::vector<Item> items_a; // The conjunct-like items in l_a
+    std::vector<Item> items_b; // The conjunct-like items in l_b
+    std::vector<SM_ConjPair> conj_pairs; // The conjunct pairs
 
-    SM_GroupSet(const std::vector<Item>& items_a, const std::vector<Item>& items_b, const std::vector<SM_GroupPair>& group_pairs):
-        items_a(items_a), items_b(items_b), group_pairs(group_pairs)
+    SM_MapCandSet(size_t N, size_t M,
+                const std::vector<Item>& items_a,
+                const std::vector<Item>& items_b,
+                const std::vector<SM_ConjPair>& conj_pairs):
+        N(N), M(M), items_a(items_a), items_b(items_b), conj_pairs(conj_pairs)
     {};
 };
 
 
 
-SM_GroupSet make_group_pairs(ref<Logic> l_a, ref<Logic> l_b);
+SM_MapCandSet logic_to_map_cands(ref<Logic> l_a, ref<Logic> l_b);
 
 SM_Result structure_map_logic(
     ref<Logic> l_a, ref<Logic> l_b, 
     std::vector<int16_t>* a_fixed_inds = nullptr,
+    bool drop_unconstr = false, bool drop_no_beta = false);
+
+ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b, 
+    std::vector<int16_t>* a_fixed_inds = nullptr,
+    // uint8_t normalize_kind = CONDS_KIND_AND, 
     bool drop_unconstr = false, bool drop_no_beta = false);
 
 } // namespace cre
