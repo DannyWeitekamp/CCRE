@@ -46,6 +46,7 @@ struct SM_StackItem{
     size_t c;
     std::vector<int16_t> js;
     std::vector<int16_t> fixed_inds;
+    float score_bound;
 };
 
 

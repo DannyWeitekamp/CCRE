@@ -413,17 +413,17 @@ std::tuple<int64_t, std::vector<int16_t>>
 // :--------------------------------------------------:
 
 SM_Result structure_map_generic(
-    SM_MapCandSet& groups_set,
+    SM_MapCandSet& mapcand_set,
     std::vector<int16_t>* a_fixed_inds,
-    bool drop_unconstr, bool drop_no_beta){
+    bool drop_unconstr, bool drop_no_beta,
+    float tolerance=0.0){
         
-
-    size_t N = groups_set.N;
-    size_t M = groups_set.M;
+    size_t N = mapcand_set.N;
+    size_t M = mapcand_set.M;
     
-    auto& conj_pairs = groups_set.conj_pairs;
-    size_t Da = groups_set.items_a.size();
-    size_t Db = groups_set.items_b.size();
+    auto& conj_pairs = mapcand_set.conj_pairs;
+    size_t Da = mapcand_set.items_a.size();
+    size_t Db = mapcand_set.items_b.size();
 
     std::vector<int16_t> alignment = std::vector<int16_t>(Da, -2);
     
@@ -473,18 +473,17 @@ SM_Result structure_map_generic(
                 break;
             }
         }
-        
 
         bool backtrack = false;
         score_bound = score_remap(fixed_inds, cum_score);
 
-        cout << "fixed_inds: " << fixed_inds << endl;
-        cout << "score_bound: " << score_bound << endl;
+        // cout << "fixed_inds: " << fixed_inds << endl;
+        // cout << "score_bound: " << score_bound << endl;
         // break;
         
         // Case: Abandon if the upper bound on the current assignment's 
         //  score is less than the current best score. 
-        if(score_bound < best_score){
+        if(score_bound < best_score * (1.0-tolerance)){
             backtrack = true;
         
         // Case: All vars fixed so store remap. Then backtrack. 
@@ -492,7 +491,9 @@ SM_Result structure_map_generic(
             auto remap = std::vector<int16_t>(
                 fixed_inds.begin(), fixed_inds.end()); // copy of fixed_inds
             
-            score = score_remap(remap, cum_score);
+            // When all inds are fixed, the bound is the true score.
+            auto score = score_bound; 
+            // score = score_remap(remap, cum_score);
             remaps.push_back(std::make_tuple(score, remap));
             if(score > best_score){
                 best_score = score;
@@ -502,40 +503,53 @@ SM_Result structure_map_generic(
         }
 
         if(backtrack){
-            if(iter_stack.size() == 0){
-                // Case: All iterators exhausted (i.e. Finished)
-                break;
-            }
-
             while(iter_stack.size() > 0){
                 SM_StackItem& s = iter_stack[iter_stack.size() - 1];
-                auto c = s.c;
-                cout << "POP: " << s.i << ", " << s.c << ", " << s.js << ", " << s.fixed_inds << endl;
-                auto& old_fixed_inds = s.fixed_inds;
-                fixed_inds = std::vector<int16_t>(
-                    old_fixed_inds.begin(), old_fixed_inds.end()
-                ); // copy of old_fixed_inds
-                fixed_inds[s.i] = s.js[s.c]; // Fix index i to next choice in js.
+                
+                // Keep popping off stack until the score bound
+                //   could feasibly produce a better result.
+                if(s.score_bound < best_score * (1.0-tolerance)){
+                    continue;
+                }
+                
+                // cout << "POP: " << s.i << ", " << s.c << ", " << s.js << ", " << s.fixed_inds << endl;
 
-                cout << "Assign: " << fixed_inds << endl;
+                // Get fixed inds for the popped iterator
+                //  and push its next state to the stack
+                auto& old_fixed_inds = s.fixed_inds;
+                // Make a copy of old_fixed_inds
+                fixed_inds = std::vector<int16_t>(old_fixed_inds.begin(), old_fixed_inds.end());
+                fixed_inds[s.i] = s.js[s.c]; // Fix index i to next choice in js.
                 s.c += 1;
                 if(s.c < s.js.size()){
-                    cout << "PUSHBACK: " << s.i << ", " << s.c << ", " << s.js << ", " << old_fixed_inds << endl << endl;
+                    // cout << "PUSHBACK: " << s.i << ", " << s.c << ", " << s.js << ", " << old_fixed_inds << endl << endl;
                     break;
                 }else{
                     iter_stack.pop_back();
                 }
             }
-
+            if(iter_stack.size() == 0){
+                // Case: All iterators exhausted (i.e. Finished)
+                break;
+            }
             // Case: fixed_inds has been set by popping from stack
         }else{
             // Case: some assignments ambiguous so make next iter.
             // 'fixed_inds' is set to the first choice of i -> j.
-            // Iterator for rest are pushed to stack. 
             auto [i,js] = get_best_ind_iter(cum_score, fixed_inds);
-            iter_stack.push_back(SM_StackItem(i, 1, js, fixed_inds));
-            fixed_inds[i] = js[0];
-            cout << "PUSH: " << i << ", " << 1 << ", " << js << ", " << fixed_inds << endl << endl;
+            if(i != -1){
+                // Iterator for rest are pushed to stack. 
+                iter_stack.push_back(SM_StackItem(i, 1, js, fixed_inds, score_bound));
+                fixed_inds[i] = js[0];
+                cout << "PUSH: " << i << ", " << 1 << ", " << js << ", " << fixed_inds << endl << endl;
+            }else{
+                // Case: Making iterator failed because only unconstrained
+                //  assignments remain. Set all unassigned (-2s) to
+                //  unconstrained (-1s)
+                for(size_t i = 0; i < fixed_inds.size(); i++){
+                    if(fixed_inds[i] == -2) fixed_inds[i] = -1;
+                }
+            }
         // break;
         }
     }
@@ -699,9 +713,6 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
     }else{
         throw std::runtime_error("NOT IMPLEMENTED");
     }
-
-    
-    
 }
 
 
@@ -783,8 +794,8 @@ SM_Result structure_map_logic(
     ref<Logic> l_a, ref<Logic> l_b, 
     std::vector<int16_t>* a_fixed_inds,
     bool drop_unconstr, bool drop_no_beta){
-    auto groups_set = logic_to_map_cands(l_a, l_b);
-    SM_Result result = structure_map_generic(groups_set, a_fixed_inds, drop_unconstr, drop_no_beta);
+    auto mapcand_set = logic_to_map_cands(l_a, l_b);
+    SM_Result result = structure_map_generic(mapcand_set, a_fixed_inds, drop_unconstr, drop_no_beta);
     return result;
 }
 
@@ -797,9 +808,9 @@ ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b,
                         //    uint8_t normalize_kind, 
                            bool drop_unconstr, bool drop_no_beta){
 
-    auto groups_set = logic_to_map_cands(l_a, l_b);
-    SM_Result result = structure_map_generic(groups_set, a_fixed_inds, drop_unconstr, drop_no_beta);
-    auto [score, keep_masks_a, keep_masks_b] = score_and_mask_remap(groups_set, result.alignment, result.best_remap);
+    auto mapcand_set = logic_to_map_cands(l_a, l_b);
+    SM_Result result = structure_map_generic(mapcand_set, a_fixed_inds, drop_unconstr, drop_no_beta);
+    auto [score, keep_masks_a, keep_masks_b] = score_and_mask_remap(mapcand_set, result.alignment, result.best_remap);
 
     cout << "Score: " << score << "," << result.score << endl;
     result.score = score;
