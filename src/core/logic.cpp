@@ -712,6 +712,7 @@ std::string Logic::standard_str(
                 // if(!finished && item_is_multiline) lit_ss << ")";
                 // if(!finished) lit_ss << ", ";
                 if(j < info.item_inds.size()-1) lit_ss << ", ";
+                // cout << "LIT SS: " << lit_ss.str() << endl;
                 // if(!finished && item_is_multiline) lit_ss << "\n";
                 write_any = true;
             }
@@ -724,14 +725,19 @@ std::string Logic::standard_str(
             if(first_is_fact_semantics){
                 var_ss << fmt::format("{}:=", v->get_alias_str());
             }else{
-                var_ss << fmt::format("{}:={}, ",  v->get_alias_str(), v->repr(false));
+                var_ss << fmt::format("{}:={}",  v->get_alias_str(), v->repr(false));
+                // if(write_any) var_ss << ", ";
             }
         }
         
         
         // if(is_multiline && write_any) ss << indent;}
         if(write_any){
-            ss << var_ss.str() << lit_ss.str();
+            std::string&& var_str = var_ss.str();
+            std::string&& lit_str = lit_ss.str();
+            ss << var_str;
+            if(var_str.size() > 0 && lit_str.size() > 0) ss << ", ";
+            ss << lit_ss.str();
             lines.push_back(ss.str());
         }
         

@@ -46,8 +46,9 @@ void test_lit_groups(){
          );
 
     structure_map_logic(c1o, c2o);
-
+    
     ref<Logic> auc = antiunify_logic(c1o, c2o);
+    cout << "-------------------" << endl;
     cout << "auc: " << endl << auc << endl;
 
 

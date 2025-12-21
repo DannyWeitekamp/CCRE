@@ -788,9 +788,6 @@ SM_Result structure_map_logic(
     return result;
 }
 
-
-
-
 constexpr uint8_t ANTIUNIFY_NORM_KIND_LEFT = 0;
 constexpr uint8_t ANTIUNIFY_NORM_KIND_RIGHT = 1;
 constexpr uint8_t ANTIUNIFY_NORM_KIND_MAX = 2;
