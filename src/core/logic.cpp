@@ -311,10 +311,10 @@ void Logic::_finalize() {
         if(item.get_t_id() == T_ID_LITERAL){
             Literal* lit = item._as<Literal*>();
             size_t nv = lit->vars.size();
-            cout << "nv: " << nv << endl;
+            // cout << "nv: " << nv << endl;
             VarInds& var_inds = lit->var_inds;
             var_inds.reserve(nv);
-            cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
+            // cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
             // uint16_t* var_inds_buff = (uint16_t*) alloca(nv * sizeof(uint16_t));
             for(size_t i=0; i < nv; i++){
                 Var* var = lit->vars[i];
@@ -322,12 +322,12 @@ void Logic::_finalize() {
                 if(it != var_map.end()) {
                     auto& info = it->second;
                     var_inds[i] = info.pos;
-                    cout << "WRITE:" << i << " , " << info.pos << endl;
+                    // cout << "WRITE:" << i << " , " << info.pos << endl;
                 } else {
                     throw std::runtime_error("Logic::_finalize: variable not found in var_map");
                 }
             }
-            cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
+            // cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
         }
     }
 
@@ -815,8 +815,8 @@ ref<Logic> Logic::_masked_copy(
                 // Update the mask for the next item.
                 mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
             }else{
-                cout << "INSERTING OTHER ITEM: " << mbr_item << endl;
-                cout << "MASK: " << mask << " " << i << " " << !mask[i] << endl;
+                // cout << "INSERTING OTHER ITEM: " << mbr_item << endl;
+                // cout << "MASK: " << mask << " " << i << " " << !mask[i] << endl;
                 // Can mask out any other item in a conjunct.
                 if(i < mask.size() && !mask[i]) continue;
                 copy->_insert_arg(mbr_item);
@@ -828,9 +828,9 @@ ref<Logic> Logic::_masked_copy(
             if(mbr_item.get_t_id() == T_ID_LOGIC){
                 
                 Logic* sub_logic = mbr_item._as<Logic*>();
-                cout << "START SUB COPY: " << sub_logic->to_string() << endl;
+                // cout << "START SUB COPY: " << sub_logic->to_string() << endl;
                 ref<Logic> sub_copy = sub_logic->_masked_copy(keep_masks, mask_ind, alloc_buffer);
-                cout << "SUB LOGIC: " << sub_copy << endl;
+                // cout << "SUB LOGIC: " << sub_copy << endl;
 
                 // Don't add a conjunct in a disjunct if it's empty.
                 // Note: Need to decide if nullptr would be better here.
@@ -851,7 +851,7 @@ ref<Logic> Logic::_masked_copy(
         }
     }
     copy->_finalize();
-    cout << "FINAL COPY: " << copy->to_string() << endl;
+    // cout << "FINAL COPY: " << copy->to_string() << endl;
     return copy;
 }
 

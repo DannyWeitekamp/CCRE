@@ -54,8 +54,8 @@ std::vector<int16_t> descending_argsort(const Eigen::TensorRef<ScoreRowType>& v)
 
 
 void _calc_remap_score_matrices(
+    std::vector<SM_ConjPair>& conj_pairs,
     std::vector<ScoreMatrixType>& score_matrices, 
-    std::vector<SM_ConjPair>& conj_pairs, 
     std::vector<int16_t>& a_fixed_inds){
 
     assert(score_matrices.size() > 0);
@@ -166,10 +166,16 @@ float score_remap(
     const std::vector<int16_t>& remap,
     ScoreMatrixType& score_matrix){
 
+    // cout << "SCORE_REMAP: " << remap << endl;
+    // cout << "SCORE_MATRIX: " << score_matrix << endl;
+
     float score = 0.0f;
     for(size_t i = 0; i < remap.size(); i++){
+        if(remap[i] < 0) continue;
+        // cout << "SCORE_MATRIX(" << i << ", " << remap[i] << "): " << score_matrix(i, remap[i]) << endl;
         score += score_matrix(i, remap[i]).ub_score - (score_matrix(i, remap[i]).beta_score / 2) + (score_matrix(i, remap[i]).ub_score != 0);
     }
+    // cout << "SCORE: " << score << endl;
     return score;
 }
 
@@ -194,7 +200,7 @@ std::vector<int16_t> _get_best_alignment(
         return std::vector<int16_t>(1, 0);
     }
 
-    cout << "--- THIS CASE!! ---" << endl;
+    // cout << "--- THIS CASE!! ---" << endl;
 
     cum_score.setConstant(SM_Score(0.0,0.0));
 
@@ -212,8 +218,8 @@ std::vector<int16_t> _get_best_alignment(
 
     auto alignment = align_greedy(align_matrix);
 
-    cout << "align matrix: " << endl << align_matrix << endl;
-    cout << "alignment: " << alignment << endl;
+    // cout << "align matrix: " << endl << align_matrix << endl;
+    // cout << "alignment: " << alignment << endl;
 
     // Fill in cumulative score matrix
     for(size_t k = 0; k < conj_pairs.size(); k++){
@@ -229,114 +235,7 @@ std::vector<int16_t> _get_best_alignment(
     return alignment;
 }
 
-// :--------------------------------------------------:
-// :  get_unambiguous_inds() : (private - helps structure_map_generic())
-// :  Finds the best unambiguous mapping for each variable in A.
-// :  This is done by greedily assigning each variable to the
-// :  variable in B with the highest score, and then dropping
-// :  variables that have no assignments with a non-zero score.
-// :  If drop_no_beta=True, then variables with no beta literals
-// :  that support any assignment to the variable are also dropped.
-// :  If drop_unconstr=True, then variables with no assignments
-// :  with a non-zero score are also dropped.
-// :--------------------------------------------------:
 
-std::tuple<std::vector<int16_t>, uint16_t> 
-  get_unambiguous_inds(
-    ScoreMatrixType& cum_score,
-    std::vector<int16_t>& a_fixed_inds,
-    bool drop_unconstr, bool drop_no_beta){
-
-    size_t N = cum_score.dimension(0);
-    size_t M = cum_score.dimension(1);
-    std::vector<int16_t> unamb_inds = std::vector<int16_t>(
-        a_fixed_inds.begin(), a_fixed_inds.end()); // copy of a_fixed_inds
-    auto unconstr_mask = std::vector<uint8_t>(a_fixed_inds.size());
-    uint16_t new_unamb = 0;
-    
-
-    for(size_t a_ind = 0; a_ind < N; a_ind++){
-        // Don't touch if already assigned  
-        if(a_fixed_inds[a_ind] != -2){
-            continue;
-        }
-
-        // Find any assignments with non-zero score
-        uint16_t cnt = 0;
-        uint16_t beta_cnt = 0;
-        uint16_t nz_b_ind = -1;
-        for(size_t b_ind = 0; b_ind < M; b_ind++){
-            if(cum_score(a_ind, b_ind).ub_score != 0){
-                cnt++;
-                nz_b_ind = b_ind;
-            }
-            if(cum_score(a_ind, b_ind).beta_score != 0){
-                beta_cnt++;
-            }
-        }
-
-        // IF drop_no_beta=True and no beta literals 
-        //  support any assignment to a_ind and then drop.
-        if(drop_no_beta and beta_cnt == 0){
-            unamb_inds[a_ind] = -1;
-            continue;
-        }   
-
-        // If there is exactly one assignment with a non-zero score then apply that assignment.
-        if(cnt == 1){
-            unamb_inds[a_ind] = nz_b_ind;
-            new_unamb++;
-            continue;
-        }
-
-        // Or if they all have a score of zero then mark them as unconstrainted or drop if drop_unconstr
-        if(cnt == 0){
-            if(drop_unconstr){
-                unamb_inds[a_ind] = -1;
-            }else{
-                unconstr_mask[a_ind] = 1;
-            }
-            continue;
-        }
-    }
-
-    // For variables which are made unconstrained by the
-    //  remap so far, greedily assign each i -> j which 
-    //  is maximally diagonal, otherwise drop (i.e. i -> -1).
-    auto unassigned_j_mask = std::vector<uint8_t>(M, 1);
-    for(size_t i = 0; i < N; i++){
-        if(unamb_inds[i] >= 0){
-            unassigned_j_mask[unamb_inds[i]] = 0;
-        }
-    }
-
-    for(int64_t i = 0; i < N; i++){
-        if(unconstr_mask[i] == 0){
-            continue;
-        }
-
-        int16_t min_j = -1;
-        int16_t min_dist = std::numeric_limits<int16_t>::max();
-        for(int64_t j = 0; j < M; j++){
-            if(unassigned_j_mask[j] == 1){
-                uint16_t dist = std::abs(i-j);
-                if(dist < min_dist){
-                    min_j = j;
-                    min_dist = dist;
-                }
-            }
-        }
-        if(min_j != -1){
-            unamb_inds[i] = min_j;
-            new_unamb++;
-        }else{
-            unamb_inds[i] = -1;
-        }
-    }
-
-    
-    return std::make_tuple(unamb_inds, new_unamb);
-}
 
 
 
@@ -405,81 +304,153 @@ std::tuple<int64_t, std::vector<int16_t>>
     return best_iter;
 }
 
-// :--------------------------------------------------:
-// :  structure_map_generic() :
-// :  Generic implementation for structure mapping between two sets of items.
-// :  This assumes that a collections of things in A (i.e. literals in logical statements)
-// :  have already been paired with match candidates in B, encoded as a SM_MapCandSet object.
-// :--------------------------------------------------:
 
-SM_Result structure_map_generic(
-    SM_MapCandSet& mapcand_set,
-    std::vector<int16_t>* a_fixed_inds,
-    bool drop_unconstr, bool drop_no_beta,
-    float tolerance=0.0){
-        
-    size_t N = mapcand_set.N;
-    size_t M = mapcand_set.M;
-    
-    auto& conj_pairs = mapcand_set.conj_pairs;
-    size_t Da = mapcand_set.items_a.size();
-    size_t Db = mapcand_set.items_b.size();
+struct MapProblem {
+    std::vector<int16_t> alignment;
+    std::vector<int16_t> fixed_inds;
+    float best_score;
+    float score_bound;
+    std::vector<int16_t>* best_remap;
+    std::vector<std::tuple<float, std::vector<int16_t>>> remaps;
+    std::vector<SM_StackItem> iter_stack;
+    ScoreMatrixType cum_score;
+    std::vector<ScoreMatrixType> score_matrices;
+    float tolerance;
+    bool drop_unconstr;
+    bool drop_no_beta;
 
-    std::vector<int16_t> alignment = std::vector<int16_t>(Da, -2);
-    
-    std::vector<int16_t> fixed_inds = std::vector<int16_t>(N, -2);
-    if(a_fixed_inds != nullptr){
-        for(size_t i = 0; i < a_fixed_inds->size(); i++){
-            fixed_inds[(*a_fixed_inds)[i]] = i;
+    MapProblem(size_t Da, size_t N, size_t M, size_t tot_n_pairs,
+               std::vector<int16_t>* a_fixed_inds, float tolerance,
+               bool drop_unconstr, bool drop_no_beta):
+        alignment(Da, -2),
+        fixed_inds(N, -2),
+        best_score(0.0f),
+        score_bound(0.0f),
+        best_remap(nullptr),
+        remaps({}),
+        iter_stack({}),
+        cum_score(N, M),
+        score_matrices(tot_n_pairs, ScoreMatrixType(N, M)),
+        tolerance(tolerance),
+        drop_unconstr(drop_unconstr),
+        drop_no_beta(drop_no_beta)
+    {
+        if(a_fixed_inds != nullptr){
+            for(size_t i = 0; i < a_fixed_inds->size(); i++){
+                fixed_inds[(*a_fixed_inds)[i]] = i;
+            }
         }
-    }
+    };
 
-    auto it = nullptr;
-    size_t c = 0;
-    float score = 0.0f;
-    float best_score = 0.0f;
-    float score_bound = 0.0f;
-    std::vector<int16_t>* best_remap = nullptr;
+    // :--------------------------------------------------:
+// :  fill_unambiguous_inds() : (private - helps structure_map_generic())
+// :  Finds the best unambiguous mapping for each variable in A.
+// :  This is done by greedily assigning each variable to the
+// :  variable in B with the highest score, and then dropping
+// :  variables that have no assignments with a non-zero score.
+// :  If drop_no_beta=True, then variables with no beta literals
+// :  that support any assignment to the variable are also dropped.
+// :  If drop_unconstr=True, then variables with no assignments
+// :  with a non-zero score are also dropped.
+// :--------------------------------------------------:
+    uint16_t fill_unambiguous_inds(){
+        size_t N = cum_score.dimension(0);
+        size_t M = cum_score.dimension(1);
+        std::vector<int16_t> unamb_inds = std::vector<int16_t>(
+            fixed_inds.begin(), fixed_inds.end()); // copy of a_fixed_inds
+        auto unconstr_mask = std::vector<uint8_t>(fixed_inds.size());
+        uint16_t new_unamb = 0;
+        
 
-    auto remaps = std::vector<std::tuple<float, std::vector<int16_t>>>();
-    auto iter_stack = std::vector<SM_StackItem>();
-    size_t unamb_cnt = 0;
+        for(size_t a_ind = 0; a_ind < N; a_ind++){
+            // Don't touch if already assigned  
+            if(fixed_inds[a_ind] != -2){
+                continue;
+            }
 
-    ScoreMatrixType cum_score(N, M);
-    std::vector<ScoreMatrixType> score_matrices = std::vector<ScoreMatrixType>(conj_pairs.size(), ScoreMatrixType(N, M));
-    // score_matrices.push_back(ScoreMatrixType(N, M));
+            // Find any assignments with non-zero score
+            uint16_t cnt = 0;
+            uint16_t beta_cnt = 0;
+            uint16_t nz_b_ind = -1;
+            for(size_t b_ind = 0; b_ind < M; b_ind++){
+                if(cum_score(a_ind, b_ind).ub_score != 0){
+                    cnt++;
+                    nz_b_ind = b_ind;
+                }
+                if(cum_score(a_ind, b_ind).beta_score != 0){
+                    beta_cnt++;
+                }
+            }
 
-    cout << endl;
-    // Outer loop handles generation of iterators over ambiguous
-    //  variable assignments. 
-    while (true) {
-        // Inner loop recalcs score matricies, from current fixed_inds.
-        //  Loops multiple times if new scores imply some previously
-        //  unfixed variable now has an unambiguous mapping.
-        while (true) {
-            // Recalculate the score matrix w/ fixed_inds
-            _calc_remap_score_matrices(score_matrices, conj_pairs, fixed_inds);
+            // IF drop_no_beta=True and no beta literals 
+            //  support any assignment to a_ind and then drop.
+            if(drop_no_beta && beta_cnt == 0){
+                unamb_inds[a_ind] = -1;
+                continue;
+            }   
 
-            // Find the alignment and cumulative score matrix. Required
-            //   for when either condition is disjoint (i.e. has an OR()).
-            alignment = _get_best_alignment(Da, Db, conj_pairs, score_matrices, cum_score);
+            // If there is exactly one assignment with a non-zero score then apply that assignment.
+            if(cnt == 1){
+                unamb_inds[a_ind] = nz_b_ind;
+                new_unamb++;
+                continue;
+            }
 
-            std::tie(fixed_inds, unamb_cnt) = get_unambiguous_inds(cum_score, fixed_inds, drop_unconstr, drop_no_beta);
-
-            // cout << cum_score << endl;
-            // cout << "fixed_inds: " << fixed_inds << endl;
-
-            if(unamb_cnt == 0){
-                break;
+            // Or if they all have a score of zero then mark them as unconstrainted or drop if drop_unconstr
+            if(cnt == 0){
+                if(drop_unconstr){
+                    unamb_inds[a_ind] = -1;
+                }else{
+                    unconstr_mask[a_ind] = 1;
+                }
+                continue;
             }
         }
 
+        // For variables which are made unconstrained by the
+        //  remap so far, greedily assign each i -> j which 
+        //  is maximally diagonal, otherwise drop (i.e. i -> -1).
+        auto unassigned_j_mask = std::vector<uint8_t>(M, 1);
+        for(size_t i = 0; i < N; i++){
+            if(unamb_inds[i] >= 0){
+                unassigned_j_mask[unamb_inds[i]] = 0;
+            }
+        }
+
+        for(int64_t i = 0; i < N; i++){
+            if(unconstr_mask[i] == 0){
+                continue;
+            }
+
+            int16_t min_j = -1;
+            int16_t min_dist = std::numeric_limits<int16_t>::max();
+            for(int64_t j = 0; j < M; j++){
+                if(unassigned_j_mask[j] == 1){
+                    uint16_t dist = std::abs(i-j);
+                    if(dist < min_dist){
+                        min_j = j;
+                        min_dist = dist;
+                    }
+                }
+            }
+            if(min_j != -1){
+                unamb_inds[i] = min_j;
+                new_unamb++;
+            }else{
+                unamb_inds[i] = -1;
+            }
+        }
+
+        fixed_inds = unamb_inds;
+        return new_unamb;
+    }
+
+    bool store_remap_push_stack_or_backtrack(){
         bool backtrack = false;
         score_bound = score_remap(fixed_inds, cum_score);
 
         // cout << "fixed_inds: " << fixed_inds << endl;
         // cout << "score_bound: " << score_bound << endl;
-        // break;
         
         // Case: Abandon if the upper bound on the current assignment's 
         //  score is less than the current best score. 
@@ -509,6 +480,7 @@ SM_Result structure_map_generic(
                 // Keep popping off stack until the score bound
                 //   could feasibly produce a better result.
                 if(s.score_bound < best_score * (1.0-tolerance)){
+                    iter_stack.pop_back();
                     continue;
                 }
                 
@@ -530,7 +502,8 @@ SM_Result structure_map_generic(
             }
             if(iter_stack.size() == 0){
                 // Case: All iterators exhausted (i.e. Finished)
-                break;
+                // cout << "ALL ITERATORS EXHAUSTED" << endl;
+                return true;
             }
             // Case: fixed_inds has been set by popping from stack
         }else{
@@ -541,7 +514,7 @@ SM_Result structure_map_generic(
                 // Iterator for rest are pushed to stack. 
                 iter_stack.push_back(SM_StackItem(i, 1, js, fixed_inds, score_bound));
                 fixed_inds[i] = js[0];
-                cout << "PUSH: " << i << ", " << 1 << ", " << js << ", " << fixed_inds << endl << endl;
+                // cout << "PUSH: " << i << ", " << 1 << ", " << js << ", " << fixed_inds << endl << endl;
             }else{
                 // Case: Making iterator failed because only unconstrained
                 //  assignments remain. Set all unassigned (-2s) to
@@ -552,12 +525,94 @@ SM_Result structure_map_generic(
             }
         // break;
         }
+        return false;
     }
-    cout << "Best Score: " << best_score << endl;
-    cout << "Best Remap: " << *best_remap << endl;
-    auto result = SM_Result(best_score, std::move(alignment), *best_remap, std::move(remaps));
+};
+
+// MapProb_setup(){
+//     std::vector<int16_t> alignment = std::vector<int16_t>(Da, -2);
+//     std::vector<int16_t> fixed_inds = std::vector<int16_t>(N, -2);
+//     if(a_fixed_inds != nullptr){
+//         for(size_t i = 0; i < a_fixed_inds->size(); i++){
+//             fixed_inds[(*a_fixed_inds)[i]] = i;
+//         }
+//     }
+
+//     float score = 0.0f;
+//     float best_score = 0.0f;
+//     float score_bound = 0.0f;
+//     std::vector<int16_t>* best_remap = nullptr;
+
+//     auto remaps = std::vector<std::tuple<float, std::vector<int16_t>>>();
+//     auto iter_stack = std::vector<SM_StackItem>();
+
+// }
+
+// :--------------------------------------------------:
+// :  structure_map_generic() :
+// :  Generic implementation for structure mapping between two sets of items.
+// :  This assumes that a collections of things in A (i.e. literals in logical statements)
+// :  have already been paired with match candidates in B, encoded as a SM_MapCandSet object.
+// :--------------------------------------------------:
+
+
+SM_Result structure_map_generic(
+    SM_MapCandSet& mapcand_set,
+    std::vector<int16_t>* a_fixed_inds,
+    bool drop_unconstr, bool drop_no_beta,
+    float tolerance=0.0){
+        
+    size_t N = mapcand_set.N;
+    size_t M = mapcand_set.M;
+    
+    auto& conj_pairs = mapcand_set.conj_pairs;
+    size_t Da = mapcand_set.items_a.size();
+    size_t Db = mapcand_set.items_b.size();
+
+    MapProblem state(Da, N, M, conj_pairs.size(), a_fixed_inds, tolerance, drop_unconstr, drop_no_beta);
+
+    
+    // score_matrices.push_back(ScoreMatrixType(N, M));
+
+    // Outer loop handles generation of iterators over ambiguous
+    //  variable assignments. 
+    while (true) {
+        // Inner loop recalcs score matricies, from current fixed_inds.
+        //  Loops multiple times if new scores imply some previously
+        //  unfixed variable now has an unambiguous mapping.
+        while (true) {
+            // Recalculate the score matrix w/ fixed_inds
+            _calc_remap_score_matrices(conj_pairs, state.score_matrices, state.fixed_inds);
+
+            // Find the alignment and cumulative score matrix. Required
+            //   for when either condition is disjoint (i.e. has an OR()).
+            state.alignment = _get_best_alignment(Da, Db, conj_pairs, state.score_matrices, state.cum_score); 
+
+            size_t unamb_cnt = state.fill_unambiguous_inds();
+            // cout << "unamb_cnt: " << unamb_cnt << endl;
+            // std::tie(state.fixed_inds, unamb_cnt) = get_unambiguous_inds(state.cum_score, state.fixed_inds, drop_unconstr, drop_no_beta);
+
+            // cout << state.cum_score << endl;
+            // cout << "fixed_inds: " << state.fixed_inds << endl;
+
+            if(unamb_cnt == 0){
+                break;
+            }
+        }
+
+        bool do_break = state.store_remap_push_stack_or_backtrack();
+        if(do_break) break;                
+    }
+    
+
+
+    // cout << "Best Score: " << state.best_score << endl;
+    // cout << "Best Remap: " << *state.best_remap << endl;
+    auto result = SM_Result(state.best_score, std::move(state.alignment), *state.best_remap, std::move(state.remaps));
     return result;
 }
+
+
 
 
 // :--------------------------------------------------:
@@ -703,12 +758,12 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
 
         
 
-        cout << "LITERAL CASE: " << item_a << " -> " << item_b << " ; " << var_inds_a.size() << " , " << var_inds_b.size() <<  endl;
+        // cout << "LITERAL CASE: " << item_a << " -> " << item_b << " ; " << var_inds_a.size() << " , " << var_inds_b.size() <<  endl;
         return SM_MappablePair(1.0, index_a, index_b,
                                var_inds_a.size(),
                                var_inds_a, var_inds_b);
     }else if(item_a.get_t_id() == T_ID_LOGIC){
-        cout << "LOGIC CASE: " << index_a << " -> " << index_a << endl;
+        // cout << "LOGIC CASE: " << index_a << " -> " << index_a << endl;
         return SM_MappablePair(1.0, index_a, index_b);
     }else{
         throw std::runtime_error("NOT IMPLEMENTED");
@@ -725,7 +780,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
         auto it = item_map_a.find(item_b);
         if(it != item_map_a.end()){
             for(auto [index_a, item_a] : it->second){
-                cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
+                // cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
                 map_pairs.push_back(_items_to_mappable_pair(index_a, 0, item_a, item_b));
             }
         }
@@ -740,7 +795,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
                 auto it = item_map_a.find(item_b);
                 if(it != item_map_a.end()){
                     for(auto [index_a, item_a] : it->second){
-                        cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
+                        // cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
                         map_pairs.push_back(_items_to_mappable_pair(index_a, index_b, item_a, item_b));
                     }
                 }
@@ -812,19 +867,19 @@ ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b,
     SM_Result result = structure_map_generic(mapcand_set, a_fixed_inds, drop_unconstr, drop_no_beta);
     auto [score, keep_masks_a, keep_masks_b] = score_and_mask_remap(mapcand_set, result.alignment, result.best_remap);
 
-    cout << "Score: " << score << "," << result.score << endl;
+    // cout << "Score: " << score << "," << result.score << endl;
     result.score = score;
     result.keep_masks_a = keep_masks_a;
     result.keep_masks_b = keep_masks_b;
 
-    cout << "Keep Masks A: " << endl;
-    for(size_t i = 0; i < keep_masks_a.size(); i++){
-        cout << "C:" << i << " : " << keep_masks_a[i] << endl;
-    }
-    cout << "Keep Masks B: " << endl;
-    for(size_t i = 0; i < keep_masks_b.size(); i++){
-        cout << "C:" << i << " : " << keep_masks_b[i] << endl;
-    }
+    // cout << "Keep Masks A: " << endl;
+    // for(size_t i = 0; i < keep_masks_a.size(); i++){
+    //     cout << "C:" << i << " : " << keep_masks_a[i] << endl;
+    // }
+    // cout << "Keep Masks B: " << endl;
+    // for(size_t i = 0; i < keep_masks_b.size(); i++){
+    //     cout << "C:" << i << " : " << keep_masks_b[i] << endl;
+    // }
 
     ref<Logic> masked_copy_a = l_a->masked_copy(keep_masks_a);
     return masked_copy_a;

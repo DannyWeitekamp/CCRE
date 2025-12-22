@@ -3,6 +3,7 @@
 #include "../../include/logic.h"
 #include "../../include/func.h"
 #include "../../include/builtin_funcs.h"
+#include "../../include/structure_map.h"
 
 
 // Constructor for Logic that takes a kind and variadic args
@@ -81,6 +82,21 @@ nb::object py_Literal__call__(Literal* lit, nb::args args, nb::kwargs kwargs) {
     }
 }
 
+
+ref<Logic> py_Logic_antiunify(
+    Logic* self, Logic* other, std::optional<std::vector<int16_t>> fixed_inds = std::nullopt,
+    bool return_score=false, bool fix_same_var=false) {
+        
+    std::vector<int16_t>* fixed_inds_ptr = nullptr;
+    if(fixed_inds.has_value()){
+        fixed_inds_ptr = &fixed_inds.value();
+    }
+    auto result = antiunify_logic(self, other, fixed_inds_ptr, return_score, fix_same_var);
+    // cout << "ANTIUNIFY: " << result->get_refcount() << " " << self->get_refcount() << " " << other->get_refcount() << endl;
+    return result;
+}
+
+
 ref<Literal> py_literal_invert(Literal* lit) {
     return new_literal(lit->obj.get(), !lit->negated);
 }
@@ -97,6 +113,7 @@ void init_logic(nb::module_ & m) {
         .def("__repr__", &Literal::to_string, "verbosity"_a=DEFAULT_VERBOSITY)
         .def("to_string", &Literal::to_string)
         .def("__call__", &py_Literal__call__)
+
         .def_ro("negated", &Literal::negated)
         .def_ro("kind", &Literal::kind)
         .def_ro("obj", &Literal::obj)
@@ -140,6 +157,8 @@ void init_logic(nb::module_ & m) {
         .def_ro("kind", &Logic::kind)
         .def_ro("n_abs_vars", &Logic::n_abs_vars)
         .def("__len__", [](Logic* self) { return self->items.size(); })
+
+        .def("antiunify", &py_Logic_antiunify, nb::rv_policy::reference)
         ;
     
     // Expose AND and OR as module-level functions

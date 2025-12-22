@@ -23,18 +23,22 @@ void test_lit_groups(){
     
     cout << c1 << endl;
     cout << c2 << endl;
-    cout << "--------" << endl;
+    // cout << "--------" << endl;
     auto group_set = logic_to_map_cands(c1, c2);
-    auto& conj_pairs = group_set.conj_pairs; 
-    for(auto conj_pair : conj_pairs){
-        cout << "C:" << conj_pair.conj_ind_a << " " << conj_pair.conj_ind_b << " size:" << conj_pair.pairs.size() << endl;
-        for(auto pair : conj_pair.pairs){
-            cout << "P:(" << pair.index_a << "->" << pair.index_b << ") w: " << pair.weight << " n_vars: " << pair.n_vars << endl;
-            for(size_t i = 0; i < pair.n_vars; i++){
-                cout << pair.var_inds_a.inds[i] << "->" << pair.var_inds_b.inds[i] << endl;
-            }
-        }
-    }
+    // auto& conj_pairs = group_set.conj_pairs; 
+    // for(auto conj_pair : conj_pairs){
+    //     cout << "C:" << conj_pair.conj_ind_a << " " << conj_pair.conj_ind_b << " size:" << conj_pair.pairs.size() << endl;
+    //     for(auto pair : conj_pair.pairs){
+    //         cout << "P:(" << pair.index_a << "->" << pair.index_b << ") w: " << pair.weight << " n_vars: " << pair.n_vars << endl;
+    //         for(size_t i = 0; i < pair.n_vars; i++){
+    //             cout << pair.var_inds_a.inds[i] << "->" << pair.var_inds_b.inds[i] << endl;
+    //         }
+    //     }
+    // }
+    ref<Logic> auc1 = antiunify_logic(c1, c2);
+    cout << "-------------------" << endl;
+    cout << "auc: " << endl << auc1 << endl;
+    
 
     ref<Logic> c1o = OR(AND(LessThan(x, y), ~Equals(z, x), ~Equals(y, 0)),
           AND(LessThan(x, y), Equals(z, x), ~Equals(y, 7)),
@@ -45,11 +49,14 @@ void test_lit_groups(){
           AND(GreaterThan(a, b), ~Equals(c, a), ~Equals(b, 0), ~Equals(d, 7))
          );
 
-    structure_map_logic(c1o, c2o);
+    cout << "c1o: " << endl << c1o << endl;
+    cout << "c2o: " << endl << c2o << endl;
+
+    // structure_map_logic(c1o, c2o);
     
-    ref<Logic> auc = antiunify_logic(c1o, c2o);
+    ref<Logic> auc2 = antiunify_logic(c1o, c2o);
     cout << "-------------------" << endl;
-    cout << "auc: " << endl << auc << endl;
+    cout << "auc: " << endl << auc2 << endl;
 
 
 
