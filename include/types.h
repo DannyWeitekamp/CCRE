@@ -96,6 +96,8 @@ struct CRE_Type : CRE_Obj{
     vector<CRE_Type*> sub_types;
     CRE_Context* context;
     DynamicDtor dynamic_dtor;
+    float structure_weight = 1.0f;
+    float match_weight = 1.0f;
     int32_t type_index;
     uint16_t t_id;
     uint16_t byte_width;
@@ -157,6 +159,7 @@ struct FactType : public CRE_Type {
     uint64_t builtin_flags;
     HashMap<std::string, Item> flags;
     vector<Item> member_names_as_items;
+    
     int16_t unique_id_index;
     uint8_t finalized;
     // uint8_t pad[5];
@@ -201,7 +204,7 @@ HashMap<std::string, Item> parse_builtin_flags(
     bool as_mask=false);
 
 CRE_Type* define_type(std::string_view name, 
-                  const vector<CRE_Type*>& sub_type={},
+                  const vector<CRE_Type*>& sub_types={},
                   uint16_t byte_width = 0,
                   DynamicDtor dynamic_dtor = nullptr,
                   CRE_Context* context = nullptr);

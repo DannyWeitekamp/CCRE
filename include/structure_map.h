@@ -138,12 +138,25 @@ struct SM_MapCandSet{
     std::vector<Item> items_a; // The conjunct-like items in l_a
     std::vector<Item> items_b; // The conjunct-like items in l_b
     std::vector<SM_ConjPair> conj_pairs; // The conjunct pairs
+    std::vector<float> var_weights_a; // The weights of the variables in l_a
+    std::vector<float> var_weights_b; // The weights of the variables in l_b
 
     SM_MapCandSet(size_t N, size_t M,
                 const std::vector<Item>& items_a,
                 const std::vector<Item>& items_b,
-                const std::vector<SM_ConjPair>& conj_pairs):
+                const std::vector<SM_ConjPair>& conj_pairs,
+                const std::vector<float>& var_weights_a,
+                const std::vector<float>& var_weights_b):
         N(N), M(M), items_a(items_a), items_b(items_b), conj_pairs(conj_pairs)
+    {};
+
+    SM_MapCandSet(size_t N, size_t M,
+        const std::vector<Item>& items_a,
+        const std::vector<Item>& items_b,
+        const std::vector<SM_ConjPair>& conj_pairs) :
+        SM_MapCandSet(N, M, items_a, items_b, conj_pairs, 
+            std::vector<float>(N, 0.0f), std::vector<float>(M, 0.0f)
+        )
     {};
 };
 
@@ -156,11 +169,16 @@ SM_Result structure_map_logic(
     std::vector<int16_t>* a_fixed_inds = nullptr,
     bool drop_unconstr = false, bool drop_no_beta = false);
 
+constexpr uint8_t AU_NORMALIZE_NONE = 0;
+constexpr uint8_t AU_NORMALIZE_LEFT = 1;
+constexpr uint8_t AU_NORMALIZE_RIGHT = 2;
+constexpr uint8_t AU_NORMALIZE_MAX = 3;
+
 ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b, 
     std::vector<int16_t>* a_fixed_inds = nullptr,
-    // uint8_t normalize_kind = CONDS_KIND_AND, 
+    float* return_score = nullptr,
+    uint8_t normalize_kind = AU_NORMALIZE_LEFT, 
     bool drop_unconstr = false, bool drop_no_beta = false);
-
 } // namespace cre
 
 

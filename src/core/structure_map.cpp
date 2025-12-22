@@ -9,6 +9,8 @@
 #include <vector>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <Eigen/Dense>
+#include <algorithm>
+#include <assert.h>
 
 
 
@@ -89,7 +91,7 @@ void _calc_remap_score_matrices(
                     int16_t fix_a0 = b_fixed_inds[ind_b0];
                     if((fix_b0 == -2 or fix_b0 == ind_b0) &&
                        (fix_a0 == -2 or fix_a0 == ind_a0)){
-                        score_matrix(ind_a0, ind_b0).ub_score += 1;
+                        score_matrix(ind_a0, ind_b0).ub_score += mp.weight;
                     }
                     break;
                 }
@@ -108,10 +110,10 @@ void _calc_remap_score_matrices(
                        (fix_a0 == -2 or fix_a0 == ind_a0) &&
                        (fix_b1 == -2 or fix_b1 == ind_b1) &&
                        (fix_a1 == -2 or fix_a1 == ind_a1) ){
-                        score_matrix(ind_a0, ind_b0).ub_score += 1;
-                        score_matrix(ind_a1, ind_b1).ub_score += 1;
-                        score_matrix(ind_a0, ind_b0).beta_score += 1;
-                        score_matrix(ind_a1, ind_b1).beta_score += 1;
+                        score_matrix(ind_a0, ind_b0).ub_score += mp.weight;
+                        score_matrix(ind_a1, ind_b1).ub_score += mp.weight;
+                        score_matrix(ind_a0, ind_b0).beta_score += mp.weight;
+                        score_matrix(ind_a1, ind_b1).beta_score += mp.weight;
                     }
                     break;
                 }
@@ -164,7 +166,9 @@ std::vector<int16_t> align_greedy(ScoreMatrixType& score_matrix){
 
 float score_remap(
     const std::vector<int16_t>& remap,
-    ScoreMatrixType& score_matrix){
+    ScoreMatrixType& score_matrix,
+    const std::vector<float>& var_weights_a
+){
 
     // cout << "SCORE_REMAP: " << remap << endl;
     // cout << "SCORE_MATRIX: " << score_matrix << endl;
@@ -172,10 +176,19 @@ float score_remap(
     float score = 0.0f;
     for(size_t i = 0; i < remap.size(); i++){
         if(remap[i] < 0) continue;
-        // cout << "SCORE_MATRIX(" << i << ", " << remap[i] << "): " << score_matrix(i, remap[i]) << endl;
-        score += score_matrix(i, remap[i]).ub_score - (score_matrix(i, remap[i]).beta_score / 2) + (score_matrix(i, remap[i]).ub_score != 0);
+        cout << "SCORE_MATRIX(" << i << ", " << remap[i] << "): " << score_matrix(i, remap[i]) << endl;
+
+        // The item component of score for of mapping i -> remap[i] is the upper bound 
+        //   which so far has double counted betas minus half of the beta score.
+        //   which has also been double counting betas (but not counting alphas)
+        score += (score_matrix(i, remap[i]).ub_score 
+                 -(score_matrix(i, remap[i]).beta_score / 2) 
+        
+        // Add in the variable weight if i is mapped to a variable in B
+        if(remap[i] >= 0) score += var_weights_a[i];
+
     }
-    // cout << "SCORE: " << score << endl;
+    cout << "SCORE: " << score << endl;
     return score;
 }
 
@@ -189,7 +202,8 @@ std::vector<int16_t> _get_best_alignment(
     size_t Da, size_t Db,
     std::vector<SM_ConjPair>& conj_pairs,
     std::vector<ScoreMatrixType>& score_matrices, 
-    ScoreMatrixType& cum_score
+    ScoreMatrixType& cum_score,
+    const std::vector<float>& var_weights_a
     ){
 
     size_t N = cum_score.dimension(0);
@@ -213,7 +227,7 @@ std::vector<int16_t> _get_best_alignment(
         auto remap = align_greedy(score_matrix);
         size_t i = cp.conj_ind_a;
         size_t j = cp.conj_ind_b;
-        align_matrix(i,j).ub_score = score_remap(remap, score_matrix);
+        align_matrix(i,j).ub_score = score_remap(remap, score_matrix, var_weights_a);
     }
 
     auto alignment = align_greedy(align_matrix);
@@ -315,13 +329,16 @@ struct MapProblem {
     std::vector<SM_StackItem> iter_stack;
     ScoreMatrixType cum_score;
     std::vector<ScoreMatrixType> score_matrices;
+    std::vector<float> var_weights_a;
+    std::vector<float> var_weights_b;
     float tolerance;
     bool drop_unconstr;
     bool drop_no_beta;
 
     MapProblem(size_t Da, size_t N, size_t M, size_t tot_n_pairs,
-               std::vector<int16_t>* a_fixed_inds, float tolerance,
-               bool drop_unconstr, bool drop_no_beta):
+               std::vector<int16_t>* a_fixed_inds, 
+               std::vector<float>& var_weights_a, std::vector<float>& var_weights_b,
+               float tolerance, bool drop_unconstr, bool drop_no_beta):
         alignment(Da, -2),
         fixed_inds(N, -2),
         best_score(0.0f),
@@ -356,8 +373,9 @@ struct MapProblem {
     uint16_t fill_unambiguous_inds(){
         size_t N = cum_score.dimension(0);
         size_t M = cum_score.dimension(1);
-        std::vector<int16_t> unamb_inds = std::vector<int16_t>(
-            fixed_inds.begin(), fixed_inds.end()); // copy of a_fixed_inds
+        auto& unamb_inds = fixed_inds;
+        // std::vector<int16_t> unamb_inds = std::vector<int16_t>(
+        //     fixed_inds.begin(), fixed_inds.end()); // copy of a_fixed_inds
         auto unconstr_mask = std::vector<uint8_t>(fixed_inds.size());
         uint16_t new_unamb = 0;
         
@@ -441,13 +459,13 @@ struct MapProblem {
             }
         }
 
-        fixed_inds = unamb_inds;
+        // fixed_inds = unamb_inds;
         return new_unamb;
     }
 
     bool store_remap_push_stack_or_backtrack(){
         bool backtrack = false;
-        score_bound = score_remap(fixed_inds, cum_score);
+        score_bound = score_remap(fixed_inds, cum_score, var_weights_a);
 
         // cout << "fixed_inds: " << fixed_inds << endl;
         // cout << "score_bound: " << score_bound << endl;
@@ -569,7 +587,9 @@ SM_Result structure_map_generic(
     size_t Da = mapcand_set.items_a.size();
     size_t Db = mapcand_set.items_b.size();
 
-    MapProblem state(Da, N, M, conj_pairs.size(), a_fixed_inds, tolerance, drop_unconstr, drop_no_beta);
+    MapProblem state(Da, N, M, conj_pairs.size(), a_fixed_inds, 
+                     mapcand_set.var_weights_a, mapcand_set.var_weights_b, 
+                     tolerance, drop_unconstr, drop_no_beta);
 
     
     // score_matrices.push_back(ScoreMatrixType(N, M));
@@ -586,7 +606,7 @@ SM_Result structure_map_generic(
 
             // Find the alignment and cumulative score matrix. Required
             //   for when either condition is disjoint (i.e. has an OR()).
-            state.alignment = _get_best_alignment(Da, Db, conj_pairs, state.score_matrices, state.cum_score); 
+            state.alignment = _get_best_alignment(Da, Db, conj_pairs, state.score_matrices, state.cum_score, mapcand_set.var_weights_a); 
 
             size_t unamb_cnt = state.fill_unambiguous_inds();
             // cout << "unamb_cnt: " << unamb_cnt << endl;
@@ -759,12 +779,13 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
         
 
         // cout << "LITERAL CASE: " << item_a << " -> " << item_b << " ; " << var_inds_a.size() << " , " << var_inds_b.size() <<  endl;
-        return SM_MappablePair(1.0, index_a, index_b,
+        return SM_MappablePair(lit_a->structure_weight, index_a, index_b,
                                var_inds_a.size(),
                                var_inds_a, var_inds_b);
     }else if(item_a.get_t_id() == T_ID_LOGIC){
+        auto logic_a = item_a._as<Logic*>();
         // cout << "LOGIC CASE: " << index_a << " -> " << index_a << endl;
-        return SM_MappablePair(1.0, index_a, index_b);
+        return SM_MappablePair(logic_a->get_structure_weight(), index_a, index_b);
     }else{
         throw std::runtime_error("NOT IMPLEMENTED");
     }
@@ -807,14 +828,22 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
 
 
 SM_MapCandSet logic_to_map_cands(ref<Logic> l_a, ref<Logic> l_b){
-   auto conj_pairs = std::vector<SM_ConjPair>();
-   auto conj_items_a = std::vector<Item>();
-   auto conj_item_lens_a = std::vector<size_t>();
-   fill_conjunct_like(conj_items_a, conj_item_lens_a, l_a);
-   auto conj_items_b = std::vector<Item>();
-   auto conj_item_lens_b = std::vector<size_t>();
-   fill_conjunct_like(conj_items_b, conj_item_lens_b, l_b);
+    auto conj_pairs = std::vector<SM_ConjPair>();
+    auto conj_items_a = std::vector<Item>();
+    auto conj_item_lens_a = std::vector<size_t>();
+    fill_conjunct_like(conj_items_a, conj_item_lens_a, l_a);
+    auto conj_items_b = std::vector<Item>();
+    auto conj_item_lens_b = std::vector<size_t>();
+    fill_conjunct_like(conj_items_b, conj_item_lens_b, l_b);
 
+    auto var_weights_a = std::vector<float>(l_a->vars.size(), 0.0f);
+    auto var_weights_b = std::vector<float>(l_b->vars.size(), 0.0f);
+    for(size_t i = 0; i < l_a->vars.size(); i++){
+        var_weights_a[i] = l_a->vars[i]->structure_weight;
+    }
+    for(size_t i = 0; i < l_b->vars.size(); i++){
+        var_weights_b[i] = l_b->vars[i].get()->structure_weight;
+    }
    
    // Iterate over all conjuncts in l_a and l_b
    for(size_t i = 0; i < conj_items_a.size(); i++){
@@ -835,7 +864,7 @@ SM_MapCandSet logic_to_map_cands(ref<Logic> l_a, ref<Logic> l_b){
     }
     size_t N = l_a->vars.size();
     size_t M = l_b->vars.size();
-    return SM_MapCandSet(N, M, conj_items_a, conj_items_b, conj_pairs);
+    return SM_MapCandSet(N, M, conj_items_a, conj_items_b, conj_pairs, var_weights_a, var_weights_b);
 }
 
 
@@ -854,21 +883,35 @@ SM_Result structure_map_logic(
     return result;
 }
 
-constexpr uint8_t ANTIUNIFY_NORM_KIND_LEFT = 0;
-constexpr uint8_t ANTIUNIFY_NORM_KIND_RIGHT = 1;
-constexpr uint8_t ANTIUNIFY_NORM_KIND_MAX = 2;
-
 ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b, 
                            std::vector<int16_t>* a_fixed_inds,
-                        //    uint8_t normalize_kind, 
+                           float* return_score,
+                           uint8_t normalize_kind, 
                            bool drop_unconstr, bool drop_no_beta){
 
     auto mapcand_set = logic_to_map_cands(l_a, l_b);
     SM_Result result = structure_map_generic(mapcand_set, a_fixed_inds, drop_unconstr, drop_no_beta);
+    cout << "RESULT.SCORE: " << result.score << endl;
     auto [score, keep_masks_a, keep_masks_b] = score_and_mask_remap(mapcand_set, result.alignment, result.best_remap);
 
+    if(normalize_kind == AU_NORMALIZE_LEFT){
+        float n_total_a = l_a->get_structure_weight();
+        cout << "--SCORE: " << score << endl;
+        cout << "N_TOTAL_A: " << n_total_a << endl;
+        score = score / n_total_a;
+    }else if(normalize_kind == AU_NORMALIZE_RIGHT){
+        float n_total_b = l_b->get_structure_weight();
+        score = score / n_total_b;
+    }else if(normalize_kind == AU_NORMALIZE_MAX){
+        float n_total_a = l_a->get_structure_weight();
+        float n_total_b = l_b->get_structure_weight();
+        score = score / std::max(std::max(n_total_a, n_total_b), 1.0f);
+    }
     // cout << "Score: " << score << "," << result.score << endl;
     result.score = score;
+    if(return_score != nullptr){
+        *return_score = score;
+    }
     result.keep_masks_a = keep_masks_a;
     result.keep_masks_b = keep_masks_b;
 

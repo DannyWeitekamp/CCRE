@@ -73,6 +73,13 @@ struct Logic : public CRE_Obj {
     std::vector<LiteralSemantics> lit_semantics = {};
 
     size_t n_abs_vars = 0;
+    float item_structure_weight = 0.0f;
+    float item_match_weight = 0.0f;
+    float var_structure_weight = 0.0f;
+    float var_match_weight = 0.0f;
+
+
+
     // Absolute Vars: Regular Vars that must be bound in a match to the Logic pattern.
     // std::vector<Var*> abs_vars = {};
     // Bound Vars: Vars that are effectively an alias for another Var 
@@ -105,6 +112,13 @@ struct Logic : public CRE_Obj {
 
     ref<Logic> masked_copy(std::vector<std::vector<uint8_t>>& keep_masks, AllocBuffer* alloc_buffer=nullptr);
     ref<Logic> copy(AllocBuffer* alloc_buffer=nullptr);
+
+    inline float get_structure_weight() const noexcept{
+        return item_structure_weight + var_structure_weight;
+    }
+    inline float get_match_weight() const noexcept {
+        return item_match_weight + var_match_weight;
+    }
 
 std::string basic_str();
     size_t _stream_item(std::stringstream& ss, size_t i, std::string_view indent,

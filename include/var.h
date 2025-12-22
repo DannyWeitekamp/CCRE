@@ -71,6 +71,9 @@ struct Var : public CRE_Obj{
 
 	uint64_t hash;
 
+	float structure_weight;
+	float match_weight;
+
 	uint8_t kind=false;
 
 // -- Methods --
@@ -184,6 +187,7 @@ struct SemanticVarPtr {
 	SemanticVarPtr(Var* _var_ptr) : var_ptr(_var_ptr) {}
 	operator Var*() const { return var_ptr; }
 	operator ref<Var>() const { return ref<Var>(var_ptr); }
+	Var* get() const { return var_ptr; }
 
 	bool operator==(const SemanticVarPtr& other) const;
 	bool operator<(const SemanticVarPtr& other) const;

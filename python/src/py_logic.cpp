@@ -82,54 +82,48 @@ nb::object py_Literal__call__(Literal* lit, nb::args args, nb::kwargs kwargs) {
     }
 }
 
+uint8_t resolve_normalize_kind(std::string normalize){
+    if(normalize == "left"){
+        return AU_NORMALIZE_LEFT;
+    }else if(normalize == "right"){
+        return AU_NORMALIZE_RIGHT;
+    }else if(normalize == "max"){
+        return AU_NORMALIZE_MAX;
+    }else if(normalize == "none"){
+        return AU_NORMALIZE_NONE;
+    }
+    throw std::runtime_error("Invalid normalize kind: " + normalize);
+}
 
-ref<Logic> py_Logic_antiunify(
+nb::object py_Logic_antiunify(
     Logic* self, Logic* other, 
-    nb::object fixed_inds = nb::none(),
     bool return_score = false, 
-    bool fix_same_var = false) {
+    std::string normalize="left",
+    bool fix_same_var = false,
+    bool fix_same_alias = false,
+    nb::object fixed_inds = nb::none(),
+    bool drop_unconstr = false, bool drop_no_beta = false) {
+
+    uint8_t normalize_kind = resolve_normalize_kind(normalize);
         
     std::vector<int16_t>* fixed_inds_ptr = nullptr;
-    std::vector<int16_t> fixed_inds_vec;
+    std::vector<int16_t> fixed_inds_vec = {};
+    float score = 0.0;
     
     if (fixed_inds.is_valid() && !fixed_inds.is_none()) {
-        // Convert Python iterable to vector
-        // Handle different iterable types (list, tuple, generator, etc.)
-        if (nb::isinstance<nb::list>(fixed_inds)) {
-            nb::list py_list = nb::cast<nb::list>(fixed_inds);
-            fixed_inds_vec.reserve(py_list.size());
-            for (auto item : py_list) {
-                fixed_inds_vec.push_back(nb::cast<int16_t>(item));
-            }
-        } else if (nb::isinstance<nb::tuple>(fixed_inds)) {
-            nb::tuple py_tuple = nb::cast<nb::tuple>(fixed_inds);
-            fixed_inds_vec.reserve(py_tuple.size());
-            for (auto item : py_tuple) {
-                fixed_inds_vec.push_back(nb::cast<int16_t>(item));
-            }
-        } else {
-            // For other iterables (generators, custom iterables, etc.), use Python's iter()
-            nb::object iter_obj = nb::steal(PyObject_GetIter(fixed_inds.ptr()));
-            if (!iter_obj.is_valid()) {
-                throw std::runtime_error("fixed_inds must be an iterable of integers");
-            }
-            while (true) {
-                nb::object item = nb::steal(PyIter_Next(iter_obj.ptr()));
-                if (!item.is_valid()) {
-                    if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_StopIteration)) {
-                        PyErr_Clear();
-                    }
-                    break;
-                }
-                fixed_inds_vec.push_back(nb::cast<int16_t>(item));
-            }
-        }
+        fixed_inds_vec = nb::cast<std::vector<int16_t>>(fixed_inds);
         fixed_inds_ptr = &fixed_inds_vec;
     }
     
-    auto result = antiunify_logic(self, other, fixed_inds_ptr, return_score, fix_same_var);
+    auto result = antiunify_logic(self, other, fixed_inds_ptr, &score, 
+                                  normalize_kind, drop_unconstr, drop_no_beta);
     // cout << "ANTIUNIFY: " << result->get_refcount() << " " << self->get_refcount() << " " << other->get_refcount() << endl;
-    return result;
+    if(return_score){
+        return nb::make_tuple(nb::cast(result), score);
+    }else{
+        return nb::cast(result);
+    }
+    
 }
 
 
@@ -196,10 +190,17 @@ void init_logic(nb::module_ & m) {
 
         .def("antiunify", &py_Logic_antiunify, 
              "other"_a,
-             "fixed_inds"_a = nb::none(),
              "return_score"_a = false,
+             "normalize"_a = "left",
              "fix_same_var"_a = false,
+             "fix_same_alias"_a = false,
+             "fixed_inds"_a = nb::none(),
+             "drop_unconstr"_a = false,
+             "drop_no_beta"_a = false,
              nb::rv_policy::reference)
+        
+        .def("get_structure_weight", &Logic::get_structure_weight)
+        .def("get_match_weight", &Logic::get_match_weight)
         ;
     
     // Expose AND and OR as module-level functions

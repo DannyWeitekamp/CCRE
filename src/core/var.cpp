@@ -42,10 +42,13 @@ Var::Var(const Item& _alias,
 		base(nullptr), 
 		base_type(_type), head_type(_type),
 		alias(_alias),
-		kind(_kind),
 		deref_infos(nullptr),
 		length(_length),
-		hash(0){
+		structure_weight(_type->structure_weight),
+		match_weight(_type->match_weight),
+		hash(0),
+		kind(_kind)
+	{
 
 
 	// if(_type == nullptr){

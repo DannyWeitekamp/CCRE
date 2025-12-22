@@ -27,7 +27,7 @@ Logic::Logic(uint8_t kind) :
 	is_pure_conj(kind == CONDS_KIND_AND),
 	is_pure_disj(kind == CONDS_KIND_OR),
 	is_pure_const_or(kind == CONDS_KIND_OR)
-{}
+{};
 
 ref<Logic> new_logic(uint8_t kind, AllocBuffer* buffer) {
 	auto [addr, did_malloc] = alloc_cre_obj(sizeof(Logic), &Logic_dtor, T_ID_LOGIC, buffer);
@@ -298,18 +298,26 @@ void Logic::_finalize() {
     }
 
     // Put the non-absolute vars at the end of vars
+    item_structure_weight = 0.0f;
+    item_match_weight = 0.0f;
+    var_structure_weight = 0.0f;
+    var_match_weight = 0.0f;
     for(auto it : var_map_iters){
         auto& [var, info] = *it;
+        var_structure_weight += var.get()->structure_weight;
+        var_match_weight += var.get()->match_weight;
         if(info.kind != VAR_KIND_ABSOLUTE){
             info.pos = vars.size();
             vars.push_back(var);
         }
     }
 
-    // Assign the var_inds of each literal
+    // Assign the var_inds of each literal and sum up total_weights
     for(Item& item : items){
         if(item.get_t_id() == T_ID_LITERAL){
             Literal* lit = item._as<Literal*>();
+            item_structure_weight += lit->structure_weight;
+            item_match_weight += lit->match_weight;
             size_t nv = lit->vars.size();
             // cout << "nv: " << nv << endl;
             VarInds& var_inds = lit->var_inds;
@@ -328,6 +336,10 @@ void Logic::_finalize() {
                 }
             }
             // cout << "LIT VAR INDS: " << lit->var_inds << " SIZE:" << lit->var_inds.size() << endl;
+        }else if(item.get_t_id() == T_ID_LOGIC){
+            Logic* logic = item._as<Logic*>();
+            item_structure_weight += logic->item_structure_weight;
+            item_match_weight += logic->item_match_weight;
         }
     }
 
@@ -794,6 +806,10 @@ ref<Logic> Logic::_masked_copy(
     std::vector<uint8_t> empty_mask = std::vector<uint8_t>();
 
     ref<Logic> copy = new_logic(kind, alloc_buffer);
+
+    // Traverse through items in standard order (depth-first) and apply each mask 
+    //   in keep_masks to the conjunct-like objects in the AND-OR tree, which includes
+    //   conjuncts and lone literals that are part of disjuncts.
     if(kind == CONDS_KIND_AND){
         auto& mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
         ++mask_ind;
@@ -815,8 +831,6 @@ ref<Logic> Logic::_masked_copy(
                 // Update the mask for the next item.
                 mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
             }else{
-                // cout << "INSERTING OTHER ITEM: " << mbr_item << endl;
-                // cout << "MASK: " << mask << " " << i << " " << !mask[i] << endl;
                 // Can mask out any other item in a conjunct.
                 if(i < mask.size() && !mask[i]) continue;
                 copy->_insert_arg(mbr_item);

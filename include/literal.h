@@ -26,7 +26,8 @@ struct Literal : public CRE_Obj{
 	ref<CRE_Obj> obj; // A fact, func, or value
 	std::vector<ref<Var>> vars = {};
 	VarInds var_inds = {};
-	float weight; 
+	float structure_weight = 1.0f; 
+	float match_weight = 1.0f; 
 	bool negated;	
 	uint8_t kind;
 	uint8_t pad[2];

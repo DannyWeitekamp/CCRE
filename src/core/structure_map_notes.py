@@ -6,7 +6,6 @@ def conds_structure_map(c_a, c_b, a_fixed_inds,
     Da, Db = len(c_a.dnf), len(c_b.dnf)
     N, M = len(c_a.vars), len(c_b.vars)
 
-    
     lit_groups = make_lit_groups(c_a, c_b)
     
     fixed_inds = np.full(N,-2,dtype=np.int16)
