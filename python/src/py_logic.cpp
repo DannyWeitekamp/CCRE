@@ -84,13 +84,49 @@ nb::object py_Literal__call__(Literal* lit, nb::args args, nb::kwargs kwargs) {
 
 
 ref<Logic> py_Logic_antiunify(
-    Logic* self, Logic* other, std::optional<std::vector<int16_t>> fixed_inds = std::nullopt,
-    bool return_score=false, bool fix_same_var=false) {
+    Logic* self, Logic* other, 
+    nb::object fixed_inds = nb::none(),
+    bool return_score = false, 
+    bool fix_same_var = false) {
         
     std::vector<int16_t>* fixed_inds_ptr = nullptr;
-    if(fixed_inds.has_value()){
-        fixed_inds_ptr = &fixed_inds.value();
+    std::vector<int16_t> fixed_inds_vec;
+    
+    if (fixed_inds.is_valid() && !fixed_inds.is_none()) {
+        // Convert Python iterable to vector
+        // Handle different iterable types (list, tuple, generator, etc.)
+        if (nb::isinstance<nb::list>(fixed_inds)) {
+            nb::list py_list = nb::cast<nb::list>(fixed_inds);
+            fixed_inds_vec.reserve(py_list.size());
+            for (auto item : py_list) {
+                fixed_inds_vec.push_back(nb::cast<int16_t>(item));
+            }
+        } else if (nb::isinstance<nb::tuple>(fixed_inds)) {
+            nb::tuple py_tuple = nb::cast<nb::tuple>(fixed_inds);
+            fixed_inds_vec.reserve(py_tuple.size());
+            for (auto item : py_tuple) {
+                fixed_inds_vec.push_back(nb::cast<int16_t>(item));
+            }
+        } else {
+            // For other iterables (generators, custom iterables, etc.), use Python's iter()
+            nb::object iter_obj = nb::steal(PyObject_GetIter(fixed_inds.ptr()));
+            if (!iter_obj.is_valid()) {
+                throw std::runtime_error("fixed_inds must be an iterable of integers");
+            }
+            while (true) {
+                nb::object item = nb::steal(PyIter_Next(iter_obj.ptr()));
+                if (!item.is_valid()) {
+                    if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_StopIteration)) {
+                        PyErr_Clear();
+                    }
+                    break;
+                }
+                fixed_inds_vec.push_back(nb::cast<int16_t>(item));
+            }
+        }
+        fixed_inds_ptr = &fixed_inds_vec;
     }
+    
     auto result = antiunify_logic(self, other, fixed_inds_ptr, return_score, fix_same_var);
     // cout << "ANTIUNIFY: " << result->get_refcount() << " " << self->get_refcount() << " " << other->get_refcount() << endl;
     return result;
@@ -158,7 +194,12 @@ void init_logic(nb::module_ & m) {
         .def_ro("n_abs_vars", &Logic::n_abs_vars)
         .def("__len__", [](Logic* self) { return self->items.size(); })
 
-        .def("antiunify", &py_Logic_antiunify, nb::rv_policy::reference)
+        .def("antiunify", &py_Logic_antiunify, 
+             "other"_a,
+             "fixed_inds"_a = nb::none(),
+             "return_score"_a = false,
+             "fix_same_var"_a = false,
+             nb::rv_policy::reference)
         ;
     
     // Expose AND and OR as module-level functions
