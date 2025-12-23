@@ -39,18 +39,18 @@ namespace cre {
 // std::unordered_map<std::string, InternStr*, CREHash, std::equal_to<>> intern_map;
 // HashSet<std::string_view> intern_set = {};
 
-// std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv){
+// std::pair<std::string_view, uint64_t> intern_ret_hash(std::string_view sv){
 // 	// Note: Optimizer will probably reused hash, should be free.
 // 	uint64_t hash = CREHash()(sv);
 // 	std::string_view new_sv = intern(sv);
 //     return std::make_pair(new_sv, hash);
 // }
 
-InternStr::InternStr(const std::string_view& sv, uint64_t _hash) :
+InternStr::InternStr(std::string_view sv, uint64_t _hash) :
 	std::string_view(sv), hash(_hash) {
 }
 
-InternStr CRE_Context::intern(const std::string_view& sv) noexcept{
+InternStr CRE_Context::intern(std::string_view sv) noexcept{
 	uint64_t hash = CREHash{}(sv);
 	auto it = intern_set.find(sv);
     if (it != intern_set.end()) {

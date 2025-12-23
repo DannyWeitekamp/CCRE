@@ -19,7 +19,7 @@ _collect_fact_infos(nb::handle py_collection){
 
     // Lambda Function
     auto make_fact_info = [&](
-    	const std::string_view& fact_id,
+    	std::string_view fact_id,
     	nb::handle val
     ){
     	// TODO: Handle integer keys
@@ -95,7 +95,7 @@ _collect_fact_infos(nb::handle py_collection){
 
 Item _resolve_possible_ref(Item item, 
 						   CRE_Type* mbr_type,
-						   const std::string_view& ref_prefix,
+						   std::string_view ref_prefix,
 						   HashMap<std::string_view, size_t>& fact_map,
 						   const std::vector<std::tuple<nb::handle, FactType*, size_t, size_t>>& fact_infos,
 						   const FactSetBuilder& builder 
@@ -143,8 +143,8 @@ Item _resolve_possible_ref(Item item,
 
 ref<FactSet> _FactSet_from_py(
 	nb::handle py_collection,
-	const std::string_view& type_attr="type", 
-	const std::string_view& ref_prefix="@") {
+	std::string_view type_attr="type", 
+	std::string_view ref_prefix="@") {
 
 
 	auto [fact_infos, fact_map, n_bytes] = _collect_fact_infos(py_collection);
@@ -256,7 +256,7 @@ struct FactSetFromPy_impl{
 	inline static list_t 			to_list(obj_t x){return nb::cast<nb::list>(x);}
 	inline static tuple_t 			to_tuple(obj_t x){return nb::cast<nb::tuple>(x);}
 	inline static Item 			to_item(obj_t x){return Item_from_py(x);}
-	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){return nb::str(x.data(), x.size());}
+	inline static attr_getter_t 	to_attr_getter_t(std::string_view x){return nb::str(x.data(), x.size());}
 	inline static FactType* 		to_fact_type(obj_t x){return FactType_from_py(x);}
 
 	inline static bool has_attr(const dict_t& d, const attr_getter_t& x){
@@ -358,8 +358,8 @@ void init_factset(nb::module_ & m){
     //  	"obj"_a, "type_attr"_a="type", "ref_prefix"_a="@",  nb::rv_policy::reference)
     .def_static("from_py", &FactSetFromPy::apply, //[](
     	//  nb::handle obj,
-    	//  const std::string_view& type_attr="type",
-    	//  const std::string_view& ref_prefix="@"){
+    	//  std::string_view type_attr="type",
+    	//  std::string_view ref_prefix="@"){
     	// 	auto trans = FactSetFromPy(type_attr, ref_prefix);
     	// 	return trans.translate(obj);
     	// },

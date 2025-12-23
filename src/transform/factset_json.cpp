@@ -130,7 +130,7 @@ public:
 		return item;
 	}
 
-	inline static attr_getter_t 	to_attr_getter_t(const std::string_view& x){
+	inline static attr_getter_t 	to_attr_getter_t(std::string_view x){
 		std::string sx = "/" + std::string(x);
 		return rapidjson::Pointer(sx.c_str(), sx.size());
 	}
@@ -376,9 +376,9 @@ char* _read_file(const char* filename){
 }
 
 ref<FactSet> FactSet::from_json_file(
-	const std::string_view& filename,
-	const std::string_view& type_attr,
-	const std::string_view& ref_prefix){
+	std::string_view filename,
+	std::string_view type_attr,
+	std::string_view ref_prefix){
 
 	char* buffer = _read_file(filename.data());
 
@@ -396,9 +396,9 @@ ref<FactSet> FactSet::from_json_file(
 
 ref<FactSet> FactSet::from_json(
 	//char* json_str, size_t length,
-	const std::string_view& json_str,
-	const std::string_view& type_attr,
-	const std::string_view& ref_prefix,
+	std::string_view json_str,
+	std::string_view type_attr,
+	std::string_view ref_prefix,
 	bool copy_buffer){
 	// if(length == size_t(-1)){
 	// 	length = strlen(json_str);
@@ -445,8 +445,8 @@ struct FactSetJSONWriter {
     	rapidjson::Document& _doc,
     	bool _unique_id_as_key=false,
     	bool _doc_as_array=false,
-	    const std::string_view& _type_attr="type",
-	    const std::string_view& _ref_prefix="@") :
+	    std::string_view _type_attr="type",
+	    std::string_view _ref_prefix="@") :
 
     	doc(_doc),
     	unique_id_as_key(_unique_id_as_key),
@@ -617,8 +617,8 @@ struct FactSetJSONWriter {
 std::string FactSet::to_json(
 		bool unique_id_as_key,
 		bool doc_as_array,
-        const std::string_view& type_attr,
-        const std::string_view& ref_prefix
+        std::string_view type_attr,
+        std::string_view ref_prefix
     ){
 
 	rapidjson::Document doc;

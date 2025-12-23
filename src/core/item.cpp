@@ -24,7 +24,7 @@ namespace cre {
 // }
 
 
-// Item str_to_item(const std::string_view& arg) {
+// Item str_to_item(std::string_view arg) {
 //     // cout << "SV str_to_item " << arg.length() << endl;
 //     // cout << uint64_t(-1) << arg.length() << endl;
 //     // cout << "BEFORE INTERN" << endl;
@@ -118,7 +118,7 @@ Item::Item(const std::string& arg) :
     // t_id = T_ID_STR;
 };
 
-Item::Item(const std::string_view& arg) :
+Item::Item(std::string_view arg) :
     data(arg.data()), length(arg.length()), t_id(T_ID_STR),
     meta_data(0), val_kind(RAW_PTR) 
  {};
@@ -385,7 +385,7 @@ void Item::release() const {
 
 
 // Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
-// Item to_item(const std::string_view& arg) {return str_to_item(arg); }
+// Item to_item(std::string_view arg) {return str_to_item(arg); }
 // Item to_item(std::nullptr_t arg) { return opaque_to_item(arg); }
 // // Item to_item(void* arg) { return opaque_to_item(arg); }
 // Item to_item(bool arg) { return bool_to_item(arg); }
@@ -400,7 +400,7 @@ void Item::release() const {
 
 //
 // Item to_item(const char* arg, size_t length) {return str_to_item(arg, length); }
-// Item to_item(const std::string_view& arg) {return str_to_item(arg); }
+// Item to_item(std::string_view arg) {return str_to_item(arg); }
 
 //
 // Item::Item(std::nullptr_t arg) { return opaque_to_item(arg); }

@@ -394,7 +394,7 @@ struct StrBlock {
 	StrBlock(const std::string&& _str) noexcept : 
 		str(_str), view(str) {};
 
-	StrBlock(const std::string_view& view) : 
+	StrBlock(std::string_view view) : 
 		str(""), view(view) {};
 
 	inline void _copy_other(const StrBlock& other){ 
@@ -1491,7 +1491,7 @@ ref<Func> new_func(
 );
 
 FuncRef define_func(
-		const std::string_view& name, 
+		std::string_view name, 
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
 		PtrToItemFunc ptr_to_item_func,
@@ -1500,9 +1500,9 @@ FuncRef define_func(
 		const std::vector<uint16_t>& offsets,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
-		const std::string_view& expr_template = "",
-		const std::string_view& shorthand_template = "",
-	    const std::string_view& negated_shorthand_template = "");
+		std::string_view expr_template = "",
+		std::string_view shorthand_template = "",
+	    std::string_view negated_shorthand_template = "");
 
 
 
@@ -1587,10 +1587,10 @@ Item ptr_to_item(void* ret){
 
 template <auto F>
 FuncRef define_func(
-		const std::string_view& name, 
-		const std::string_view& expr_template = "",
-		const std::string_view& shorthand_template = "",
-		const std::string_view& negated_shorthand_template = ""){
+		std::string_view name, 
+		std::string_view expr_template = "",
+		std::string_view shorthand_template = "",
+		std::string_view negated_shorthand_template = ""){
 
   auto stack_call_lambda = [](void* ret, void** args) {
       stack_call<F>(ret, args);

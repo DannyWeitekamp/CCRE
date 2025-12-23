@@ -78,7 +78,7 @@ Var::Var(const Item& _alias,
 	// cout << "Var_ctor:" << _alias << endl;
 }
 
-// Var::Var(const std::string_view& _alias,
+// Var::Var(std::string_view _alias,
 // 		CRE_Type* _type,
 // 		DerefInfo* _deref_infos,
 // 		size_t _length) : 
@@ -159,7 +159,7 @@ ref<Var> Opt(const Item& alias, CRE_Type* type, DerefInfo* deref_infos, size_t l
 }
 
 // ref<Var> new_var(
-// 			const std::string_view& _alias,
+// 			std::string_view _alias,
 // 			CRE_Type* _type,
 //  			DerefInfo* _deref_infos,
 //  			size_t _length,
@@ -205,7 +205,7 @@ ref<Var> Var::_extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* al
 	return nv;
 }
 
-ref<Var> Var::extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer){
+ref<Var> Var::extend_attr(std::string_view attr, AllocBuffer* alloc_buffer){
 	// cout << "EXTEND: " << endl;
 
 	if(head_type == nullptr){

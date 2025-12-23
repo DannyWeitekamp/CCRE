@@ -73,7 +73,7 @@ public:
 
     // [Bytes 8-16]
     // Either a ctrl_block pointer or other data
-
+private:
     // union{
         // ControlBlock* ctrl_block;
 
@@ -450,7 +450,7 @@ public:
 
 
     Item(const std::string& arg);
-    Item(const std::string_view& arg);
+    Item(std::string_view arg);
     Item(const InternStr& arg);
     Item(const char* data, size_t _length=-1);
 
@@ -839,7 +839,7 @@ bool items_equal(const Item& item1, const Item& item2, bool semantic=true);
 
 
 // extern "C" Item empty_item();
-// Item str_to_item(const std::string_view& arg);
+// Item str_to_item(std::string_view arg);
 // extern "C" Item str_to_item(const char* data, size_t length);
 // extern "C" Item opaque_to_item(void* arg);
 // extern "C" Item nullptr_to_item(std::nullptr_t arg);
@@ -850,7 +850,7 @@ bool items_equal(const Item& item1, const Item& item2, bool semantic=true);
 
 
 // Item to_item(const char* arg, size_t length=-1);
-// Item to_item(const std::string_view& arg);
+// Item to_item(std::string_view arg);
 // // Item to_item(const std::string& arg) ;
 // Item to_item(std::nullptr_t arg);
 // // Item to_item(void* arg);

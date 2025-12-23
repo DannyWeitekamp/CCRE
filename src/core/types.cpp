@@ -144,7 +144,7 @@ int get_unique_id_index(FactType* type){
 }
 
 
-bool _try_finalized(FactType* _this, bool do_throw){
+bool _try_finalize(FactType* _this, bool do_throw){
     CRE_Context* context = _this->context;
     for(int i=0; i < _this->members.size(); i++){
         MemberSpec* mbr_spec = &_this->members[i];
@@ -175,12 +175,12 @@ bool _try_finalized(FactType* _this, bool do_throw){
     return true;
 }
 
-bool FactType::try_finalized(){
-    return _try_finalized(this, false);
+bool FactType::try_finalize(){
+    return _try_finalize(this, false);
 }
 
 void FactType::ensure_finalized(){
-    _try_finalized(this, true);
+    _try_finalize(this, true);
 }
 
 uint64_t MemberSpec::get_flag(uint64_t flag) const{
@@ -305,7 +305,7 @@ FactType* define_fact(std::string_view name,
     size_t index = context->_add_type(t);
     // std::cout << uint64_t(t) << " <<KIND" << int(t->kind) << std::endl;
     // std::cout << "<<T_ID" << int(t->t_id) << std::endl;
-    t->finalized = t->try_finalized();
+    t->finalized = t->try_finalize();
     
     return t;//(FactType*) context->types[index];
 }
@@ -320,7 +320,7 @@ inline void _ensure_index_okay(FactType* type, int index, const std::string& des
 }
 
 
-int FactType::get_attr_index(const std::string_view& attr){
+int FactType::get_attr_index(std::string_view attr){
     for(size_t i = 0; i < this->members.size(); i++){
         if(this->members[i].name == attr){
             return i;
@@ -339,7 +339,7 @@ CRE_Type* FactType::get_item_type(int index){
     return this->members[index].type;
 }
 
-CRE_Type* FactType::get_attr_type(const std::string_view& name){
+CRE_Type* FactType::get_attr_type(std::string_view name){
     int index = this->get_attr_index(name);
     if(index == -1){
         // std::cout << uint64_t(this) << " L=" << this->name.length() << std::endl;
@@ -491,7 +491,7 @@ std::ostream& operator<<(std::ostream& outs, CRE_Type* type) {
 // : Flags / FlagGroup
 
 
-inline int get_builtin_flag_id(const std::string_view& name){
+inline int get_builtin_flag_id(std::string_view name){
     /*  */if(name == "unique_id"){
         return BIFLG_UNIQUE_ID;
     }else if(name == "visible"){

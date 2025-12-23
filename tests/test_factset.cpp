@@ -178,7 +178,7 @@ void bench_build(size_t N=1000, size_t reps=500){
 	// delete[] json_str;
 }
 
-uint64_t do_stuff(const std::string_view& x) {
+uint64_t do_stuff(std::string_view x) {
     // return fnv1a((const uint8_t*) x.data(), x.size());
     return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
 }

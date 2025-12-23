@@ -209,7 +209,7 @@ public:
   }
 
   template<class T>
-  inline void set(const std::string_view& attr, T&& val) {
+  inline void set(std::string_view attr, T&& val) {
     if(type == nullptr){
       throw std::invalid_argument("Attribute name [\"" + std::string(attr) +
           "\"] undefined for untyped Fact.");
@@ -260,7 +260,7 @@ public:
     return &(data_ptr[ind]);
   }
 
-  inline const Member& get(const std::string_view& attr) const {
+  inline const Member& get(std::string_view attr) const {
     if(type == nullptr){
       throw std::invalid_argument("Attribute name [\"" + std::string(attr) +
           "\"] undefined for untyped Fact.");
@@ -278,7 +278,7 @@ public:
     return data_ptr[index];
   }
 
-  // inline Member get(const std::string_view& attr) const {
+  // inline Member get(std::string_view attr) const {
   //   return *get(attr);
   // }
 

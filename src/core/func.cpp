@@ -49,7 +49,7 @@ void Func_dtor(const CRE_Obj* x){
 }
 
 std::string make_default_template(
-	const std::string_view& name, size_t n_args){
+	std::string_view name, size_t n_args){
 
 	std::vector<std::string> brackets(n_args, "{}");
 	return fmt::format("{}({})", name, fmt::join(brackets, ", "));
@@ -141,7 +141,7 @@ void _init_arg_specs(Func* func,
  }
 
 FuncRef define_func(
-		const std::string_view& name, 
+		std::string_view name, 
 		StackCallFunc cfunc_ptr,
 		StackCallFunc2 cfunc_ptr2,
 		PtrToItemFunc ptr_to_item_func,
@@ -150,9 +150,9 @@ FuncRef define_func(
 		const std::vector<uint16_t>& offsets,
 		CRE_Type* ret_type,
 		const std::vector<CRE_Type*>& arg_types,
-		const std::string_view& expr_template,
-		const std::string_view& shorthand_template,
-		const std::string_view& negated_shorthand_template){
+		std::string_view expr_template,
+		std::string_view shorthand_template,
+		std::string_view negated_shorthand_template){
 
 	size_t n_args = arg_types.size();
 

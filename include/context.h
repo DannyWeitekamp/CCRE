@@ -34,13 +34,13 @@ struct CRE_Context {
 public: 
     CRE_Context(std::string _name);
     size_t _add_type(CRE_Type* t);
-    CRE_Type* _get_type(const std::string_view& name) noexcept;
-    CRE_Type* get_type(const std::string_view& name);
-    FactType* _get_fact_type(const std::string_view& name) noexcept;
-    FactType* get_fact_type(const std::string_view& name);
+    CRE_Type* _get_type(std::string_view name) noexcept;
+    CRE_Type* get_type(std::string_view name);
+    FactType* _get_fact_type(std::string_view name) noexcept;
+    FactType* get_fact_type(std::string_view name);
     std::string to_string();
 
-    InternStr intern(const std::string_view& sv) noexcept;
+    InternStr intern(std::string_view sv) noexcept;
 
     ~CRE_Context();
 };

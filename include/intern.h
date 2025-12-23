@@ -41,7 +41,7 @@ using std::endl;
 struct InternStr : public std::string_view {
 	uint64_t hash;
 
-	InternStr(const std::string_view& sv, uint64_t _hash);
+	InternStr(std::string_view sv, uint64_t _hash);
 };
 
 struct nb_unicode{
@@ -77,10 +77,10 @@ struct nb_unicode{
 // unordered_map<std::string, InternStr*> intern_map = {};
 
 std::ostream& operator<<(std::ostream& out, InternStr fs);
-inline InternStr intern(const std::string_view& sv){
+inline InternStr intern(std::string_view sv){
 	return current_context->intern(sv);
 }
-// std::pair<std::string_view, uint64_t> intern_ret_hash(const std::string_view& sv);
+// std::pair<std::string_view, uint64_t> intern_ret_hash(std::string_view sv);
 // extern HashSet<std::string_view> intern_set;
 // void decref_intern(string& s){
 // 	auto itr = intern_map.find(s);

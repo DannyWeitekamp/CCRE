@@ -62,30 +62,30 @@ public:
     );
 
     // static ref<FactSet> from_json(char* json_str, size_t length=-1,
-    //         const std::string_view& type_attr,
-    //         const std::string_view& ref_prefix,
+    //         std::string_view type_attr,
+    //         std::string_view ref_prefix,
     //         bool copy_buffer=true);
 
     static ref<FactSet> from_json(
-        const std::string_view& json_str,
-        const std::string_view& type_attr="type",
-        const std::string_view& ref_prefix="@",
+        std::string_view json_str,
+        std::string_view type_attr="type",
+        std::string_view ref_prefix="@",
         bool copy_buffer=true 
     );//{
         // return FactSet::from_json(json_str.data(), json_str.size(), true);
     // }
 
     static ref<FactSet> from_json_file(
-        const std::string_view& filename,
-        const std::string_view& type_attr="type",
-        const std::string_view& ref_prefix="@"
+        std::string_view filename,
+        std::string_view type_attr="type",
+        std::string_view ref_prefix="@"
     );
 
     std::string to_json(
         bool unique_id_as_key=false,
         bool doc_as_array=false,
-        const std::string_view& type_attr="type",
-        const std::string_view& ref_prefix="@"
+        std::string_view type_attr="type",
+        std::string_view ref_prefix="@"
     );
 
 
@@ -347,8 +347,8 @@ struct ToFactSetTranslator {
     };
 
     ToFactSetTranslator(
-        const std::string_view& _type_attr="type", 
-        const std::string_view& _ref_prefix="@") :
+        std::string_view _type_attr="type", 
+        std::string_view _ref_prefix="@") :
         type_attr(_type_attr), ref_prefix(_ref_prefix),
         fact_map({}), fact_infos({}), builder({}),
         type_attr_ref(T::to_attr_getter_t(_type_attr)){
@@ -356,8 +356,8 @@ struct ToFactSetTranslator {
 
     static ref<FactSet> apply(
      const container_t& obj,
-     const std::string_view& type_attr="type",
-     const std::string_view& ref_prefix="@"){
+     std::string_view type_attr="type",
+     std::string_view ref_prefix="@"){
         auto trans = ToFactSetTranslator<T>(type_attr, ref_prefix);
         return trans._to_factset(obj);
     }
@@ -368,7 +368,7 @@ struct ToFactSetTranslator {
         item in the input container when it is converted to a fact
     */
     void _make_fact_info (
-        const std::string_view& key_id,
+        std::string_view key_id,
         const obj_ptr_t val_ptr,
         size_t& index,
         size_t& byte_offset){

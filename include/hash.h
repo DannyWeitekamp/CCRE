@@ -72,7 +72,7 @@ struct CREHash {
 
 
 
-    uint64_t operator()(const std::string_view& x) const {
+    uint64_t operator()(std::string_view x) const {
         // return fnv1a((const uint8_t*) x.data(), x.size());
         return MurmurHash64A((const uint8_t*) x.data(), x.size(), 0xFF);
     }

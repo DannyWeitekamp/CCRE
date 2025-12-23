@@ -83,14 +83,14 @@ struct Var : public CRE_Obj{
 		DerefInfo* _deref_infos=nullptr,
 		size_t _length=0);
 
-	// Var(const std::string_view& _alias,
+	// Var(std::string_view _alias,
 	// 	CRE_Type* _type=nullptr,
 	// 	DerefInfo* _deref_infos=nullptr,
 	// 	size_t _length=0);
 
 	// ref<Var> _extend_unsafe(int mbr_ind, uint16_t deref_kind, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> _extend_unsafe(DerefInfo* derefs, size_t n_derefs, AllocBuffer* alloc_buffer=nullptr);
-	ref<Var> extend_attr(const std::string_view& attr, AllocBuffer* alloc_buffer=nullptr);
+	ref<Var> extend_attr(std::string_view attr, AllocBuffer* alloc_buffer=nullptr);
 	ref<Var> extend_item(int16_t mbr_ind, 			   AllocBuffer* alloc_buffer=nullptr);
 
 	void swap_base(Var* new_base);
@@ -159,7 +159,7 @@ bool vars_equal(const Var* var1, const Var* var2, bool check_base=true, bool sem
 //  			size_t length=0,
 //  			AllocBuffer* buffer=nullptr);
 
-// ref<Var> new_var(const std::string_view& _alias,
+// ref<Var> new_var(std::string_view _alias,
 //  			CRE_Type* _type=nullptr,
 //  			DerefInfo* deref_infos=NULL,
 //  			size_t length=0,
