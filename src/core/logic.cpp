@@ -450,9 +450,10 @@ std::string Logic::basic_str() {
 	return ss.str();
 }
 
-size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view indent,
+size_t Logic::_stream_item(std::vector<std::string>& lit_strs, size_t i, std::string_view indent,
         HashSet<void*>* var_covered, std::vector<bool>& item_covered, size_t& n_items_covered, bool is_first) {
     
+    std::stringstream ss;
     size_t n_adv = 0;
     Item& item = items[i];
     LiteralSemantics semantics = lit_semantics[i];
@@ -577,6 +578,7 @@ size_t Logic::_stream_item(std::stringstream& ss, size_t i, std::string_view ind
             break;
         }
     }
+    lit_strs.push_back(ss.str());
     return n_adv;
 }
 
@@ -665,18 +667,21 @@ std::string Logic::standard_str(
     std::vector<std::string> lines;
 
     // Handle any const items first
-    std::stringstream const_ss;
+    std::vector<std::string> const_strs = {};
     for(size_t j=0; j<const_item_inds.size(); j++){
         std::stringstream ss;
         size_t ind = const_item_inds[j];
         if(!item_covered[ind]){
-            _stream_item(const_ss, ind, indent, var_covered, item_covered, n_items_covered, false);
-            if(j < const_item_inds.size()-1) const_ss << ", ";
+            _stream_item(const_strs, ind, indent, var_covered, item_covered, n_items_covered, false);
+            // if(j < const_item_inds.size()-1) const_ss << ", ";
         }
     }
-    if(const_ss.str().size() > 0) lines.push_back(const_ss.str());
+    if(const_strs.size() > 0){
+        std::string const_str = fmt::format("{}", fmt::join(const_strs, ", "));
+        lines.push_back(const_str);
+    }
 
-    for(size_t i=0; i<L; i++){
+    for(size_t i=0; i<vars.size(); i++){
 
         std::stringstream ss;
         Var* v = vars[i];
@@ -684,8 +689,8 @@ std::string Logic::standard_str(
         VarInfo& info = var_map.at(v);
         bool write_any = false;
 
-        std::stringstream var_ss; 
-        std::stringstream lit_ss; 
+        std::stringstream var_ss;
+        std::vector<std::string> lit_strs = {};
 
         bool inner_covers_var = false;
         if(info.item_inds.size() == 1){
@@ -717,13 +722,14 @@ std::string Logic::standard_str(
                 
                 // if(item_is_multiline) lit_ss << "\n" << indent;
                 if(j==0) first_is_fact_semantics = lit_semantics[ind].kind == LIT_SEMANTICS_FACT;                
-                size_t n_adv = _stream_item(lit_ss, ind, indent, var_covered, item_covered, n_items_covered, first_is_fact_semantics && j==0);
+                size_t n_adv = _stream_item(lit_strs, ind, indent, var_covered, item_covered, n_items_covered, first_is_fact_semantics && j==0);
                 j += n_adv;
 
                 // finished = n_items_covered == items.size() && n_vars_covered == vars.size();
                 // if(!finished && item_is_multiline) lit_ss << ")";
                 // if(!finished) lit_ss << ", ";
-                if(j < info.item_inds.size()-1) lit_ss << ", ";
+                // cout << "J: " << j << ", SIZE: " << info.item_inds.size() << endl;
+                // if(j < info.item_inds.size()-1) lit_ss << ":, ";
                 // cout << "LIT SS: " << lit_ss.str() << endl;
                 // if(!finished && item_is_multiline) lit_ss << "\n";
                 write_any = true;
@@ -746,10 +752,10 @@ std::string Logic::standard_str(
         // if(is_multiline && write_any) ss << indent;}
         if(write_any){
             std::string&& var_str = var_ss.str();
-            std::string&& lit_str = lit_ss.str();
+            std::string lit_str = fmt::format("{}", fmt::join(lit_strs, ", "));
             ss << var_str;
             if(var_str.size() > 0 && lit_str.size() > 0) ss << ", ";
-            ss << lit_ss.str();
+            ss << lit_str;
             lines.push_back(ss.str());
         }
         
@@ -790,7 +796,6 @@ std::string Logic::to_string() {
 }
 
 std::ostream& operator<<(std::ostream& out, Logic* logic) {
-    cout << "LOGIC STR: " << logic->to_string() << endl;
 	return out << logic->to_string();
 }
 
@@ -800,18 +805,29 @@ std::ostream& operator<<(std::ostream& out, ref<Logic> logic) {
 
 
 ref<Logic> Logic::_masked_copy(
-    std::vector<std::vector<uint8_t>>& keep_masks, 
+    std::vector<uint8_t>& var_mask,
+    std::vector<std::vector<uint8_t>>& item_masks, 
     size_t& mask_ind, AllocBuffer* alloc_buffer){
 
     std::vector<uint8_t> empty_mask = std::vector<uint8_t>();
 
     ref<Logic> copy = new_logic(kind, alloc_buffer);
+    
+    // Ensure that any variables that are not masked out are inserted into the copy.
+    for(size_t i=0; i<var_mask.size(); i++){
+        if(var_mask[i]){
+            copy->_insert_var(vars[i]);
+        }
+    }
+    // Just used for recursion.
+    std::vector<uint8_t> empty_var_mask = {};
+    
 
     // Traverse through items in standard order (depth-first) and apply each mask 
-    //   in keep_masks to the conjunct-like objects in the AND-OR tree, which includes
+    //   in item_masks to the conjunct-like objects in the AND-OR tree, which includes
     //   conjuncts and lone literals that are part of disjuncts.
     if(kind == CONDS_KIND_AND){
-        auto& mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
+        auto& mask = mask_ind < item_masks.size() ? item_masks[mask_ind] : empty_mask;
         ++mask_ind;
         
         for(size_t i=0; i<items.size(); i++){
@@ -819,7 +835,10 @@ ref<Logic> Logic::_masked_copy(
 
             if(mbr_item.get_t_id() == T_ID_LOGIC){
                 Logic* sub_logic = mbr_item._as<Logic*>();
-                ref<Logic> sub_copy = sub_logic->_masked_copy(keep_masks, mask_ind, alloc_buffer);
+                
+                ref<Logic> sub_copy = sub_logic->_masked_copy(
+                    empty_var_mask, item_masks, mask_ind, alloc_buffer
+                );
                 
                 // Can mask out any disjunct in a conjunct 
                 // NOTE: we don't raise this out of the branch
@@ -829,7 +848,7 @@ ref<Logic> Logic::_masked_copy(
                 copy->_insert_arg(Item(sub_copy));
 
                 // Update the mask for the next item.
-                mask = mask_ind < keep_masks.size() ? keep_masks[mask_ind] : empty_mask;
+                mask = mask_ind < item_masks.size() ? item_masks[mask_ind] : empty_mask;
             }else{
                 // Can mask out any other item in a conjunct.
                 if(i < mask.size() && !mask[i]) continue;
@@ -840,10 +859,11 @@ ref<Logic> Logic::_masked_copy(
         for(size_t i=0; i<items.size(); i++){
             auto mbr_item = items[i];
             if(mbr_item.get_t_id() == T_ID_LOGIC){
-                
                 Logic* sub_logic = mbr_item._as<Logic*>();
                 // cout << "START SUB COPY: " << sub_logic->to_string() << endl;
-                ref<Logic> sub_copy = sub_logic->_masked_copy(keep_masks, mask_ind, alloc_buffer);
+                ref<Logic> sub_copy = sub_logic->_masked_copy(
+                    empty_var_mask, item_masks, mask_ind, alloc_buffer
+                );
                 // cout << "SUB LOGIC: " << sub_copy << endl;
 
                 // Don't add a conjunct in a disjunct if it's empty.
@@ -855,8 +875,8 @@ ref<Logic> Logic::_masked_copy(
                 }
             } else {
                 // Can mask out any item in a disjunct that isn't a conjunct
-                if(mask_ind < keep_masks.size()){
-                    auto& mask = keep_masks[mask_ind];
+                if(mask_ind < item_masks.size()){
+                    auto& mask = item_masks[mask_ind];
                     ++mask_ind;
                     if(mask.size() > 0 && !mask[0]) continue;
                 }
@@ -870,16 +890,19 @@ ref<Logic> Logic::_masked_copy(
 }
 
 ref<Logic> Logic::masked_copy(
-    std::vector<std::vector<uint8_t>>& keep_masks, AllocBuffer* alloc_buffer){
+    std::vector<uint8_t>& var_mask,
+    std::vector<std::vector<uint8_t>>& item_masks, 
+    AllocBuffer* alloc_buffer){
     size_t mask_ind = 0;
-    return _masked_copy(keep_masks, mask_ind, alloc_buffer);
+    return _masked_copy(var_mask, item_masks, mask_ind, alloc_buffer);
 }
 
 ref<Logic> Logic::copy(
     AllocBuffer* alloc_buffer){
-    auto empty_masks = std::vector<std::vector<uint8_t>>();
+    auto full_var_mask = std::vector<uint8_t>(vars.size(), 1);
+    auto empty_item_masks = std::vector<std::vector<uint8_t>>();
     size_t mask_ind = 0;
-    return _masked_copy(empty_masks, mask_ind, alloc_buffer);
+    return _masked_copy(full_var_mask, empty_item_masks, mask_ind, alloc_buffer);
 }
 
 } // NAMESPACE_END(cre)

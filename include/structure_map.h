@@ -132,31 +132,26 @@ struct SM_ConjPair {
     {};
 };
 
+using VarPairWeightsType = Eigen::Tensor<float, 2, Eigen::RowMajor>;
+
 struct SM_MapCandSet{
     size_t N; // The number of variables in l_a
     size_t M; // The number of variables in l_b
     std::vector<Item> items_a; // The conjunct-like items in l_a
     std::vector<Item> items_b; // The conjunct-like items in l_b
+    // The structure weights of mapping variable i in l_a to variable j in l_b.
+    //   negative weights are used to mask out variables that are not mapped.
+    VarPairWeightsType var_pair_weights; 
     std::vector<SM_ConjPair> conj_pairs; // The conjunct pairs
-    std::vector<float> var_weights_a; // The weights of the variables in l_a
-    std::vector<float> var_weights_b; // The weights of the variables in l_b
+    
 
     SM_MapCandSet(size_t N, size_t M,
                 const std::vector<Item>& items_a,
                 const std::vector<Item>& items_b,
-                const std::vector<SM_ConjPair>& conj_pairs,
-                const std::vector<float>& var_weights_a,
-                const std::vector<float>& var_weights_b):
-        N(N), M(M), items_a(items_a), items_b(items_b), conj_pairs(conj_pairs)
-    {};
-
-    SM_MapCandSet(size_t N, size_t M,
-        const std::vector<Item>& items_a,
-        const std::vector<Item>& items_b,
-        const std::vector<SM_ConjPair>& conj_pairs) :
-        SM_MapCandSet(N, M, items_a, items_b, conj_pairs, 
-            std::vector<float>(N, 0.0f), std::vector<float>(M, 0.0f)
-        )
+                const VarPairWeightsType& var_pair_weights,
+                const std::vector<SM_ConjPair>& conj_pairs):
+        N(N), M(M), items_a(items_a), items_b(items_b),  
+        var_pair_weights(var_pair_weights), conj_pairs(conj_pairs)
     {};
 };
 

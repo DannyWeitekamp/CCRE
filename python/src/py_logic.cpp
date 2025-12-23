@@ -110,7 +110,31 @@ nb::object py_Logic_antiunify(
     std::vector<int16_t> fixed_inds_vec = {};
     float score = 0.0;
     
-    if (fixed_inds.is_valid() && !fixed_inds.is_none()) {
+    if(fix_same_var){
+        fixed_inds_vec = std::vector<int16_t>(self->vars.size(), -1);
+        for(size_t i = 0; i < self->vars.size(); i++){
+            for(size_t j = 0; j < other->vars.size(); j++){
+                if(uint64_t(self->vars[i].get()) == uint64_t(other->vars[j].get())){
+                    fixed_inds_vec[i] = j;
+                    break;
+                }
+            }
+        }
+        cout << "SAME VAR FIXED INDS VEC: " << fixed_inds_vec << endl;
+        fixed_inds_ptr = &fixed_inds_vec;
+    }else if(fix_same_alias){
+        fixed_inds_vec = std::vector<int16_t>(self->vars.size(), -1);
+        for(size_t i = 0; i < self->vars.size(); i++){
+            for(size_t j = 0; j < other->vars.size(); j++){
+                if(self->vars[i]->alias == other->vars[j]->alias){
+                    fixed_inds_vec[i] = j;
+                    break;
+                }
+            }
+        }
+        cout << "SAME ALIAS FIXED INDS VEC: " << fixed_inds_vec << endl;
+        fixed_inds_ptr = &fixed_inds_vec;
+    }else if (fixed_inds.is_valid() && !fixed_inds.is_none()) {
         fixed_inds_vec = nb::cast<std::vector<int16_t>>(fixed_inds);
         fixed_inds_ptr = &fixed_inds_vec;
     }
@@ -198,7 +222,6 @@ void init_logic(nb::module_ & m) {
              "drop_unconstr"_a = false,
              "drop_no_beta"_a = false,
              nb::rv_policy::reference)
-        
         .def("get_structure_weight", &Logic::get_structure_weight)
         .def("get_match_weight", &Logic::get_match_weight)
         ;

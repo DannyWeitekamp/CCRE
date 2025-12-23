@@ -107,10 +107,15 @@ struct Logic : public CRE_Obj {
     void _extend_same_kind(ref<Logic> conj);
     void _finalize();
     
-    ref<Logic> _masked_copy(std::vector<std::vector<uint8_t>>& keep_masks, 
+    ref<Logic> _masked_copy(
+        std::vector<uint8_t>& var_mask,
+        std::vector<std::vector<uint8_t>>& item_masks, 
         size_t& mask_ind, AllocBuffer* alloc_buffer=nullptr);
 
-    ref<Logic> masked_copy(std::vector<std::vector<uint8_t>>& keep_masks, AllocBuffer* alloc_buffer=nullptr);
+    ref<Logic> masked_copy(
+        std::vector<uint8_t>& var_mask,
+        std::vector<std::vector<uint8_t>>& item_masks, 
+        AllocBuffer* alloc_buffer=nullptr);
     ref<Logic> copy(AllocBuffer* alloc_buffer=nullptr);
 
     inline float get_structure_weight() const noexcept{
@@ -121,8 +126,9 @@ struct Logic : public CRE_Obj {
     }
 
 std::string basic_str();
-    size_t _stream_item(std::stringstream& ss, size_t i, std::string_view indent,
-         HashSet<void*>* var_covered, std::vector<bool>& item_covered, size_t& n_items_covered, bool is_first=false);
+    size_t _stream_item(std::vector<std::string>& lit_strs, size_t i, std::string_view indent,
+       HashSet<void*>* var_covered, std::vector<bool>& item_covered, size_t& n_items_covered, bool is_first);
+
     std::string standard_str(std::string_view indent="  ", 
         std::string_view prev_indent="", HashSet<void*>* var_covered = nullptr);
     std::string to_string();
