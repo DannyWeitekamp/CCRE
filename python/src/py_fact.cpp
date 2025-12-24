@@ -121,7 +121,6 @@ py_fact_iterator py_fact_iter_end(Fact* self){
     // return py_fact_iterator((Member*) (data + sizeof(Fact) + self->length*sizeof(Member)));
 }
 
-
 void init_fact(nb::module_ & m){
 	nb::class_<Fact, CRE_Obj>(m, "Fact", nb::type_slots(cre_obj_slots))
     .def(nb::new_(&py_Fact_ctor), nb::rv_policy::reference)
@@ -138,6 +137,12 @@ void init_fact(nb::module_ & m){
     .def("__setitem__", &py_fact_setitem)
     .def("__setattr__", &py_fact_setattr)
 
+    .def("isa", [](Fact* fact, nb::handle type){
+        return fact->isa(Type_from_py(type));
+    }, "type"_a)
+    .def("issubclass", [](Fact* fact, nb::handle type){
+        return fact->issubclass(Type_from_py(type));
+    }, "type"_a)
     .def("__iter__",  [](Fact* fact) {
             return nb::make_iterator(nb::type<Fact>(), "iterator",
                                      py_fact_iter_begin(fact),

@@ -179,7 +179,15 @@ std::vector<FlagGroup> py_to_flag_groups(nb::handle py_obj){
 // ------------------------------------------------------------------
 // : define_fact()
 
-FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
+
+FactType* py_define_fact(nb::args args, nb::kwargs kwargs){
+    // Resolve name from args or kwargs
+    std::string name =       require_arg_or_kwarg<std::string>("define_fact", "name", 0, args, kwargs);
+    nb::dict member_infos =  require_arg_or_kwarg<nb::dict>("define_fact", "member_infos", 1, args, kwargs);
+    FactType* inherts_from = resolve_arg_or_kwarg<FactType*>("define_fact", "inherts_from", 2, nullptr, args, kwargs);
+    
+    
+    
     // cout << current_context->to_string() << endl;
 
     FactType* type = nullptr;
@@ -239,8 +247,7 @@ FactType* py_define_fact(nb::str py_name, nb::dict member_infos){
             // MemberSpec(attr_name, mbr_type_name, {});
         members.push_back(member_spec);
     }
-    std::string name = nb::cast<std::string>(py_name);
-    return define_fact(name, members);
+    return define_fact(name, members, inherts_from);
 }
 
 
@@ -264,13 +271,17 @@ void init_core(nb::module_& m) {
 
     // -- CRE_Type --
     nb::class_<CRE_Type>(m, "CRE_Type", nb::type_slots(cre_obj_slots))
+    .def("isa", [](CRE_Type* self, nb::handle type){
+        return self->isa(Type_from_py(type));
+    }, "type"_a)
+    .def("issubclass", [](CRE_Type* self, nb::handle type){
+        return self->issubclass(Type_from_py(type));
+    }, "type"_a)
     ;
 
     // -- FactType ---
     nb::class_<FactType, CRE_Type>(m, "FactType", nb::type_slots(cre_obj_slots))
-    .def(nb::new_([](nb::str name, nb::dict member_infos){
-        return py_define_fact(name, member_infos);
-    }), "name"_a, "member_infos"_a, nb::rv_policy::reference)
+    .def(nb::new_(&py_define_fact), nb::rv_policy::reference)
     .def("__call__", [](FactType& self, nb::args args, nb::kwargs kwargs){
         return _py_new_fact(&self, args.size(), args.begin(), args.end(), kwargs);
     }, nb::rv_policy::reference)

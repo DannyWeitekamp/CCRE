@@ -207,18 +207,52 @@ void FactType_dtor(const CRE_Obj* ptr){
     delete ((FactType* ) ptr);
 }
 
+std::vector<MemberSpec> _concat_members(const vector<MemberSpec>& _members, FactType* inherts_from){
+    if(inherts_from == nullptr) return _members;
+    vector<MemberSpec> members = {};
+    members.reserve(_members.size() + inherts_from->members.size());
+    for(const auto& m : inherts_from->members) {
+        members.push_back(m);
+    }
+    for(const auto& m : _members) {
+        members.push_back(m);
+    }
+    return members;
+}
+
+std::vector<CRE_Type*> _concat_sub_types(FactType* inherts_from){
+    if(inherts_from == nullptr) return {cre_Fact};
+        
+    vector<CRE_Type*> sub_types = {};
+    sub_types.reserve(inherts_from->sub_types.size() + 1);
+    sub_types.push_back(inherts_from);
+    for(auto sub_type : inherts_from->sub_types){
+        sub_types.push_back(sub_type);
+    }
+    return sub_types;
+}
+
+
+bool CRE_Type::issubclass(const CRE_Type* type) const{
+    return std::find(sub_types.begin(), sub_types.end(), type) != sub_types.end();
+}
+
+bool CRE_Type::isa(const CRE_Type* type) const{
+    if(this == type) return true;
+    return issubclass(type);
+}
+
 FactType::FactType(std::string_view _name, 
-           const vector<CRE_Type*>& _sub_types, 
            const vector<MemberSpec>& _members,
+           FactType* inherts_from, 
            const HashMap<std::string, Item>& _flags,
            CRE_Context* _context)
-    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _sub_types,  0, cre_obj_dynamic_dtor, _context), 
-      members(_members), flags(_flags) {
+    : CRE_Type(_name, T_ID_FACT, sizeof(void*), _concat_sub_types(inherts_from),  0, cre_obj_dynamic_dtor, _context), 
+      members(_concat_members(_members, inherts_from)), flags(_flags) {
 
     control_block->dtor = &FactType_dtor; 
     finalized = false;
     kind = TYPE_KIND_FACT;
-
 
     member_names_as_items = {};
     member_names_as_items.reserve(_members.size());
@@ -289,7 +323,7 @@ void _implicit_member_flag_defaults(vector<MemberSpec>& members){
 
 FactType* define_fact(std::string_view name, 
                   const vector<MemberSpec>& members,
-                  const vector<CRE_Type*>& sub_types,
+                  FactType* inherts_from,
                   const HashMap<std::string, Item>& flags,
                   CRE_Context* context) {
     if(context == nullptr){
@@ -300,7 +334,7 @@ FactType* define_fact(std::string_view name,
     vector<MemberSpec> members_cpy = members; 
     _implicit_member_flag_defaults(members_cpy);
     // cout << "DEFINE FACT0: " << name << endl;
-    FactType* t = new FactType(name, sub_types, members_cpy, flags, context);
+    FactType* t = new FactType(name, members_cpy, inherts_from, flags, context);
     // std::cout << "DEFINE FACT[0]" << t->members[0].builtin_flags << std::endl;
     size_t index = context->_add_type(t);
     // std::cout << uint64_t(t) << " <<KIND" << int(t->kind) << std::endl;

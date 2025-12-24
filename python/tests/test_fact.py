@@ -6,10 +6,10 @@ import pytest
 
 
 
-def test_define_fact():
-    from cre import define_fact
+def test_define_FactType():
+    from cre import FactType
 
-    Cat = define_fact("Cat", 
+    Cat = FactType("Cat", 
         {"id" : int,
          "name" : str,
          "color" : str,
@@ -21,7 +21,7 @@ def test_define_fact():
     );
 
 
-    Cat = define_fact("Cat", 
+    Cat = FactType("Cat", 
         {"id" : "int",
          "name" : "str",
          "color" : "str",
@@ -38,12 +38,39 @@ def test_define_fact():
 
     # TODO: w/ flags
 
+def test_define_FactType_inheritance():
+    from cre import FactType
+    Animal = FactType("Animal", 
+        {"id" : str,
+         "name" : str,
+        }
+    );
+    Cat = FactType("Cat", 
+        {"ears" : str,
+         "fur" : str
+        },
+        inherts_from=Animal
+    );
+    cat = Cat("snowball", "white", "floppy", "white")
+    assert cat.id == "snowball"
+    assert cat.name == "white"
+    assert cat.ears == "floppy"
+    assert cat.fur == "white"
 
-def test_define_fact_deffered():
-    from cre import define_fact, DefferedType
+    assert cat.isa(Cat)
+    assert cat.isa(Animal)
+    assert cat.issubclass(Animal)
+    assert cat.isa(Fact)
+    
+    
+    # assert cat.type == Cat
+    # assert cat.type.inherts_from == Animal
+
+def test_define_FactType_deffered():
+    from cre import FactType, DefferedType
 
     #-- Test Auto self-resolution --
-    Person = define_fact("Person", 
+    Person = FactType("Person", 
         {"id" : str,
          "friend" : "Person",
          "mother" : "Person",
@@ -52,7 +79,7 @@ def test_define_fact_deffered():
 
     # -- Test Explicit Usage --
     Dog = DefferedType("Dog")
-    DogOwner = define_fact("DogOwner", 
+    DogOwner = FactType("DogOwner", 
         {"id" : str,
          "dog" : Dog,
         }
@@ -62,7 +89,7 @@ def test_define_fact_deffered():
     with pytest.raises(Exception):
         pete = DogOwner("Pete")
 
-    Dog = define_fact("Dog", 
+    Dog = FactType("Dog", 
         {"id" : str,
          "owner" : DogOwner,
         }
@@ -74,7 +101,7 @@ def test_define_fact_deffered():
 
 
     # -- Test Auto Differed --
-    CrabOwner = define_fact("CrabOwner", 
+    CrabOwner = FactType("CrabOwner", 
         {"id" : str,
          "crab" : "Crab",
         }
@@ -84,7 +111,7 @@ def test_define_fact_deffered():
     with pytest.raises(Exception):
         bobby = CrabOwner("Bobby")
 
-    Crab = define_fact("Crab", 
+    Crab = FactType("Crab", 
         {"id" : str,
          "owner" : CrabOwner,
         }
@@ -96,9 +123,9 @@ def test_define_fact_deffered():
 
 
 def _standard_cat():
-    from cre import define_fact
+    from cre import FactType
     # Test Typed Facts
-    Cat = define_fact("Cat", 
+    Cat = FactType("Cat", 
         {"name" : str,
          "color" : str,
          "legs" : int,
@@ -112,7 +139,7 @@ def _standard_cat():
     return Cat, snowball
 
 def test_fact_create():
-    from cre import define_fact, NewFact, Fact, iFact
+    from cre import FactType, NewFact, Fact, iFact
 
     Cat, snowball  = _standard_cat()
 
@@ -211,7 +238,7 @@ def test_members_are_weakrefs():
     print("Q")
 
      #-- Test Auto self-resolution --
-    Person = define_fact("Person", 
+    Person = FactType("Person", 
         {"id" : str,
          "friend" : "Person",
          "mother" : "Person",
@@ -252,8 +279,9 @@ def test_b_make_PyCat_1000(benchmark):
 
 if __name__ == "__main__":
     import faulthandler; faulthandler.enable()
-    # test_define_fact()
-    # test_define_fact_deffered()
+    # test_define_FactType()
+    test_define_FactType_inheritance()
+    # test_define_FactType_deffered()
     # test_fact_create()
     # test_fact_getitem()
     # test_fact_getattr()

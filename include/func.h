@@ -448,21 +448,7 @@ struct has_ostream_operator_impl<T,
 template <typename T>
 constexpr bool has_ostream_operator_v = has_ostream_operator_impl<T>::value;
 
-template <typename T>
-std::string _throw_type_name_helper() {
-    if constexpr(std::is_same_v<T, Item>){
-		return "cre::Item";
-	}else{
-		CRE_Type* cre_type = to_cre_type_or_null<T>();
-		if(cre_type == nullptr){
-			return typeid(T).name();
-		}
-		std::stringstream ss;
-		ss << cre_type;
-		return ss.str();
-		
-	}
-}
+
 
 
 
@@ -712,7 +698,7 @@ struct Func : CRE_Obj{
 				}
 			}else{ 
 
-				ss << "with type " << "\033[1m" << _throw_type_name_helper<DecayT>() << "\033[0m ";
+				ss << "with type " << "\033[1m" << type_name_helper<DecayT>() << "\033[0m ";
 			}
 		}else{
 			ss << "with type \033[1m" << frm_type << "\033[0m ";

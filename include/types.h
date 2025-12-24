@@ -115,11 +115,14 @@ struct CRE_Type : CRE_Obj{
         CRE_Context* context = nullptr
     );    
 
-    inline uint16_t get_t_id() noexcept{
+    inline uint16_t get_t_id() const noexcept{
         return t_id;
     }
 
     std::string to_string();
+
+    bool isa(const CRE_Type* obj) const;
+    bool issubclass(const CRE_Type* obj) const;
 
     // ~CRE_Type();
 };
@@ -165,8 +168,8 @@ struct FactType : public CRE_Type {
     // uint8_t pad[5];
 
     FactType(std::string_view _name, 
-         const vector<CRE_Type*>& _sub_types = {}, 
-         const vector<MemberSpec>& _members = {},
+         const vector<MemberSpec>& members = {},
+         FactType* inherts_from = nullptr, 
          const HashMap<std::string, Item>& flags = {},
          CRE_Context* context=nullptr
     );
@@ -211,7 +214,7 @@ CRE_Type* define_type(std::string_view name,
 
 FactType* define_fact(std::string_view name, 
                   const vector<MemberSpec>& members,
-                  const vector<CRE_Type*>& sub_types={},
+                  FactType* inherts_from = nullptr,
                   const HashMap<std::string, Item>& flags={},
                   CRE_Context* context=nullptr 
                   ) ;
@@ -351,6 +354,22 @@ CRE_Type* to_cre_type_or_null() {
     // }else{
     //     return (CRE_Type*) nullptr;
     // }   
+}
+
+template <typename T>
+std::string type_name_helper() {
+    if constexpr(std::is_same_v<T, Item>){
+		return "cre::Item";
+	}else{
+		CRE_Type* cre_type = to_cre_type_or_null<T>();
+		if(cre_type == nullptr){
+			return typeid(T).name();
+		}
+		std::stringstream ss;
+		ss << cre_type;
+		return ss.str();
+		
+	}
 }
 
 

@@ -345,6 +345,14 @@ public:
   Member operator[](size_t index) {
     return this->get(index);
   }
+
+  inline bool isa(const CRE_Type* type) const{
+    return this->type->isa(type);
+  }
+
+  inline bool issubclass(const CRE_Type* type) const{
+    return this->type->issubclass(type);
+  }
 };
 
 bool facts_equal(const Fact* fact1, const Fact* fact2, bool semantic);
