@@ -123,6 +123,7 @@ struct CRE_Type : CRE_Obj{
 
     bool isa(const CRE_Type* obj) const;
     bool issubclass(const CRE_Type* obj) const;
+    CRE_Type* mutual_parentclass(const CRE_Type* obj) const;
 
     // ~CRE_Type();
 };
@@ -169,7 +170,7 @@ struct FactType : public CRE_Type {
 
     FactType(std::string_view _name, 
          const vector<MemberSpec>& members = {},
-         FactType* inherts_from = nullptr, 
+         FactType* inherits_from = nullptr, 
          const HashMap<std::string, Item>& flags = {},
          CRE_Context* context=nullptr
     );
@@ -208,13 +209,17 @@ HashMap<std::string, Item> parse_builtin_flags(
 
 CRE_Type* define_type(std::string_view name, 
                   const vector<CRE_Type*>& sub_types={},
+                  float structure_weight = 1.0f,
+                  float match_weight = 1.0f,
                   uint16_t byte_width = 0,
                   DynamicDtor dynamic_dtor = nullptr,
                   CRE_Context* context = nullptr);
 
 FactType* define_fact(std::string_view name, 
                   const vector<MemberSpec>& members,
-                  FactType* inherts_from = nullptr,
+                  FactType* inherits_from = nullptr,
+                  float add_structure_weight = -0.1f,
+                  float add_match_weight = -0.1f,
                   const HashMap<std::string, Item>& flags={},
                   CRE_Context* context=nullptr 
                   ) ;

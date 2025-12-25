@@ -128,7 +128,7 @@ Item::Item(std::string_view arg) :
     meta_data(0), val_kind(INTERNED) 
  {};
 
- bool items_equal(const Item& item1, const Item& item2, bool semantic){
+ bool items_equal(const Item& item1, const Item& item2, bool semantic, bool castable){
     uint16_t t_id1 = item1.get_t_id();
     uint16_t t_id2 = item2.get_t_id();
 
@@ -156,14 +156,14 @@ Item::Item(std::string_view arg) :
             }
             // cout << "t_id1:" << t_id1 << ", t_id2:" << t_id2 << endl;
             // Defined in seperate translation unit
-            return CRE_Objs_equal(item1._as<CRE_Obj*>(), item2._as<CRE_Obj*>(), semantic);                
+            return CRE_Objs_equal(item1._as<CRE_Obj*>(), item2._as<CRE_Obj*>(), semantic, castable);                
         }
     }
     return false;
  }
 
  bool Item::operator==(const Item& other) const{
-    return items_equal(*this, other, true);
+    return items_equal(*this, other, true, false);
  }
 
 //  bool InternItem::operator==(const InternItem& other) const{

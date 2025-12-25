@@ -25,7 +25,8 @@ namespace cre {
 
 struct FunctionallyEqual {
     bool operator()(const Item& a, const Item& b) const {
-        return items_equal(a, b, false);
+        cout << "FunctionallyEqual: " << a << " , " << b << " Result: " << items_equal(a, b, false, true) << endl;
+        return items_equal(a, b, false, true);
     }
 };    
 using ItemMapType = ankerl::unordered_dense::map<Item, std::vector<std::tuple<int16_t, Item>>, CREHash, FunctionallyEqual> ;
@@ -471,7 +472,7 @@ struct MapProblem {
         score_bound = score_remap(fixed_inds, cum_score, var_pair_weights);
 
         // cout << "fixed_inds: " << fixed_inds << endl;
-        // cout << "score_bound: " << score_bound << endl;
+        cout << "score_bound: " << score_bound << endl;
         
         // Case: Abandon if the upper bound on the current assignment's 
         //  score is less than the current best score. 
@@ -807,13 +808,15 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
 std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& conj_item_b){
     auto map_pairs = std::vector<SM_MappablePair>();
 
+    cout << "-- MAKE MAPPABLE PAIRS --" << endl;
+
     // Literals Case: The conjunction-like item is just a literal (probably in an OR)
     if(conj_item_b.get_t_id() == T_ID_LITERAL){
         auto& item_b = conj_item_b;
         auto it = item_map_a.find(item_b);
         if(it != item_map_a.end()){
             for(auto [index_a, item_a] : it->second){
-                // cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
+                cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
                 map_pairs.push_back(_items_to_mappable_pair(index_a, 0, item_a, item_b));
             }
         }
@@ -828,7 +831,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
                 auto it = item_map_a.find(item_b);
                 if(it != item_map_a.end()){
                     for(auto [index_a, item_a] : it->second){
-                        // cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
+                        cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
                         map_pairs.push_back(_items_to_mappable_pair(index_a, index_b, item_a, item_b));
                     }
                 }
@@ -851,9 +854,17 @@ SM_MapCandSet logic_to_map_cands(ref<Logic> l_a, ref<Logic> l_b){
     auto var_pair_weights = VarPairWeightsType(l_a->vars.size(), l_b->vars.size());
     var_pair_weights.setConstant(-1.0f);
     for(size_t i = 0; i < l_a->vars.size(); i++){
+        CRE_Type* base_a = l_a->vars[i]->base_type;
         for(size_t j = 0; j < l_b->vars.size(); j++){
+            CRE_Type* base_b = l_b->vars[j]->base_type;
             // TODO: If can cast from one to the other
-            var_pair_weights(i, j) = std::min(l_a->vars[i]->structure_weight, l_b->vars[j]->structure_weight);
+            CRE_Type* parent_a = base_a->mutual_parentclass(base_b);
+            if(parent_a != nullptr){
+                var_pair_weights(i, j) = parent_a->structure_weight;//std::min(base_a->structure_weight, base_b->structure_weight);    
+            }else{
+                var_pair_weights(i, j) = -1.0f;
+            }
+            
         }
     }
     

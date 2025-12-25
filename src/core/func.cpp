@@ -1897,7 +1897,7 @@ void Func::_call_recursive(void* ret_ptr,
 	}
 }
 
-bool funcs_equal(const Func* func1, const Func* func2, bool semantic){
+bool funcs_equal(const Func* func1, const Func* func2, bool semantic, bool castable){
 	if(func1->n_args != func2->n_args) return false;
 	if(func1->origin_data != func2->origin_data) return false;
 	if(func1->n_root_args != func2->n_root_args) return false;
@@ -1911,7 +1911,7 @@ bool funcs_equal(const Func* func1, const Func* func2, bool semantic){
 		{
 			Func* func_arg1 = (*func1->get(i))._as<Func*>();
 			Func* func_arg2 = (*func2->get(i))._as<Func*>();
-			if(!funcs_equal(func_arg1, func_arg2, semantic)) return false;
+			if(!funcs_equal(func_arg1, func_arg2, semantic, castable)) return false;
 			break;
 		}
 		case ARGINFO_VAR:
@@ -1919,7 +1919,7 @@ bool funcs_equal(const Func* func1, const Func* func2, bool semantic){
 			Var* var_arg1 = (*func1->get(i))._as<Var*>();
 			Var* var_arg2 = (*func2->get(i))._as<Var*>();
 			if(arg_info1.var_ind != arg_info2.var_ind) return false;
-			if(!vars_equal(var_arg1, var_arg2, semantic, semantic)) return false;
+			if(!vars_equal(var_arg1, var_arg2, semantic, semantic, castable)) return false;
 			break;
 		}
 		case ARGINFO_CONST:

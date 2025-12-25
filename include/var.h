@@ -71,8 +71,8 @@ struct Var : public CRE_Obj{
 
 	uint64_t hash;
 
-	float structure_weight;
-	float match_weight;
+	// float structure_weight;
+	// float match_weight;
 
 	uint8_t kind=false;
 
@@ -145,7 +145,7 @@ ref<Var> Opt(const Item& alias, CRE_Type* type=nullptr, DerefInfo* deref_infos=N
 bool vars_same_type_kind(const Var* var1, const Var* var2);
 bool bases_semantically_equal(const Var* var1, const Var* var2);
 bool vars_semantically_equal(const Var* var1, const Var* var2);
-bool vars_equal(const Var* var1, const Var* var2, bool check_base=true, bool semantic=true);
+bool vars_equal(const Var* var1, const Var* var2, bool check_base=true, bool semantic=true, bool castable=false);
 // bool vars_equal(Var* var1, Var* var2, bool semantic=true);
 // ref<Var> new_Exists(const Item& alias,
 //  			CRE_Type* type=nullptr,

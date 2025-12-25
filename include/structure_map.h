@@ -140,7 +140,7 @@ struct SM_MapCandSet{
     std::vector<Item> items_a; // The conjunct-like items in l_a
     std::vector<Item> items_b; // The conjunct-like items in l_b
     // The structure weights of mapping variable i in l_a to variable j in l_b.
-    //   negative weights are used to mask out variables that are not mapped.
+    //   negative weights are used to mask out invalid variable mappings.
     VarPairWeightsType var_pair_weights; 
     std::vector<SM_ConjPair> conj_pairs; // The conjunct pairs
     

@@ -825,7 +825,7 @@ public:
         
 };
 
-bool items_equal(const Item& item1, const Item& item2, bool semantic=true);
+bool items_equal(const Item& item1, const Item& item2, bool semantic=true, bool castable=false);
 
 // // Same as Item, but gaurenteed to be interned
 // struct InternItem : public Item {

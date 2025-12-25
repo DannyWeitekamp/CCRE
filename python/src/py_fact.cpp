@@ -155,6 +155,7 @@ void init_fact(nb::module_ & m){
                                      fact.begin(), fact.end());
         }, nb::keep_alive<0, 1>()//, //nb::rv_policy::reference
     )
+    .def_ro("_fact_type", &Fact::type)
     ;
 
     m.def("NewFact", &NewFact, nb::rv_policy::reference);

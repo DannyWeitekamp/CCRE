@@ -56,7 +56,7 @@ inline auto FuncRef::operator~() const {
 	return new_literal((CRE_Obj*) this->get(), true);
 }
 
-bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic=true);
+bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic=true, bool castable=false);
 // bool Literal::operator==(const Literal& other) const;
 
 } // NAMESPACE_END(cre)

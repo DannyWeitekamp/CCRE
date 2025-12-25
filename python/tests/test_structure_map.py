@@ -3,9 +3,8 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 from t_utils import *
 import pytest
-import math
 
-from cre import Var, AND, OR, Not, Exists, Bound, Opt, Tuple, FactType
+from cre import Var, AND, OR, Not, Exists, Bound, Opt, Tuple, FactType, items_equal
 
 
 def test_anti_unify():
@@ -57,7 +56,7 @@ def test_anti_unify():
     print(str(c12))
     print(score)
     assert str(c12) == str(c12_ref)
-    assert math.isclose(score, 11./12., abs_tol=1e-6)
+    assert isclose(score, 11./12.)
     print("---")
     print(AND(x, y, z))
     print("---")
@@ -116,5 +115,50 @@ def test_anti_unify():
     assert str(c12) == str(c12_ref)
     assert score == 1.
 
+
+def test_antiunify_fact_types():
+    Animal = FactType("Animal", 
+        {"id" : int,
+         "name" : str,
+         "color" : str,
+         "x" : float,
+         "y" : float
+        }
+    );
+    Cat = FactType("Cat", 
+        {"ears" : str,
+         "fur" : str,
+         "frisky" : bool,
+        },
+        inherits_from=Animal
+    )
+    Fish = FactType("Fish", 
+        {"fins" : str,
+         "scales" : str,
+        },
+        inherits_from=Animal
+    )
+
+    
+    c1,c2,c3 = Var(Cat), Var(Cat), Var(Cat)
+    f1,f2,f3 = Var(Fish), Var(Fish), Var(Fish)
+    a1,a2,a3 = Var(Animal, "c1"), Var(Animal, "c2"), Var(Animal, "c3")
+    cat_trio = AND(c1.color == c2.color, c1.x < c2.x, c1.frisky == True, c3.fur == c2.fur) 
+    fish_trio = AND(f1.color == f2.color, f1.x < f2.x, f1.scales == "blue", f3.fins == f2.fins) 
+
+    print("items_equal", items_equal(c1.color == c2.color, f1.color == f2.color, False, True))
+    # return
+
+    animal_trio_ref = AND(a1.color == a2.color, a1.x < a2.x, a3)
+    animal_trio, score = cat_trio.antiunify(fish_trio, return_score=True) 
+    print(cat_trio)
+    print(fish_trio)
+    print(animal_trio)
+    print(animal_trio_ref)
+    print("SCORE", score)
+    assert str(animal_trio) == str(animal_trio_ref)
+    # assert isclose(score, 1.0)
+
 if __name__ == "__main__":
-    test_anti_unify()
+    # test_anti_unify()
+    test_antiunify_fact_types()

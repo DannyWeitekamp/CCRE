@@ -147,7 +147,6 @@ nb::object py_Logic_antiunify(
     }else{
         return nb::cast(result);
     }
-    
 }
 
 
@@ -155,8 +154,6 @@ ref<Literal> py_literal_invert(Literal* lit) {
     return new_literal(lit->obj.get(), !lit->negated);
 }
 void init_logic(nb::module_ & m) {
-
-    cout << "INIT LOGIC" << endl;
     // Expose constants
     m.attr("CONDS_KIND_AND") = CONDS_KIND_AND;
     m.attr("CONDS_KIND_OR") = CONDS_KIND_OR;

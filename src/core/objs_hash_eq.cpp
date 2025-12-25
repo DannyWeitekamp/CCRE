@@ -12,7 +12,9 @@
 
 namespace cre {
 
-bool CRE_Objs_equal(const CRE_Obj* a, const CRE_Obj* b, bool semantic){
+bool CRE_Objs_equal(const CRE_Obj* a, const CRE_Obj* b, bool semantic, bool castable){
+    if(a == b) return true;
+    
     uint16_t a_t_id = a->get_t_id();
     uint16_t b_t_id = b->get_t_id();
 
@@ -28,11 +30,11 @@ bool CRE_Objs_equal(const CRE_Obj* a, const CRE_Obj* b, bool semantic){
         return a == b;
         // return *((FactSet*) a) == *((FactSet*) b);
     case T_ID_VAR:
-        return vars_equal((Var*) a, (Var*) b, true, semantic);
+        return vars_equal((Var*) a, (Var*) b, true, semantic, castable);
     case T_ID_FUNC:
-        return funcs_equal((Func*) a, (Func*) b, semantic);
+        return funcs_equal((Func*) a, (Func*) b, semantic, castable);
     case T_ID_LITERAL:
-        return literals_equal((Literal*) a, (Literal*) b, semantic);
+        return literals_equal((Literal*) a, (Literal*) b, semantic, castable);
     case T_ID_LOGIC:
         // TODO
         return a == b;

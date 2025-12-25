@@ -124,7 +124,7 @@ uint16_t Literal::eval_t_id() const {
 	return eval_type()->get_t_id();
 }
 
-bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic){
+bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic, bool castable){
 	if(lit1->kind != lit2->kind) return false;
 	if(lit1->negated != lit2->negated) return false;
 
@@ -140,22 +140,21 @@ bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic){
 	{
 		Func* func1 = (Func*) lit1->obj.get();
 		Func* func2 = (Func*) lit2->obj.get();
-		return funcs_equal(func1, func2, semantic);
+		return funcs_equal(func1, func2, semantic, castable);
 		break;
 	}
 	case LIT_KIND_VAR:
 	{
 		Var* var1 = (Var*) lit1->obj.get();
 		Var* var2 = (Var*) lit2->obj.get();
-		Func* func2 = (Func*) lit2->obj.get();
-		return vars_equal(var1, var2, true, semantic);
+		return vars_equal(var1, var2, true, semantic, castable);
 		break;
 	}
 	case LIT_KIND_EQ:
 	{
 		Func* func1 = (Func*) lit1->obj.get();
 		Func* func2 = (Func*) lit2->obj.get();
-		return !semantic || funcs_equal(func1, func2, semantic);
+		return !semantic || funcs_equal(func1, func2, semantic, castable);
 		break;
 	}
 	default:
@@ -164,7 +163,7 @@ bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic){
 }
 
 bool Literal::operator==(const Literal& other) const {
-	return literals_equal((Literal*) this, (Literal*) &other, true);
+	return literals_equal((Literal*) this, (Literal*) &other, true, false);
 }
 
 

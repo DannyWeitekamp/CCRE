@@ -6,6 +6,8 @@ import pytest
 
 
 
+
+
 def test_define_FactType():
     from cre import FactType
 
@@ -49,7 +51,7 @@ def test_define_FactType_inheritance():
         {"ears" : str,
          "fur" : str
         },
-        inherts_from=Animal
+        inherits_from=Animal
     );
     cat = Cat("snowball", "white", "floppy", "white")
     assert cat.id == "snowball"
@@ -61,10 +63,13 @@ def test_define_FactType_inheritance():
     assert cat.isa(Animal)
     assert cat.issubclass(Animal)
     assert cat.isa(Fact)
+
+    assert isclose(cat._fact_type.structure_weight, Animal.structure_weight + 0.1)
+    assert isclose(cat._fact_type.match_weight, Animal.match_weight + 0.1)
     
     
     # assert cat.type == Cat
-    # assert cat.type.inherts_from == Animal
+    # assert cat.type.inherits_from == Animal
 
 def test_define_FactType_deffered():
     from cre import FactType, DefferedType

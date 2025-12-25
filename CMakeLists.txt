@@ -15,6 +15,7 @@ project(cre VERSION 1.0)
 # Specify the CPP standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_COLOR_DIAGNOSTICS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --gcc-install-dir='/usr/lib/gcc/x86_64-linux-gnu/11'")
 

@@ -182,11 +182,20 @@ std::vector<FlagGroup> py_to_flag_groups(nb::handle py_obj){
 
 FactType* py_define_fact(nb::args args, nb::kwargs kwargs){
     // Resolve name from args or kwargs
+    
     std::string name =       require_arg_or_kwarg<std::string>("define_fact", "name", 0, args, kwargs);
     nb::dict member_infos =  require_arg_or_kwarg<nb::dict>("define_fact", "member_infos", 1, args, kwargs);
-    FactType* inherts_from = resolve_arg_or_kwarg<FactType*>("define_fact", "inherts_from", 2, nullptr, args, kwargs);
+    FactType* inherits_from = resolve_arg_or_kwarg<FactType*>("define_fact", "inherits_from", 2, nullptr, args, kwargs);
+    float add_structure_weight = resolve_arg_or_kwarg<float>("define_fact", "add_structure_weight", 3, 0.1f, args, kwargs);
+    float add_match_weight = resolve_arg_or_kwarg<float>("define_fact", "add_match_weight", 4, 0.1f, args, kwargs);
     
-    
+    std::vector<std::string> allowed_keywords = {"name", "member_infos", "inherits_from", "add_structure_weight", "add_match_weight"};
+    for(auto [key, val] : kwargs){
+        std::string_view key_str = nb::cast<std::string_view>(key);
+        if(std::find(allowed_keywords.begin(), allowed_keywords.end(), key_str) == allowed_keywords.end()){
+            throw std::runtime_error(fmt::format("Invalid keyword argument: {} for define_fact.", nb::cast<std::string>(nb::str(key))));
+        }
+    }
     
     // cout << current_context->to_string() << endl;
 
@@ -247,9 +256,9 @@ FactType* py_define_fact(nb::args args, nb::kwargs kwargs){
             // MemberSpec(attr_name, mbr_type_name, {});
         members.push_back(member_spec);
     }
-    return define_fact(name, members, inherts_from);
+    return define_fact(name, members, inherits_from, add_structure_weight, add_match_weight);
 }
-
+    
 
 // ------------------------------------------------------------------
 // : Initialize CRE_Obj, CRE_Type, Fact_Type, Item
@@ -277,6 +286,8 @@ void init_core(nb::module_& m) {
     .def("issubclass", [](CRE_Type* self, nb::handle type){
         return self->issubclass(Type_from_py(type));
     }, "type"_a)
+    .def_ro("structure_weight", &CRE_Type::structure_weight)
+    .def_ro("match_weight", &CRE_Type::match_weight)
     ;
 
     // -- FactType ---
@@ -322,6 +333,9 @@ void init_core(nb::module_& m) {
 
 
     m.def("define_fact", &py_define_fact, nb::rv_policy::reference);
+    m.def("items_equal", [](nb::handle item1, nb::handle item2, bool semantic, bool castable){
+        return items_equal(Item_from_py(item1), Item_from_py(item2), semantic, castable);
+    }, "item1"_a, "item2"_a, "semantic"_a=true, "castable"_a=false);
 }
 
 // -----------------------------------------------------------------

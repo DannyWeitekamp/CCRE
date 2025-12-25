@@ -61,3 +61,5 @@ def random_cats_dict(N):
 
 def random_cats(N):
     return FactSet.from_dict(random_cats_dict(N))
+
+isclose = lambda a, b: abs(a - b) < 1e-6

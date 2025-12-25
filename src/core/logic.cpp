@@ -304,8 +304,8 @@ void Logic::_finalize() {
     var_match_weight = 0.0f;
     for(auto it : var_map_iters){
         auto& [var, info] = *it;
-        var_structure_weight += var.get()->structure_weight;
-        var_match_weight += var.get()->match_weight;
+        var_structure_weight += var.get()->base_type->structure_weight;
+        var_match_weight += var.get()->base_type->match_weight;
         if(info.kind != VAR_KIND_ABSOLUTE){
             info.pos = vars.size();
             vars.push_back(var);

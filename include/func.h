@@ -752,7 +752,7 @@ struct Func : CRE_Obj{
 	// }
 };
 
-bool funcs_equal(const Func* func1, const Func* func2, bool semantic=false);
+bool funcs_equal(const Func* func1, const Func* func2, bool semantic=false, bool castable=false);
 
 
 // An alias of ref<Func> which has call operator() defined

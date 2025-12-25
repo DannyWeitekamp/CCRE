@@ -44,8 +44,8 @@ Var::Var(const Item& _alias,
 		alias(_alias),
 		deref_infos(nullptr),
 		length(_length),
-		structure_weight(_type->structure_weight),
-		match_weight(_type->match_weight),
+		// structure_weight(_type->structure_weight),
+		// match_weight(_type->match_weight),
 		hash(0),
 		kind(_kind)
 	{
@@ -431,7 +431,7 @@ bool SemanticVarPtr::operator<(const SemanticVarPtr& other) const{
 	return uint64_t(var_ptr->alias.val) < uint64_t(other.var_ptr->alias.val);
 }
 
-bool vars_equal(const Var* var1, const Var* var2, bool check_base, bool semantic){
+bool vars_equal(const Var* var1, const Var* var2, bool check_base, bool semantic, bool castable){
 	if(check_base){
 		if(semantic){
 			if(var1->alias.val != var2->alias.val) return false;
@@ -441,7 +441,13 @@ bool vars_equal(const Var* var1, const Var* var2, bool check_base, bool semantic
 			if(uint64_t(var1->base) != uint64_t(var2->base)) return false;
 		}
 	}
-	if(var1->base_type != var2->base_type) return false;
+	if(var1->base_type != var2->base_type){			
+		if(castable){
+			if(var1->base_type->mutual_parentclass(var2->base_type) == nullptr) return false;
+		}else{
+			return false;
+		}
+	} 
 	if(var1->length != var2->length) return false;
 
 	for(size_t i=0; i < var1->length; i++){
@@ -458,7 +464,7 @@ bool vars_equal(const Var* var1, const Var* var2, bool check_base, bool semantic
 }
 
 bool Var::operator==(const Var& other) const {
-	return vars_equal(this, &other, true, true);
+	return vars_equal(this, &other, true, true, false);
 };
 
 
