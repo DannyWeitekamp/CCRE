@@ -1,33 +1,22 @@
 {
-  "version": 1,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 22,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "release",
-      "displayName": "release",
-      "description": "Release build.",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/release",
-      "cacheVariables": {
-        "DCMAKE_BUILD_TYPE" : "Release",
-        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -g"
-      }
+    "version": 1,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 22,
+        "patch": 0
     },
-    {
-      "name": "debug",
-
-      "displayName": "debug",
-      "description": "Debug build.",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/debug",
-      "cacheVariables": {
-        "DCMAKE_BUILD_TYPE" : "Release",
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g"
-      }
-    }
-  ]
+    "configurePresets": [
+        {
+            "name": "debug",
+            "displayName": "Configure preset using toolchain file",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_TOOLCHAIN_FILE": "",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/${presetName}"
+            }
+        }
+    ]
 }

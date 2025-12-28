@@ -8,6 +8,7 @@
 #include <string_view>           // for string_view
 #include <vector>                // for vector
 #include "../include/cre_obj.h"  // for CRE_Obj
+#include "../include/types.h"    // for CRE_Type
 #include "../include/intern.h"   // for InternStr
 #include "../include/ref.h"      // for ref
 #include "item.h"                // for Item

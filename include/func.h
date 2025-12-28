@@ -18,6 +18,61 @@
 
 namespace cre {
 
+struct StrBlock {
+	std::string str;
+	std::string_view view;
+
+	StrBlock() : 
+		str(""), view("") {};
+
+	StrBlock(const char* _str) : 
+		str(""), view(_str) {};
+
+	StrBlock(const std::string& _str) : 
+		str(_str), view(str) {};
+
+	StrBlock(const std::string&& _str) noexcept : 
+		str(_str), view(str) {};
+
+	StrBlock(std::string_view view) : 
+		str(""), view(view) {};
+
+	inline void _copy_other(const StrBlock& other){ 
+		if(other.str.length() == 0){
+			str = "";
+			view = other.view;
+		}else{
+			str = other.str;
+			view = std::string_view(str);	
+		}
+	}
+
+	StrBlock(const StrBlock& other){
+		_copy_other(other);
+	}
+
+	StrBlock(const StrBlock&& other){
+		_copy_other(other);
+	}
+
+	StrBlock& operator=(const StrBlock& other){
+		_copy_other(other);
+		return *this;
+	}
+
+	StrBlock& operator=(const StrBlock&& other) noexcept {
+		_copy_other(other);
+		return *this;
+	}
+
+	// // Move Assignment To String So Can Cannibalize StrBlock resources 
+	// std::string& operator=(const StrBlock&& other) noexcept {
+
+	// }
+};
+
+std::ostream& operator<<(std::ostream& out, const StrBlock& sb);
+
 // Forward Declarations 
 struct Func;
 struct FuncRef;
@@ -378,60 +433,7 @@ void* copy_convert_arg(void* dest, T&& val, CRE_Type* type){
 
 }
 
-struct StrBlock {
-	std::string str;
-	std::string_view view;
 
-	StrBlock() : 
-		str(""), view("") {};
-
-	StrBlock(const char* _str) : 
-		str(""), view(_str) {};
-
-	StrBlock(const std::string& _str) : 
-		str(_str), view(str) {};
-
-	StrBlock(const std::string&& _str) noexcept : 
-		str(_str), view(str) {};
-
-	StrBlock(std::string_view view) : 
-		str(""), view(view) {};
-
-	inline void _copy_other(const StrBlock& other){ 
-		if(other.str.length() == 0){
-			str = "";
-			view = other.view;
-		}else{
-			str = other.str;
-			view = std::string_view(str);	
-		}
-	}
-
-	StrBlock(const StrBlock& other){
-		_copy_other(other);
-	}
-
-	StrBlock(const StrBlock&& other){
-		_copy_other(other);
-	}
-
-	StrBlock& operator=(const StrBlock& other){
-		_copy_other(other);
-		return *this;
-	}
-
-	StrBlock& operator=(const StrBlock&& other) noexcept {
-		_copy_other(other);
-		return *this;
-	}
-
-	// // Move Assignment To String So Can Cannibalize StrBlock resources 
-	// std::string& operator=(const StrBlock&& other) noexcept {
-
-	// }
-};
-
-std::ostream& operator<<(std::ostream& out, const StrBlock& sb);
 
 
 

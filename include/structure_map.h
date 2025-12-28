@@ -10,6 +10,7 @@
 #include <unsupported/Eigen/CXX11/Tensor>
 #include "../include/logic.h"
 #include "../include/var_inds.h" // for VarInds
+#include "types.h"
 
 // template<typename T>
 // using RMatrix = Eigen::Matrix<T, Eigen::RowMajor>;
@@ -132,7 +133,16 @@ struct SM_ConjPair {
     {};
 };
 
-using VarPairWeightsType = Eigen::Tensor<float, 2, Eigen::RowMajor>;
+struct SM_VarPair {
+    CRE_Type* mutual_type;
+    float weight;
+
+    SM_VarPair(CRE_Type* mutual_type = nullptr, float weight = -1.0f):
+        mutual_type(mutual_type), weight(weight)
+    {};
+};
+
+using VarPairMatrix = Eigen::Tensor<SM_VarPair, 2, Eigen::RowMajor>;
 
 struct SM_MapCandSet{
     size_t N; // The number of variables in l_a
@@ -141,17 +151,17 @@ struct SM_MapCandSet{
     std::vector<Item> items_b; // The conjunct-like items in l_b
     // The structure weights of mapping variable i in l_a to variable j in l_b.
     //   negative weights are used to mask out invalid variable mappings.
-    VarPairWeightsType var_pair_weights; 
+    VarPairMatrix var_pairs; 
     std::vector<SM_ConjPair> conj_pairs; // The conjunct pairs
     
 
     SM_MapCandSet(size_t N, size_t M,
                 const std::vector<Item>& items_a,
                 const std::vector<Item>& items_b,
-                const VarPairWeightsType& var_pair_weights,
+                const VarPairMatrix& var_pairs,
                 const std::vector<SM_ConjPair>& conj_pairs):
         N(N), M(M), items_a(items_a), items_b(items_b),  
-        var_pair_weights(var_pair_weights), conj_pairs(conj_pairs)
+        var_pairs(var_pairs), conj_pairs(conj_pairs)
     {};
 };
 

@@ -62,7 +62,7 @@ public:
     }
 
     /// Copy a weak reference, increases the reference count
-    wref(const wref &r) : m_ptr(r.control_block) {
+    wref(const wref &r) : m_ptr(r.get_cb()) {
         // std::cout << "copy from ref" << std::endl;
         if(m_ptr) m_ptr->inc_wref();
     }

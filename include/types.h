@@ -4,7 +4,7 @@
 #include "../include/t_ids.h"
 #include "../include/hash.h"
 #include "../include/cre_obj.h"
-// #include "../include/item.h"
+#include "../include/item.h"
 
 #include <iostream>
 #include <string>
@@ -22,7 +22,7 @@ namespace cre {
 
 // Forward declarations
 struct CRE_Context;
-struct Item;
+// struct Item;
 struct FactType;
 
 template <class ... Ts>

@@ -666,7 +666,7 @@ void Func::set_arg(size_t i, const Item& val){
             	// 	throw std::invalid_argument("Var's head_type doesn't match composing CREFunc's argument type.");
         		// }
 				// cout << "VAR: " << var->to_string() << ", head_type=" << head_info.base_type->to_string() << ", var->head_type=" << var->head_type->to_string() << endl;
-        		if(!var->head_type->get_t_id() == T_ID_UNDEF &&
+        		if(var->head_type->get_t_id() != T_ID_UNDEF &&
 				   !cast_allowed(var->head_type, head_info.base_type)){
 				   cout << "BAD ARG: " << var->to_string() << ", " << head_info.base_type->to_string() << ", " << var->head_type->to_string() << endl;
         		   throw_bad_arg(i, var, head_info.base_type, var->head_type, false);
@@ -696,13 +696,13 @@ void Func::set_arg(size_t i, const Item& val){
         		break;
         	case ARGINFO_FUNC:
         	{
-				Func* func;
+				Func* func = nullptr;
 				if(val.get_t_id() == T_ID_LITERAL){
 					Literal* lit = val._as<Literal*>();
 					if(!lit->is_func()){
 						throw std::invalid_argument(fmt::format("Cannot compose non-Func literal: {}", lit->to_string()));
 					}
-					Func* func = (Func*) lit->obj.get();
+					func = (Func*) lit->obj.get();
 					if(lit->negated){
 						func = NotFunc->compose(func);
 					}

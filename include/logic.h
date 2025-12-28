@@ -108,12 +108,12 @@ struct Logic : public CRE_Obj {
     void _finalize();
     
     ref<Logic> _masked_copy(
-        std::vector<uint8_t>& var_mask,
+        std::vector<ref<Var>>& new_vars,
         std::vector<std::vector<uint8_t>>& item_masks, 
         size_t& mask_ind, AllocBuffer* alloc_buffer=nullptr);
 
     ref<Logic> masked_copy(
-        std::vector<uint8_t>& var_mask,
+        std::vector<ref<Var>>& new_vars,
         std::vector<std::vector<uint8_t>>& item_masks, 
         AllocBuffer* alloc_buffer=nullptr);
     ref<Logic> copy(AllocBuffer* alloc_buffer=nullptr);

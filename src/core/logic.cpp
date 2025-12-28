@@ -805,7 +805,7 @@ std::ostream& operator<<(std::ostream& out, ref<Logic> logic) {
 
 
 ref<Logic> Logic::_masked_copy(
-    std::vector<uint8_t>& var_mask,
+    std::vector<ref<Var>>& new_vars,
     std::vector<std::vector<uint8_t>>& item_masks, 
     size_t& mask_ind, AllocBuffer* alloc_buffer){
 
@@ -814,13 +814,13 @@ ref<Logic> Logic::_masked_copy(
     ref<Logic> copy = new_logic(kind, alloc_buffer);
     
     // Ensure that any variables that are not masked out are inserted into the copy.
-    for(size_t i=0; i<var_mask.size(); i++){
-        if(var_mask[i]){
-            copy->_insert_var(vars[i]);
+    for(size_t i=0; i<new_vars.size(); i++){
+        if(new_vars[i] != nullptr){
+            copy->_insert_var(new_vars[i]);
         }
-    }
+    }   
     // Just used for recursion.
-    std::vector<uint8_t> empty_var_mask = {};
+    std::vector<ref<Var>> empty_vars = {};
     
 
     // Traverse through items in standard order (depth-first) and apply each mask 
@@ -837,7 +837,7 @@ ref<Logic> Logic::_masked_copy(
                 Logic* sub_logic = mbr_item._as<Logic*>();
                 
                 ref<Logic> sub_copy = sub_logic->_masked_copy(
-                    empty_var_mask, item_masks, mask_ind, alloc_buffer
+                    empty_vars, item_masks, mask_ind, alloc_buffer
                 );
                 
                 // Can mask out any disjunct in a conjunct 
@@ -862,7 +862,7 @@ ref<Logic> Logic::_masked_copy(
                 Logic* sub_logic = mbr_item._as<Logic*>();
                 // cout << "START SUB COPY: " << sub_logic->to_string() << endl;
                 ref<Logic> sub_copy = sub_logic->_masked_copy(
-                    empty_var_mask, item_masks, mask_ind, alloc_buffer
+                    empty_vars, item_masks, mask_ind, alloc_buffer
                 );
                 // cout << "SUB LOGIC: " << sub_copy << endl;
 
@@ -890,19 +890,18 @@ ref<Logic> Logic::_masked_copy(
 }
 
 ref<Logic> Logic::masked_copy(
-    std::vector<uint8_t>& var_mask,
+    std::vector<ref<Var>>& new_vars,
     std::vector<std::vector<uint8_t>>& item_masks, 
     AllocBuffer* alloc_buffer){
     size_t mask_ind = 0;
-    return _masked_copy(var_mask, item_masks, mask_ind, alloc_buffer);
+    return _masked_copy(new_vars, item_masks, mask_ind, alloc_buffer);
 }
 
 ref<Logic> Logic::copy(
     AllocBuffer* alloc_buffer){
-    auto full_var_mask = std::vector<uint8_t>(vars.size(), 1);
     auto empty_item_masks = std::vector<std::vector<uint8_t>>();
     size_t mask_ind = 0;
-    return _masked_copy(full_var_mask, empty_item_masks, mask_ind, alloc_buffer);
+    return _masked_copy(this->vars, empty_item_masks, mask_ind, alloc_buffer);
 }
 
 } // NAMESPACE_END(cre)

@@ -11,7 +11,7 @@
 #include "../include/t_ids.h"
 #include "../include/ref.h"
 #include "../include/wref.h"
-#include "../include/types.h"
+// #include "../include/types.h"
 
 namespace cre {
 
@@ -25,6 +25,7 @@ class CRE_Obj;
 struct ControlBlock;
 struct CRE_Type;
 struct InternStr;
+struct NoneType;
 
 // enum class ValueKind : uint8_t {
 const uint8_t VALUE =      uint8_t(0);

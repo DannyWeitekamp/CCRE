@@ -7,13 +7,14 @@
 #include "../external/unordered_dense.h"
 #include "../include/ref.h"
 #include "../include/wref.h"
+#include "../include/item.h"
 
 namespace cre {
 
 // NOTE: Do not import types.h here
 
 // Forward Declarations
-struct Item;
+// struct Item;
 struct Member;
 class Fact;
 struct Var;
