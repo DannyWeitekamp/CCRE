@@ -124,6 +124,42 @@ uint16_t Literal::eval_t_id() const {
 	return eval_type()->get_t_id();
 }
 
+ref<Literal> Literal::copy(std::vector<ref<Var>>& new_vars, AllocBuffer* alloc_buffer){
+	bool is_func = kind == LIT_KIND_FUNC || kind == LIT_KIND_EQ;
+	bool is_fact = kind == LIT_KIND_FACT;
+	bool is_var = kind == LIT_KIND_VAR;
+
+
+    ref<CRE_Obj> new_obj = nullptr;
+	if(is_func){
+		Func* func = (Func*) obj.get();
+		Item* args = (Item*) alloca(func->n_args*sizeof(Item));
+		size_t i=0;
+		for(; i < new_vars.size(); ++i){
+			args[i] = Item(new_vars[i]);
+		}
+		for(; i < func->n_args; ++i){
+			auto head_range = func->head_ranges[i];
+			auto hi = func->head_infos[head_range.start];
+			args[i] = Item(hi.var_ptr->base);
+		}
+		new_obj = func->compose_args(args, func->n_args, alloc_buffer);
+	}else if(is_fact){
+		// Fact* fact = (Fact*) obj.get();
+		// new_obj = fact->copy(new_vars, alloc_buffer);
+		throw std::runtime_error("Not implemented.");
+	}else if(is_var){
+		throw std::runtime_error("Not implemented.");
+	}
+
+	return new_literal(new_obj, negated, alloc_buffer);
+}
+
+ref<Literal> Literal::copy(AllocBuffer* alloc_buffer){
+	auto empty_vars = std::vector<ref<Var>>();
+	return copy(empty_vars, alloc_buffer);
+}
+
 bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic, bool castable){
 	if(lit1->kind != lit2->kind) return false;
 	if(lit1->negated != lit2->negated) return false;

@@ -204,10 +204,10 @@ FuncRef define_func(
 
 // -------------------------------------------------------------
 // copy()
-FuncRef Func::copy_shallow(){
+FuncRef Func::copy_shallow(AllocBuffer* alloc_buffer){
 	ref<Func> nf = new_func(
 		stack_call_func, stack_call_func2, ptr_to_item_func,
-		call_recursive_fc, n_root_args, origin_data);
+		call_recursive_fc, n_root_args, origin_data, alloc_buffer);
 
 	// nf->dtor = &Func_dtor;
 
@@ -249,12 +249,12 @@ FuncRef Func::copy_shallow(){
 	return (FuncRef) nf;
 }
 
-FuncRef Func::copy_deep(){
+FuncRef Func::copy_deep(AllocBuffer* alloc_buffer){
 
 
 	ref<Func> cpy;
 	if(depth <= 1){
-		cpy = copy_shallow();
+		cpy = copy_shallow(alloc_buffer);
 		// cout << "SHALLOW COPY: " << uint64_t(this) << ", " << uint64_t(cpy.get()) << endl;
 		return (FuncRef) cpy;
 	}
@@ -287,7 +287,7 @@ FuncRef Func::copy_deep(){
 		// When past end arg of deepest func, copy it. Then pop prev frame from stack.
 		
 		while(i >= cf->root_arg_infos.size()){
-	        cpy = cf->copy_shallow();
+	        cpy = cf->copy_shallow(alloc_buffer);
 	    	size_t j = 0;
 	    	for(size_t k=0; k < cpy->root_arg_infos.size(); ++k){
 	    		ArgInfo& inf = cpy->root_arg_infos[k];
@@ -1940,7 +1940,72 @@ bool Func::operator==(const Func& other) const {
 	return funcs_equal((Func*) this, (Func*) &other, false);
 }
 
+
+FuncRef Func::compose_args(std::vector<Item>& args, AllocBuffer* alloc_buffer){
+    return compose_args(args.data(), args.size(), alloc_buffer);
+}
+
+FuncRef Func::compose_args(Item* args, size_t _n_args, AllocBuffer* alloc_buffer){
+    FuncRef cf = this->copy_deep(alloc_buffer);
+    for(size_t i=0; i < _n_args; ++i){
+        cf->set_arg(i, args[i]);
+    }
+    cf->reinitialize();
+    return cf;
+}
+
+
+Item Func::call_args(Item* args, size_t _n_args){
+	void** head_val_ptrs = (void**) alloca(sizeof(void**)*head_infos.size());
+	uint8_t* stack = (uint8_t*) alloca(outer_stack_size);
+	uint8_t* arg_head = stack;
+
+	int64_t ret = 0;
+	void* ret_ptr = (void*) (stack+outer_stack_size-return_type->byte_width);
+
+	if(_n_args != n_args){
+	  	throw_bad_n_args(_n_args);
+	}
+
+	for(size_t i=0; i < _n_args; ++i){
+		auto h_start = head_ranges[i].start;
+		auto h_end = head_ranges[i].end;
+
+    	for(size_t head_ind=h_start; head_ind<h_end; ++head_ind){
+
+    		const HeadInfo& hi = head_infos[head_ind];
+    		void* head_val_ptr = resolve_heads(arg_head, args, hi);
+
+	    	if(head_val_ptr == nullptr){ [[unlikely]]
+	    		throw_bad_arg(i, args, hi.base_type);	
+	    	}
+			
+			head_val_ptrs[head_ind] = head_val_ptr;
+			arg_head += hi.base_type->byte_width;	    	
+		}
+    }
+
+  	call_recursive_fc(this, ret_ptr, head_val_ptrs);
+
+    // Cleanup any head values
+	if(has_outer_cleanup){
+		for(size_t head_ind=0; head_ind < head_infos.size(); ++head_ind){
+			const HeadInfo& hi = head_infos[head_ind];
+			if(hi.head_type->dynamic_dtor != nullptr){
+				// cout << ":::" << uint64_t(hi.head_type->dynamic_dtor) << endl;
+				hi.head_type->dynamic_dtor(head_val_ptrs[head_ind]);
+			}
+		}	
+	}
+  
+  return ptr_to_item_func(ret_ptr);
+}
+
+Item Func::call_args(std::vector<Item>& args){
+    return call_args(args.data(), args.size());
+}
 // Example: 
+
 // a + (d + c + 1) + c 
 // sig: f(a,d,c,e)
 // bc : [a][d][c][1] [add3(@1, @2, @3)] [add3(@0, @4, @2)]

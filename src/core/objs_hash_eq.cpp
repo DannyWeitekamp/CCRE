@@ -46,5 +46,42 @@ bool CRE_Objs_equal(const CRE_Obj* a, const CRE_Obj* b, bool semantic, bool cast
     return false;
 }
 
+bool CRE_Objs_less_than(const CRE_Obj* a, const CRE_Obj* b, bool semantic, bool castable){
+    if(a == b) return false;
+    
+    uint16_t a_t_id = a->get_t_id();
+    uint16_t b_t_id = b->get_t_id();
+
+    if(a_t_id != b_t_id){
+        return a_t_id < b_t_id;
+    }
+
+    throw std::runtime_error("Not Implemented for type: " + std::to_string(a_t_id));
+    return false;
+
+    // switch(a_t_id){
+    // case T_ID_FACT:
+    //     return facts_less_than((Fact*) a, (Fact*) b, semantic);
+    // case T_ID_FACTSET:
+    //     // TODO
+    //     return a == b;
+    //     // return *((FactSet*) a) == *((FactSet*) b);
+    // case T_ID_VAR:
+    //     return vars_less_than((Var*) a, (Var*) b, true, semantic, castable);
+    // case T_ID_FUNC:
+    //     return funcs_less_than((Func*) a, (Func*) b, semantic, castable);
+    // case T_ID_LITERAL:
+    //     return literals_less_than((Literal*) a, (Literal*) b, semantic, castable);
+    // case T_ID_LOGIC:
+    //     // TODO
+    //     return a < b;
+    // case T_ID_RULE:
+    //     // TODO
+    //     return a < b;
+    //     // return *((Rule*) a) == *((Rule*) b);
+    // }
+    // return false;
+}
+
 } // NAMESPACE_END(cre)
 

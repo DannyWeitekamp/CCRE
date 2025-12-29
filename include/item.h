@@ -193,6 +193,8 @@ public:
         return operator==(Item(_other));
     }
 
+    bool operator<(const Item& other) const;
+
     //     // if(t_id == T_ID_UNDEF && other_t_id == T_ID_UNDEF){
     //     //     return true;
     //     // }else if(t_id == T_ID_NONE && other_t_id == T_ID_NONE){
@@ -827,6 +829,7 @@ public:
 };
 
 bool items_equal(const Item& item1, const Item& item2, bool semantic=true, bool castable=false);
+bool items_less_than(const Item& item1, const Item& item2, bool semantic=true, bool castable=false);
 
 // // Same as Item, but gaurenteed to be interned
 // struct InternItem : public Item {

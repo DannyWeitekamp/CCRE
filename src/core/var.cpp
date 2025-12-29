@@ -395,12 +395,12 @@ bool vars_semantically_equal(const Var* var1, const Var* var2){
 	
 	// Don't use full item equality because aliases of vars are always interned.
 	if(var1->alias.val == var2->alias.val && var1->alias.get_t_id() == var2->alias.get_t_id()){
-		if(!vars_same_type_kind(var1, var2)){
-			throw std::domain_error(
-				fmt::format("Different types or kinds for Var instances with same alias in expression. "
-						    "Cannot reconcile {} and {}.", var1->repr(), var2->repr())
-			);
-		}
+		// if(!vars_same_type_kind(var1, var2)){
+		// 	throw std::domain_error(
+		// 		fmt::format("Different types or kinds for Var instances with same alias in expression. "
+		// 				    "Cannot reconcile {} and {}.", var1->repr(), var2->repr())
+		// 	);
+		// }
 		return true;
 	}
 	return false;
@@ -418,12 +418,12 @@ bool SemanticVarPtr::operator<(const SemanticVarPtr& other) const{
 	if(uint64_t(var_ptr) == uint64_t(other.var_ptr)) return false;
 
 	if(uint64_t(var_ptr->alias.val) == uint64_t(other.var_ptr->alias.val)){
-		if(!vars_same_type_kind(var_ptr, other.var_ptr)){
-			throw std::domain_error(
-				fmt::format("Different types or kinds for Var instances with same alias in expression. "
-							"Cannot reconcile {} and {}.", var_ptr->repr(), other.var_ptr->repr())
-			);
-		}
+		// if(!vars_same_type_kind(var_ptr, other.var_ptr)){
+		// 	throw std::domain_error(
+		// 		fmt::format("Different types or kinds for Var instances with same alias in expression. "
+		// 					"Cannot reconcile {} and {}.", var_ptr->repr(), other.var_ptr->repr())
+		// 	);
+		// }
 		if(var_ptr->alias.get_t_id() == T_ID_UNDEF || other.var_ptr->alias.get_t_id() == T_ID_UNDEF){
 			return uint64_t(var_ptr) < uint64_t(other.var_ptr);
 		}

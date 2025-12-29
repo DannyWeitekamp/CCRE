@@ -650,8 +650,8 @@ struct Func : CRE_Obj{
 
 	std::string bytecode_to_string();
 
-	FuncRef copy_shallow();
-	FuncRef copy_deep();
+	FuncRef copy_shallow(AllocBuffer* alloc_buffer=nullptr);
+	FuncRef copy_deep(AllocBuffer* alloc_buffer=nullptr);
 	
 	void reinitialize();
 
@@ -727,12 +727,17 @@ struct Func : CRE_Obj{
 	// 		  " when passing argument " << val << " to i=" << i << " of " << this << endl;
 	// 	throw std::runtime_error(ss.str());
 	// }
-
+	FuncRef compose_args(Item* args, size_t n_args, AllocBuffer* alloc_buffer=nullptr);
+	FuncRef compose_args(std::vector<Item>& args, AllocBuffer* alloc_buffer=nullptr);
 	template <class ... Ts>
 	FuncRef compose(Ts && ... args);
 
+	Item call_args(Item* args, size_t n_args);
+	Item call_args(std::vector<Item>& args);
 	template <class ... Ts>
 	Item call(Ts&& ... args);
+	
+	
 
 	template <class ... Ts>
 	inline auto operator()(Ts&& ... args);
@@ -888,7 +893,7 @@ Item Func::call(Ts&& ... args){
   call_recursive_fc(this, ret_ptr, head_val_ptrs);
 
   // Cleanup any head values
-  cout << "has_outer_cleanup: " << has_outer_cleanup << endl;
+//   cout << "has_outer_cleanup: " << has_outer_cleanup << endl;
   if(has_outer_cleanup){
   	for(size_t head_ind=0; head_ind < head_infos.size(); ++head_ind){
 	  	const HeadInfo& hi = head_infos[head_ind];

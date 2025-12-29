@@ -41,11 +41,22 @@ void Logic::_insert_const(const Item& arg) {
     items.push_back(arg);
     // lit_semantics.push_back(LiteralSemantics(LIT_SEMANTICS_OR_CONSTS, s, s));
     lit_semantics.push_back(LiteralSemantics());
-    
 }
 
 void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
     // cout << "INSERT VAR: " << var->get_alias_str() << ", PART OF ITEM: " << part_of_item << endl;
+    cout << "INSERT VAR: " << var->get_alias_str() << ", BASE TYPE: " << var->base_type->to_string() << endl;
+
+    // Ensure that the var has a unique alias
+    if(var->alias.is_undef() && ext_locate_var_alias != nullptr){
+        ext_locate_var_alias(var);
+        // cout << "EXT LOC VAR ALIAS: " << var->get_alias_str() << endl;
+    }
+    if(var->alias.is_undef()){
+        find_unique_var_alias(var, var_map);
+        // cout << "FIND UNIQUE VAR ALIAS: " << var->get_alias_str() << endl;
+    }
+
     auto it = var_map.find(var);
     if(it == var_map.end()) {
         // cout << "  NOT IN MAP" << endl;
@@ -55,17 +66,6 @@ void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
         if(part_of_item){
             info.item_inds.push_back(items.size());
         }
-
-        // Ensure that the var has a unique alias
-        if(var->alias.is_undef() && ext_locate_var_alias != nullptr){
-            ext_locate_var_alias(var);
-            // cout << "EXT LOC VAR ALIAS: " << var->get_alias_str() << endl;
-        }
-        if(var->alias.is_undef()){
-            find_unique_var_alias(var, var_map);
-            // cout << "FIND UNIQUE VAR ALIAS: " << var->get_alias_str() << endl;
-        }
-
         // Insert the var into the var_map
         auto [_it, inserted] = var_map.insert({var, info});
         var_map_iters.push_back(_it);
@@ -73,15 +73,33 @@ void Logic::_insert_var(Var* var, bool part_of_item, uint8_t kind) {
         
     }else{
         // cout << "  IN MAP" << endl;
+        Var* prev_var = it->first.get();
+        if(!vars_same_type_kind(prev_var, var)){
+            // If the new var is a subclass of the previous var, then 
+            //   replace the previous var with the new var
+            if(var->base_type->issubclass(prev_var->base_type)){
+                // it->first = var;
+                it->second.var = var;
+
+            // Otherwise we cannot reconcile the two vars, so throw an error.
+            }else{
+                throw std::domain_error(
+                fmt::format("Different types or kinds for Var instances with same alias in expression. "
+                            "Cannot reconcile {} and {}.", var->repr(), prev_var->repr())
+                );
+            }
+        }
+
         if(part_of_item){
             VarInfo& info = it->second;
             info.item_inds.push_back(items.size());
         }
+        
     }
 }
 
 void Logic::_insert_literal(ref<Literal> lit, const LiteralSemantics& semantics) {
-    // cout << "INSERT LITERAL:" << lit << endl;
+    cout << "INSERT LITERAL:" << lit << endl;
     if(lit->vars.size() == 0){
         _insert_const(Item(lit));
         return;
@@ -164,6 +182,7 @@ ref<Logic> fact_to_conjunct(Fact* fact, Var* var, AllocBuffer* alloc_buffer) {
         conjuct->_insert_literal(mbr_lit, LiteralSemantics(LIT_SEMANTICS_FACT, 0, L - 1));
     }
     conjuct->_finalize();
+    
     return conjuct;
 }
 
@@ -314,6 +333,7 @@ void Logic::_finalize() {
 
     // Assign the var_inds of each literal and sum up total_weights
     for(Item& item : items){
+        // cout << "ITEM: " << item << endl;
         if(item.get_t_id() == T_ID_LITERAL){
             Literal* lit = item._as<Literal*>();
             item_structure_weight += lit->structure_weight;
@@ -342,6 +362,8 @@ void Logic::_finalize() {
             item_match_weight += logic->item_match_weight;
         }
     }
+    cout << "ITEMS: " << items.size() << endl;
+    cout << "SELF: " << this->to_string() << endl;
 
 
     // cout << "FSIZE:" << vars.size() << "MSIZE:" << var_map.size() << endl;
@@ -682,7 +704,6 @@ std::string Logic::standard_str(
     }
 
     for(size_t i=0; i<vars.size(); i++){
-
         std::stringstream ss;
         Var* v = vars[i];
         // cout << "VAR: " << v->get_alias_str() << endl;
@@ -710,12 +731,16 @@ std::string Logic::standard_str(
         }
 
         bool first_is_fact_semantics = false;
+        cout << "VAR: " << v->get_alias_str() << " INFO ITEM INDS: " << info.item_inds.size() << endl;
         for(size_t j=0; j<info.item_inds.size(); j++){
             
             size_t ind = info.item_inds[j];
             Item& item = items[ind];
+
+            
             
             bool has_var_prereqs = _all_vars_covered(item, var_covered);
+            cout << "ITEM: " << item << " COVERED: " << item_covered[ind] << " has_var_prereqs:" << has_var_prereqs << " inner_covers_var:" << inner_covers_var << endl;
             if(!item_covered[ind] && (has_var_prereqs || inner_covers_var)){
                 // bool item_is_logic = item.get_t_id() == T_ID_LOGIC;
                 // bool item_is_multiline = item_is_logic && item._as<Logic*>()->vars.size() > 1;

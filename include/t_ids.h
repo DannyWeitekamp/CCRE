@@ -18,7 +18,8 @@ const uint16_t T_ID_VAR =         10;
 const uint16_t T_ID_FUNC =        11;
 const uint16_t T_ID_LITERAL =     12;
 const uint16_t T_ID_LOGIC =       13;
-const uint16_t T_ID_RULE =        14;
+const uint16_t T_ID_MAPPING =     14;
+const uint16_t T_ID_RULE =        15;
 
 
 inline bool t_id_is_primitive(uint16_t t_id){

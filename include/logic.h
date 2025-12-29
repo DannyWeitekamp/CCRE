@@ -57,7 +57,7 @@ struct LiteralSemantics {
 
 
 
-typedef std::map<SemanticVarPtr, VarInfo> VarMapType;
+using VarMapType = std::map<SemanticVarPtr, VarInfo>;
 
 struct Logic : public CRE_Obj {
 	static constexpr uint16_t T_ID = T_ID_LOGIC;

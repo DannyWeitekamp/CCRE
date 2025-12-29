@@ -43,6 +43,9 @@ struct Literal : public CRE_Obj{
 	uint16_t eval_t_id() const;
 
 	bool operator==(const Literal& other) const;
+
+	ref<Literal> copy(std::vector<ref<Var>>& new_vars, AllocBuffer* alloc_buffer=nullptr);
+	ref<Literal> copy(AllocBuffer* alloc_buffer=nullptr);
 };
 
 

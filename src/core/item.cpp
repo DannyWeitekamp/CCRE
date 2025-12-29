@@ -166,6 +166,41 @@ Item::Item(std::string_view arg) :
     return items_equal(*this, other, true, false);
  }
 
+ bool items_less_than(const Item& item1, const Item& item2, bool semantic, bool castable){ 
+    uint16_t t_id1 = item1.get_t_id();
+    uint16_t t_id2 = item2.get_t_id();
+
+    // This should handle Undef, None, IternStr
+    if(item1.val == item2.val){
+        return false;
+    }else{
+        if(t_id_is_numerical(t_id1) && t_id_is_numerical(t_id2)){
+            if(t_id1 == T_ID_FLOAT || t_id2 == T_ID_FLOAT){
+                return item1.as<double>() < item2.as<double>();
+            }else{
+                return item1.val < item2.val;
+            }
+        }else if(t_id1 == T_ID_STR && t_id2 == T_ID_STR){
+            // TODO: Can't tell if helps without profiling
+            // if(item1.is_interned() && item2.is_interned() && item1.val == item2.val){
+            //     return false;
+            // }
+            return item1.as<std::string_view>() < item2.as<std::string_view>();
+        }else{
+            if(t_id1 != t_id2){
+                return t_id1 < t_id2;
+            }
+            // Defined in seperate translation unit
+            return CRE_Objs_less_than(item1._as<CRE_Obj*>(), item2._as<CRE_Obj*>(), semantic, castable);                
+        }
+    }
+    return false;
+ }
+
+ bool Item::operator<(const Item& other) const {
+    return items_less_than(*this, other, true, false);
+ }
+
 //  bool InternItem::operator==(const InternItem& other) const{
 //     uint16_t t_id = get_t_id();
 //     uint16_t other_t_id = other.get_t_id();
