@@ -133,33 +133,30 @@ ref<Literal> Literal::copy(Mapping* var_mapping, AllocBuffer* alloc_buffer){
 	if(is_func){
 		Func* func = (Func*) obj.get();
 		Item* args = (Item*) alloca(func->n_args*sizeof(Item));
-		// std::vector<Item> args = {};
-
-		// size_t i=0;
-		// if(var_mapping != nullptr){
-		// 	cout << "VAR MAPPING: " << uint64_t(var_mapping) << endl;
-			
-		// 	for(; i < var_mapping->size(); ++i){
-
-		// 		// new (args + i) Item(var_mapping->get(i));
-		// 		args.push_back(var_mapping->get(i));
-		// 	}
-		// }
+		bool did_substitute = false;
 		for(size_t i=0; i < func->n_args; ++i){
 			auto head_range = func->head_ranges[i];
-			auto hi = func->head_infos[head_range.start];
+			Var* var_i = func->head_infos[head_range.start].var_ptr->base;
 
-			Item mapped_val = var_mapping->get(hi.var_ptr->base->alias);
+			Item mapped_val = var_mapping->get(var_i->alias);
 			// cout << "BASE: " << hi.var_ptr->base << " ARG: " << arg << endl;
 			if(mapped_val.is_undef()){
-				new (args + i) Item(var_mapping->get(i));
-				// args.push_back(Item(hi.var_ptr->base));
+				new (args + i) Item(var_i);
 			}else{
+				if(mapped_val.get_t_id() == T_ID_VAR &&
+				   uint64_t(mapped_val._as<Var*>()) != uint64_t(var_i)){
+					did_substitute = true;
+				}
 				new (args + i) Item(mapped_val);
-				// args.push_back(arg);
 			}
 		}
-		new_obj = func->compose_args(args, func->n_args, alloc_buffer);
+		
+		// If any substitution was made then make a copy of the underlying func
+		if(did_substitute){
+			new_obj = func->compose_args(args, func->n_args, alloc_buffer);
+		}else{
+			new_obj = ref<CRE_Obj>(func);
+		}
 		// new_obj = func->compose_args(args, alloc_buffer);
 	}else if(is_fact){
 		// Fact* fact = (Fact*) obj.get();
