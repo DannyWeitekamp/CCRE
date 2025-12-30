@@ -2,6 +2,7 @@ build/
 debug/
 release/
 .vscode
+.cache
 # CMake build directory
 build/
 cmake-build-debug/
