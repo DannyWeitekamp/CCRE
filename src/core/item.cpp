@@ -9,6 +9,7 @@
 #include "../include/literal.h"
 #include "../include/logic.h"
 #include "../include/objs_hash_eq.h"
+#include "../include/mapping.h"
 #include <bit>
 #include <sstream>
 #include <functional>

@@ -139,6 +139,8 @@ def test_antiunify_fact_types():
         inherits_from=Animal
     )
 
+    assert(Cat.is_subtype_of(Animal))
+
     
     c1,c2,c3 = Var(Cat), Var(Cat), Var(Cat)
     f1,f2,f3 = Var(Fish), Var(Fish), Var(Fish)
@@ -160,5 +162,5 @@ def test_antiunify_fact_types():
     # assert isclose(score, 1.0)
 
 if __name__ == "__main__":
-    # test_anti_unify()
+    test_anti_unify()
     test_antiunify_fact_types()

@@ -233,13 +233,13 @@ std::vector<CRE_Type*> _concat_sub_types(FactType* inherits_from){
 }
 
 
-bool CRE_Type::issubclass(const CRE_Type* type) const{
+bool CRE_Type::is_subtype_of(const CRE_Type* type) const{
     return std::find(sub_types.begin(), sub_types.end(), type) != sub_types.end();
 }
 
 bool CRE_Type::isa(const CRE_Type* type) const{
     if(this == type) return true;
-    return issubclass(type);
+    return is_subtype_of(type);
 }
 
 FactType::FactType(std::string_view _name, 

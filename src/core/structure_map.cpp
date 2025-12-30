@@ -26,7 +26,7 @@ namespace cre {
 
 struct FunctionallyEqual {
     bool operator()(const Item& a, const Item& b) const {
-        cout << "FunctionallyEqual: " << a << " , " << b << " Result: " << items_equal(a, b, false, true) << endl;
+        // cout << "FunctionallyEqual: " << a << " , " << b << " Result: " << items_equal(a, b, false, true) << endl;
         return items_equal(a, b, false, true);
     }
 };    
@@ -473,7 +473,7 @@ struct MapProblem {
         score_bound = score_remap(fixed_inds, cum_score, var_pairs);
 
         // cout << "fixed_inds: " << fixed_inds << endl;
-        cout << "score_bound: " << score_bound << endl;
+        // cout << "score_bound: " << score_bound << endl;
         
         // Case: Abandon if the upper bound on the current assignment's 
         //  score is less than the current best score. 
@@ -810,7 +810,7 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
 std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& conj_item_b){
     auto map_pairs = std::vector<SM_MappablePair>();
 
-    cout << "-- MAKE MAPPABLE PAIRS --" << endl;
+    // cout << "-- MAKE MAPPABLE PAIRS --" << endl;
 
     // Literals Case: The conjunction-like item is just a literal (probably in an OR)
     if(conj_item_b.get_t_id() == T_ID_LITERAL){
@@ -818,7 +818,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
         auto it = item_map_a.find(item_b);
         if(it != item_map_a.end()){
             for(auto [index_a, item_a] : it->second){
-                cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
+                // cout << index_a << " -> " << 0 << " : " << item_a << "," << item_b << endl;
                 map_pairs.push_back(_items_to_mappable_pair(index_a, 0, item_a, item_b));
             }
         }
@@ -833,7 +833,7 @@ std::vector<SM_MappablePair> make_mappable_pairs(ItemMapType& item_map_a, Item& 
                 auto it = item_map_a.find(item_b);
                 if(it != item_map_a.end()){
                     for(auto [index_a, item_a] : it->second){
-                        cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
+                        // cout << index_a << " -> " << index_b << " : " << item_a << "," << item_b << endl;
                         map_pairs.push_back(_items_to_mappable_pair(index_a, index_b, item_a, item_b));
                     }
                 }
@@ -941,6 +941,8 @@ ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b,
 
     float score;
     ref<Logic> output = l_a->masked_copy(new_vars_a, item_masks_a);
+
+    // cout << "OUTPUT: " << output->to_string() << endl;
 
     float total_out = output->get_structure_weight();
 

@@ -1,7 +1,7 @@
 import os, sys, glob, importlib.util
 
 # Monkey-Patch import cre for testing purposes
-build_path = os.path.join(os.path.split(__file__)[0], "../../debug/")
+build_path = os.path.join(os.path.split(__file__)[0], "../../release/")
 ext_path = glob.glob(os.path.normpath(build_path) + "/cre.*")[0]
 spec = importlib.util.spec_from_file_location("cre", ext_path)
 

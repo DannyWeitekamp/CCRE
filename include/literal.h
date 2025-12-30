@@ -9,6 +9,7 @@
 #include "../include/var.h"
 #include "../include/func.h"
 #include "../include/var_inds.h" // for VarInds
+#include "../include/mapping.h"
 
 namespace cre {
 
@@ -44,7 +45,7 @@ struct Literal : public CRE_Obj{
 
 	bool operator==(const Literal& other) const;
 
-	ref<Literal> copy(std::vector<ref<Var>>& new_vars, AllocBuffer* alloc_buffer=nullptr);
+	ref<Literal> copy(Mapping* var_mapping, AllocBuffer* alloc_buffer=nullptr);
 	ref<Literal> copy(AllocBuffer* alloc_buffer=nullptr);
 };
 

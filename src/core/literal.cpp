@@ -124,40 +124,60 @@ uint16_t Literal::eval_t_id() const {
 	return eval_type()->get_t_id();
 }
 
-ref<Literal> Literal::copy(std::vector<ref<Var>>& new_vars, AllocBuffer* alloc_buffer){
+ref<Literal> Literal::copy(Mapping* var_mapping, AllocBuffer* alloc_buffer){
 	bool is_func = kind == LIT_KIND_FUNC || kind == LIT_KIND_EQ;
 	bool is_fact = kind == LIT_KIND_FACT;
 	bool is_var = kind == LIT_KIND_VAR;
-
 
     ref<CRE_Obj> new_obj = nullptr;
 	if(is_func){
 		Func* func = (Func*) obj.get();
 		Item* args = (Item*) alloca(func->n_args*sizeof(Item));
-		size_t i=0;
-		for(; i < new_vars.size(); ++i){
-			args[i] = Item(new_vars[i]);
-		}
-		for(; i < func->n_args; ++i){
+		// std::vector<Item> args = {};
+
+		// size_t i=0;
+		// if(var_mapping != nullptr){
+		// 	cout << "VAR MAPPING: " << uint64_t(var_mapping) << endl;
+			
+		// 	for(; i < var_mapping->size(); ++i){
+
+		// 		// new (args + i) Item(var_mapping->get(i));
+		// 		args.push_back(var_mapping->get(i));
+		// 	}
+		// }
+		for(size_t i=0; i < func->n_args; ++i){
 			auto head_range = func->head_ranges[i];
 			auto hi = func->head_infos[head_range.start];
-			args[i] = Item(hi.var_ptr->base);
+
+			Item mapped_val = var_mapping->get(hi.var_ptr->base->alias);
+			// cout << "BASE: " << hi.var_ptr->base << " ARG: " << arg << endl;
+			if(mapped_val.is_undef()){
+				new (args + i) Item(var_mapping->get(i));
+				// args.push_back(Item(hi.var_ptr->base));
+			}else{
+				new (args + i) Item(mapped_val);
+				// args.push_back(arg);
+			}
 		}
 		new_obj = func->compose_args(args, func->n_args, alloc_buffer);
+		// new_obj = func->compose_args(args, alloc_buffer);
 	}else if(is_fact){
 		// Fact* fact = (Fact*) obj.get();
 		// new_obj = fact->copy(new_vars, alloc_buffer);
-		throw std::runtime_error("Not implemented.");
+		throw std::runtime_error("Not implemented. Copy Literals of Fact type.");
 	}else if(is_var){
-		throw std::runtime_error("Not implemented.");
+		throw std::runtime_error("Not implemented. Copy Literals of Var type.");
 	}
 
-	return new_literal(new_obj, negated, alloc_buffer);
+	ref<Literal> new_lit = new_literal(new_obj, negated, alloc_buffer);
+
+	new_lit->structure_weight = structure_weight;
+	new_lit->match_weight = match_weight;
+	return new_lit;
 }
 
 ref<Literal> Literal::copy(AllocBuffer* alloc_buffer){
-	auto empty_vars = std::vector<ref<Var>>();
-	return copy(empty_vars, alloc_buffer);
+	return copy(nullptr, alloc_buffer);
 }
 
 bool literals_equal(const Literal* lit1, const Literal* lit2, bool semantic, bool castable){

@@ -140,8 +140,8 @@ void init_fact(nb::module_ & m){
     .def("isa", [](Fact* fact, nb::handle type){
         return fact->isa(Type_from_py(type));
     }, "type"_a)
-    .def("issubclass", [](Fact* fact, nb::handle type){
-        return fact->issubclass(Type_from_py(type));
+    .def("is_subtype_of", [](Fact* fact, nb::handle type){
+        return fact->is_subtype_of(Type_from_py(type));
     }, "type"_a)
     .def("__iter__",  [](Fact* fact) {
             return nb::make_iterator(nb::type<Fact>(), "iterator",

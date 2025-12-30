@@ -122,7 +122,7 @@ struct CRE_Type : CRE_Obj{
     std::string to_string();
 
     bool isa(const CRE_Type* obj) const;
-    bool issubclass(const CRE_Type* obj) const;
+    bool is_subtype_of(const CRE_Type* obj) const;
     CRE_Type* mutual_parentclass(const CRE_Type* obj) const;
 
     // ~CRE_Type();

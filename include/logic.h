@@ -12,6 +12,8 @@
 #include "../include/t_ids.h"    // for T_ID_CONDITIONS
 #include "../include/hash.h"   // for HashSet
 #include "../include/var_inds.h" // for VarInds
+#include "../include/mapping.h" // for Mapping
+#include <assert.h>
 
 // Forward declarations
 namespace cre {
@@ -26,17 +28,7 @@ namespace cre {
 const uint8_t CONDS_KIND_AND = 1;
 const uint8_t CONDS_KIND_OR = 2;
 
-struct VarInfo {
-    Var* var;
-    size_t pos=-1;
-    size_t kind_pos=-1;
-    size_t first_item=-1;
-    std::vector<size_t> item_inds = {};
-    uint8_t kind;
 
-    VarInfo(Var* var, uint8_t kind, size_t first_item) :
-        var(var), kind(kind), first_item(first_item) {}
-};
 
 const uint8_t LIT_SEMANTICS_REG = 1;
 const uint8_t LIT_SEMANTICS_FACT = 2;
@@ -54,10 +46,6 @@ struct LiteralSemantics {
 };
 
 
-
-
-
-using VarMapType = std::map<SemanticVarPtr, VarInfo>;
 
 struct Logic : public CRE_Obj {
 	static constexpr uint16_t T_ID = T_ID_LOGIC;

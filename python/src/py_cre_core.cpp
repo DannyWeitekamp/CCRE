@@ -283,8 +283,8 @@ void init_core(nb::module_& m) {
     .def("isa", [](CRE_Type* self, nb::handle type){
         return self->isa(Type_from_py(type));
     }, "type"_a)
-    .def("issubclass", [](CRE_Type* self, nb::handle type){
-        return self->issubclass(Type_from_py(type));
+    .def("is_subtype_of", [](CRE_Type* self, nb::handle type){
+        return self->is_subtype_of(Type_from_py(type));
     }, "type"_a)
     .def_ro("structure_weight", &CRE_Type::structure_weight)
     .def_ro("match_weight", &CRE_Type::match_weight)

@@ -350,8 +350,8 @@ public:
     return this->type->isa(type);
   }
 
-  inline bool issubclass(const CRE_Type* type) const{
-    return this->type->issubclass(type);
+  inline bool is_subtype_of(const CRE_Type* type) const{
+    return this->type->is_subtype_of(type);
   }
 };
 
