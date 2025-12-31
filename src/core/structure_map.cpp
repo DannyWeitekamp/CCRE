@@ -70,8 +70,8 @@ void _calc_remap_score_matrices(
     auto b_fixed_inds = std::vector<int16_t>(M, -2);
     for(size_t i = 0; i < a_fixed_inds.size(); i++){
         int16_t a_ind = a_fixed_inds[i];
-        if(a_ind != -2){
-            b_fixed_inds[a_ind] = i;
+        if(a_ind >= 0){
+            b_fixed_inds[a_ind] = i;            
         }
     }
 
@@ -345,7 +345,7 @@ struct MapProblem {
                float tolerance, bool drop_unconstr, bool drop_no_beta):
         alignment(Da, -2),
         fixed_inds(N, -2),
-        best_score(0.0f),
+        best_score(-1.0f),
         score_bound(0.0f),
         best_remap(nullptr),
         remaps({}),
@@ -395,7 +395,12 @@ struct MapProblem {
             uint16_t cnt = 0;
             uint16_t beta_cnt = 0;
             uint16_t nz_b_ind = -1;
+            bool any_valid_var = false;
             for(size_t b_ind = 0; b_ind < M; b_ind++){
+                if(var_pairs(a_ind, b_ind).weight < 0.0f){
+                    continue;
+                }
+                any_valid_var = true;
                 if(cum_score(a_ind, b_ind).ub_score != 0){
                     cnt++;
                     nz_b_ind = b_ind;
@@ -403,6 +408,10 @@ struct MapProblem {
                 if(cum_score(a_ind, b_ind).beta_score != 0){
                     beta_cnt++;
                 }
+            }
+            if(!any_valid_var){
+                unamb_inds[a_ind] = -1;
+                continue;
             }
 
             // IF drop_no_beta=True and no beta literals 
@@ -618,15 +627,19 @@ SM_Result structure_map_generic(
 
             size_t unamb_cnt = state.fill_unambiguous_inds();
             if(unamb_cnt == 0) break;
-            // cout << "unamb_cnt: " << unamb_cnt << endl;
         }
 
         bool do_break = state.store_remap_push_stack_or_backtrack();
         if(do_break) break;                
     }
     
-
-
+    if(state.remaps.size() == 0){
+        state.remaps.push_back(
+            std::make_tuple(0.0f, std::vector<int16_t>(N, -1))
+        );
+        state.best_remap = &(std::get<1>(state.remaps[0]));
+    }
+    
     // cout << "Best Score: " << state.best_score << endl;
     // cout << "Best Remap: " << *state.best_remap << endl;
     auto result = SM_Result(state.best_score, std::move(state.alignment), *state.best_remap, std::move(state.remaps));
@@ -696,13 +709,14 @@ std::tuple<std::vector<CRE_Type*>, std::vector<CRE_Type*>,
     auto item_masks_a = std::vector<std::vector<uint8_t>>(map_cand_set.items_a.size(), std::vector<uint8_t>(0));
     auto item_masks_b = std::vector<std::vector<uint8_t>>(map_cand_set.items_b.size(), std::vector<uint8_t>(0));
     
+
+    assert(remap.size() == map_cand_set.var_pairs.dimension(0));
     for(size_t i = 0; i < map_cand_set.var_pairs.dimension(0); i++){
-        for(size_t j = 0; j < map_cand_set.var_pairs.dimension(1); j++){
-            if(map_cand_set.var_pairs(i, j).weight >= 0.0f){
-                auto&& mutual_type = map_cand_set.var_pairs(i, j).mutual_type;
-                var_types_a[i] = mutual_type;
-                var_types_b[j] = mutual_type;
-            }
+        int64_t j = remap[i];
+        if(j != -1 && map_cand_set.var_pairs(i, j).weight >= 0.0f){
+            auto&& mutual_type = map_cand_set.var_pairs(i, j).mutual_type;
+            var_types_a[i] = mutual_type;
+            var_types_b[j] = mutual_type;
         }
     }
 
@@ -722,6 +736,9 @@ std::tuple<std::vector<CRE_Type*>, std::vector<CRE_Type*>,
         item_masks_b[j] = matched_Bs;
         // score += p_score;
     }
+
+    // cout << "var_types_a: " << var_types_a << endl;
+    // cout << "item_masks_a" << item_masks_a << endl;
     return std::make_tuple(var_types_a, var_types_b, item_masks_a, item_masks_b);
 }
 
@@ -790,8 +807,6 @@ SM_MappablePair _items_to_mappable_pair(int16_t index_a, int16_t index_b, Item& 
         const VarInds& var_inds_a = lit_a->var_inds;
         const VarInds& var_inds_b = lit_b->var_inds;
         assert(var_inds_a.size() == var_inds_b.size());
-
-        
 
         // cout << "LITERAL CASE: " << item_a << " -> " << item_b << " ; " << var_inds_a.size() << " , " << var_inds_b.size() <<  endl;
         return SM_MappablePair(lit_a->structure_weight, index_a, index_b,
@@ -862,7 +877,8 @@ SM_MapCandSet logic_to_map_cands(ref<Logic> l_a, ref<Logic> l_b){
             // TODO: If can cast from one to the other
             CRE_Type* mutual_parent = base_a->mutual_parentclass(base_b);
             auto&& entry = var_pairs(i, j);
-            if(mutual_parent != nullptr){
+            if(mutual_parent != nullptr && 
+               mutual_parent != cre_Fact){
                 entry.weight = mutual_parent->structure_weight;//std::min(base_a->structure_weight, base_b->structure_weight); 
                 entry.mutual_type = mutual_parent;
             }else{
@@ -886,9 +902,9 @@ SM_MapCandSet logic_to_map_cands(ref<Logic> l_a, ref<Logic> l_b){
             // Use the item map to find all mappable pairs of literals between the conjuncts
             auto pairs = make_mappable_pairs(item_map, conj_item_b);
             // cout << "PAIRS: " << i << "," << j << " SIZE: " << pairs.size() << endl;
-            if(pairs.size() > 0){
-                conj_pairs.push_back(SM_ConjPair(i, j, len_a, len_b, pairs));
-            }
+            // if(pairs.size() > 0){
+            conj_pairs.push_back(SM_ConjPair(i, j, len_a, len_b, pairs));
+            // }
         }
     }
     if(conj_pairs.size() == 0){
@@ -926,7 +942,8 @@ ref<Logic> antiunify_logic(ref<Logic> l_a, ref<Logic> l_b,
 
     auto mapcand_set = logic_to_map_cands(l_a, l_b);
     SM_Result result = structure_map_generic(mapcand_set, a_fixed_inds, drop_unconstr, drop_no_beta);
-    auto [var_types_a, var_types_b, item_masks_a, item_masks_b] = get_masks_for_remap(mapcand_set, result.alignment, result.best_remap);
+    auto [var_types_a, var_types_b, item_masks_a, item_masks_b] = 
+        get_masks_for_remap(mapcand_set, result.alignment, result.best_remap);
 
     auto new_vars_a = std::vector<ref<Var>>(var_types_a.size(), nullptr);
     for(size_t i = 0; i < var_types_a.size(); i++){

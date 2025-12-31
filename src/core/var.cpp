@@ -222,6 +222,12 @@ ref<Var> Var::extend_attr(std::string_view attr, AllocBuffer* alloc_buffer){
 
 	FactType* hf_type = (FactType*) head_type;
 	int mbr_ind = hf_type->get_attr_index(attr);
+	if(mbr_ind == -1){
+		throw std::invalid_argument(fmt::format(
+			"Cannot extend {} with attribute '{}', which is not a member of head type {}",
+			to_string(), attr, hf_type->to_string()
+		));
+	}
 
 	DerefInfo* deref = (DerefInfo*) alloca(sizeof(DerefInfo));
 	deref->deref_type = hf_type->get_item_type(mbr_ind);

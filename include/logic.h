@@ -127,8 +127,6 @@ std::string basic_str();
         (_insert_arg( Item(args)), ...);
         _finalize();
     }
-
-    
 };
 
 

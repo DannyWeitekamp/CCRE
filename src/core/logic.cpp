@@ -349,7 +349,6 @@ void Logic::_finalize() {
             item_structure_weight += lit->structure_weight;
             item_match_weight += lit->match_weight;
             size_t nv = lit->vars.size();
-            lit->var_inds = {}; // reset the var_inds to an empty vector
             VarInds& var_inds = lit->var_inds;
             var_inds.reserve(nv);
             for(size_t i=0; i < nv; i++){

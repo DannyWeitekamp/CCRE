@@ -23,7 +23,7 @@ def test_anti_unify():
     print("c12:")
     print(c12)
     # return
-    with PrintElapse("antiunify"):
+    with PrintElapse("antiunify x 100"):
         for i in range(100):
             c12 = c1.antiunify(c2) 
     
@@ -159,7 +159,42 @@ def test_antiunify_fact_types():
     print(animal_trio_ref)
     print("SCORE", score)
     assert str(animal_trio) == str(animal_trio_ref)
-    # assert isclose(score, 1.0)
+    
+    d1,d2,d3 = Var(float),Var(float),Var(float)
+    float_trio = AND(d1 < d2, d2 < d3, d3 < d1)
+    empty_trio, score = float_trio.antiunify(animal_trio, return_score=True)
+    ref_empty_trio = AND()
+    print("empty_trio:",empty_trio)
+    print("SCORE", score)
+    assert str(empty_trio) == str(ref_empty_trio)
+    assert isclose(score, 0.0)
+
+    Car = FactType("Car", 
+        {"make" : str,
+         "color" : str,
+         "year" : int,
+        }
+    )
+
+    C1, C2, C3 = Var(Cat), Var(Car), Var(Car)
+    cars_n_cats = AND(C1.color == C2.color, C2.year < C3.year, C1.frisky == True)
+    multi1, score = cars_n_cats.antiunify(cat_trio, return_score=True)
+    ref_multi1 = AND(C1.frisky == True)
+    print(multi1)
+    print(ref_multi1)
+    print("SCORE", score)
+    assert str(multi1) == str(ref_multi1)
+
+    multi2, score = cars_n_cats.antiunify(fish_trio, return_score=True)
+    ref_multi2 = AND(C1:=Var(Animal))
+    print(multi2)
+    print(ref_multi2)
+    print("SCORE", score)
+    assert str(multi2) == str(ref_multi2)
+
+
+
+
 
 if __name__ == "__main__":
     test_anti_unify()

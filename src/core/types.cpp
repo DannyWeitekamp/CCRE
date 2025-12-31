@@ -396,7 +396,7 @@ std::string FactType::get_item_attr(int index){
 }
 
 CRE_Type* FactType::get_item_type(int index){
-    _ensure_index_okay(this, index, "get_deref_type");
+    _ensure_index_okay(this, index, "get_item_type");
     return this->members[index].type;
 }
 
