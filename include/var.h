@@ -21,18 +21,19 @@ namespace cre { struct Member; }
 namespace cre {
 
 
-const uint8_t VAR_KIND_ABSOLUTE = 1;
-const uint8_t VAR_KIND_BOUND = 2;
-const uint8_t VAR_KIND_OPTIONAL = 3; 
-const uint8_t VAR_KIND_EXISTS = 4;
-const uint8_t VAR_KIND_NOT = 5;
+constexpr static  uint8_t VAR_KIND_ABSOLUTE = 1;
+constexpr static  uint8_t VAR_KIND_BOUND = 2;
+constexpr static  uint8_t VAR_KIND_OPTIONAL = 3; 
+constexpr static  uint8_t VAR_KIND_EXISTS = 4;
+constexpr static  uint8_t VAR_KIND_NOT = 5;
 // const uint8_t VAR_KIND_ALL = 4;
 
 const std::string VAR_PREFIXES[6] = {"","Var", "Bound", "Opt", "Exists", "Not"};
 
 
-const uint16_t DEREF_KIND_ATTR = 1;
-const uint16_t DEREF_KIND_ITEM = 2 ;
+constexpr static  uint16_t DEREF_KIND_NULL = 0;
+constexpr static  uint16_t DEREF_KIND_ATTR = 1;
+constexpr static  uint16_t DEREF_KIND_ITEM = 2;
 
 
 

@@ -428,7 +428,7 @@ bool SemanticVarPtr::operator<(const SemanticVarPtr& other) const{
 		// 	throw std::domain_error(
 		// 		fmt::format("Different types or kinds for Var instances with same alias in expression. "
 		// 					"Cannot reconcile {} and {}.", var_ptr->repr(), other.var_ptr->repr())
-		// 	);
+	// 	);
 		// }
 		if(var_ptr->alias.get_t_id() == T_ID_UNDEF || other.var_ptr->alias.get_t_id() == T_ID_UNDEF){
 			return uint64_t(var_ptr) < uint64_t(other.var_ptr);
