@@ -1954,6 +1954,12 @@ FuncRef Func::compose_args(Item* args, size_t _n_args, AllocBuffer* alloc_buffer
     return cf;
 }
 
+Item Func::call_heads(void** head_val_ptrs, size_t _n_args){
+	uint8_t* ret_ptr = (uint8_t*) alloca(return_type->byte_width);
+	call_recursive_fc(this, ret_ptr, head_val_ptrs);
+	return ptr_to_item_func(ret_ptr);
+}
+
 
 Item Func::call_args(Item* args, size_t _n_args){
 	void** head_val_ptrs = (void**) alloca(sizeof(void**)*head_infos.size());

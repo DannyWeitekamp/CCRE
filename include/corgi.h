@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 #include "../include/ref.h"
 #include "../include/factset.h"
 #include "../include/literal.h"
@@ -35,85 +35,17 @@ struct BitMatrix {
     uint32_t n_cols;
     uint8_t* data = nullptr;
 
-    void reserve(uint32_t n_rows, uint32_t n_cols) {
-        // Reserve in 64-bit chunks.
-        uint32_t n_long_rows = (n_rows + 63) >> 8;
-        uint32_t n_long_cols = (n_cols + 63) >> 8;
-        uint32_t byte_width_rows = n_long_rows << 3;
-        uint32_t byte_width_cols = n_long_cols << 3;
-        if(cap_row_bytes < byte_width_rows || cap_col_bytes < byte_width_cols) {
-            if(data != nullptr) free(data);
-            data = (uint8_t*) malloc(byte_width_rows * byte_width_cols * sizeof(uint8_t));
-            cap_row_bytes = byte_width_rows;
-            cap_col_bytes = byte_width_cols;
-        }
-    }
-    inline uint8_t set_byte(uint32_t byte_row_ind, uint32_t byte_col_ind, uint8_t value) {
-        data[byte_row_ind * cap_col_bytes + byte_col_ind] = value;
-    }
-
-    inline uint8_t get_byte(uint32_t byte_row_ind, uint32_t byte_col_ind) const {
-        return data[byte_row_ind * cap_col_bytes + byte_col_ind];
-    }
-
-    inline bool get(uint32_t row, uint32_t col) const {
-        uint8_t byte = get_byte(row >> 3, col >> 3);
-        return (byte >> (col & 0x7)) & 1;
-    }
-
-    inline void set(uint32_t row, uint32_t col, bool value) {
-        uint8_t byte = get_byte(row >> 3, col >> 3);
-        byte = (byte & ~(1 << (col & 0x7))) | (value << (col & 0x7));
-        set_byte(row >> 3, col >> 3, byte);
-    }
-
-    BitMatrix(std::size_t n_rows, std::size_t n_cols):
-        n_rows(n_rows), n_cols(n_cols), data(n_rows * n_cols, false)
-    {};
-
-    bool get(std::size_t row, std::size_t col) const {
-        return data[row * n_cols + col];
-    }
+    void reserve(uint32_t n_rows, uint32_t n_cols);
+    uint8_t set_byte(uint32_t byte_row_ind, uint32_t byte_col_ind, uint8_t value);
+    uint8_t get_byte(uint32_t byte_row_ind, uint32_t byte_col_ind) const;
+    bool get(uint32_t row, uint32_t col) const;
+    void set(uint32_t row, uint32_t col, bool value);
+    BitMatrix(std::size_t n_rows, std::size_t n_cols);
+    bool get(std::size_t row, std::size_t col) const;
 };
 
 
-constexpr static uint8_t CHANGE_KIND_DECLARE = 1; 
-constexpr static uint8_t CHANGE_KIND_RETRACT = 2; 
-constexpr static uint8_t CHANGE_KIND_MODIFY  = 3; 
 
-struct ChangeEvent {
-    int64_t f_id;
-    int16_t mbr_ind; 
-    uint16_t deref_kind;
-    uint8_t change_kind;
-    uint8_t pad[1]; 
-
-    ChangeEvent(int64_t f_id, uint8_t change_kind=CHANGE_KIND_DECLARE) :
-        f_id(f_id), mbr_ind(-1), deref_kind(DEREF_KIND_NULL),
-        change_kind(change_kind)
-    {};
-
-    ChangeEvent(int64_t f_id, const DerefInfo& inf) :
-        f_id(f_id), mbr_ind(-1), deref_kind(inf.deref_kind),
-        change_kind(CHANGE_KIND_MODIFY)
-    {};
-
-
-    /* Comparators intended for binary map / hashmap lookups 
-       change_kind not used here since it rarely matters for 
-       triggering a change */
-    inline bool operator<(const ChangeEvent& rec2) const {
-        if(this->f_id != rec2.f_id) return this->f_id < rec2.f_id;
-        if(this->mbr_ind !=  rec2.mbr_ind) return this->mbr_ind < rec2.mbr_ind;
-        if(this->deref_kind !=  rec2.deref_kind) return this->deref_kind < rec2.deref_kind;        
-    }
-
-    inline bool operator==(const ChangeEvent& rec2) const {
-        return (this->f_id == rec2.f_id &&
-                this->mbr_ind ==  rec2.mbr_ind &&
-                this->deref_kind ==  rec2.deref_kind);
-    }
-};
 
 struct InputEntryState {
     // The input fact's f_id
@@ -126,8 +58,12 @@ struct InputEntryState {
     int64_t output_ind = -1;
 
 
+    
+
     // Indicates that the input fact is not removed
     bool source_valid = false;
+
+    // ---- Flags related to updating head changes ----
 
     // Some change to the underlying fact of this entry
     //  or an associated field and we need to re-check its head value.
@@ -141,13 +77,30 @@ struct InputEntryState {
     //   and we'll need to re-evaluate any relations that depend on it.
     bool needs_update_relation = true;
 
-    
 
-    
-    
+    // ---- Flags for updating output changes ----
 
-    // // The input fact was inserted in this match cycle.
+    // Indicates that there was ever a match for this input fact.
+    bool true_ever_nonzero = false;
+
+    // Indicates that the input fact was invalidated in this match cycle.
+    // bool recently_invalid = false;
+
+    // Indicates that the input fact was inserted in this match cycle.
     // bool recently_inserted = false;
+
+    // Indicates that the input fact was matched in this match cycle.
+    // bool recently_nonzero = false;
+
+    // Indicates that the input fact is present in the output.
+    bool present_in_output = false;
+
+    // bool pad[3]; 
+
+    
+    
+
+    
 
     // // The input fact was modified in this match cycle.
     // bool recently_modified = false;
@@ -165,9 +118,7 @@ struct InputEntryState {
     // bool true_ever_nonzero = false;
     // bool pad[1];
 
-    InputEntryState(int64_t f_id):
-        f_id(f_id) 
-    {};
+    InputEntryState(int64_t f_id);
 
     // void reset_temp_flags() {
     //     changed = false;
@@ -207,56 +158,42 @@ struct CORGI_IO {
     std::vector<InputState*> downstream_input_states = {};
 
     // bool is_root = false;
-    CORGI_IO(CORGI_Node* upstream_node = nullptr) :
-        upstream_node(upstream_node) 
-    {};
+    CORGI_IO(CORGI_Node* upstream_node = nullptr);
 
-
-
-    inline int64_t size() const {
-        return _size;
-    }
-
-    inline int64_t capacity() const {
-        return match_f_ids.size();
-    }
-
-    void downstream_signal_add(size_t ind){
-        for(InputState* input_state : downstream_input_states){
-            input_state->signal_add(ind);
-        }
-    }
-
-    void downstream_signal_remove(size_t ind){
-        for(InputState* input_state : downstream_input_states){
-            input_state->signal_remove(ind);
-        }
-    }
-
-    inline void add(int64_t f_id){
-        if(match_holes.size() > 0){
-            int64_t ind = match_holes.back();
-            match_holes.pop_back();
-            match_f_ids[ind] = f_id;
-        }else{
-            match_f_ids.push_back(f_id);
-        }
-    }
-
-    inline void add_at(size_t ind, int64_t f_id){
-        if(ind >= capacity()){
-            size_t new_cap = std::max(ind + 1, _size + std::min(64,_size));
-            match_f_ids.resize(new_cap, -1);
-        }
-        match_f_ids[ind] = f_id;
-    }
-
-    inline void remove_at(size_t ind){
-        match_f_ids[ind] = -1;
-        match_holes.push_back(ind);
-    }
+    int64_t size() const;
+    int64_t capacity() const;
+    void downstream_signal_add(size_t ind);
+    void downstream_signal_remove(size_t ind);
+    int64_t add(int64_t f_id);
+    void add_at(size_t ind, int64_t f_id);
+    void remove_at(size_t ind);
 };
 
+// struct DependsComparator {
+//     /** Comparator over ChangeEvents.
+//     */
+//     bool operator()(const ChangeEvent& rec1, const ChangeEvent& rec2) const {
+//         if(rec1.f_id !=  rec2.f_id) return rec1.f_id < rec2.f_id;
+//         if(rec1.mbr_ind !=  rec2.mbr_ind) return rec1.mbr_ind < rec2.mbr_ind;
+//         if(rec1.mbr_ind !=  rec2.mbr_ind) return rec1.mbr_ind < rec2.mbr_ind;
+        
+//     }
+// };
+
+struct ChangeDep {
+    // An input state in a node that depends on this change event.
+    InputState* input_state;
+    // The index of the input fact in the input state.
+    uint64_t ind : 63;
+
+    // Indicates that this dependency is part of a derefrence chain
+    //  and not the final (i.e. head) dereference in the chain.
+    bool is_deref_support : 1;
+
+    ChangeDep(InputState* input_state, size_t ind, bool is_deref_support=false);
+};
+
+using ChangeDependsMap = std::map<ChangeEvent, std::vector<ChangeDep>>;
 using HeadPtrTensor = Eigen::Tensor<Item*, 2, Eigen::RowMajor>;
 
 //TODO: HeadsState
@@ -287,127 +224,18 @@ struct InputState {
 
 
 
-    inline size_t size(){return _size;}
-    inline size_t capacity(){return _capacity;}
-
-    InputState(CORGI_Node* node, size_t arg_ind){
-        head_var_ptrs = {};
-
-        auto kind = node->literal->kind;
-        if(kind == LIT_KIND_EQ || kind == LIT_KIND_FUNC){
-            Func* func = (Func*) node->literal->obj;
-            head_range = func->head_ranges[arg_ind];
-            for(size_t i=head_range.start; i < head_range.end; i++){
-                const HeadInfo& hi = func->head_infos[i];
-                head_var_ptrs.push_back(hi.var_ptr);
-            }
-        }else{
-            throw std::runtime_error("NOT IMPLEMENTED");
-        }
-    }
-    
-    void signal_add(size_t ind){
-        ensure_larger_than(ind + 1);
-        InputEntryState& e_state = entry_states[ind];
-        e_state.source_valid = true;
-        e_state.needs_head_check = true;
-        e_state.needs_update_relation = true;
-        changed_inds.push_back(ind);
-    }
-
-    void signal_remove(size_t ind){
-        InputEntryState& e_state = entry_states[ind];
-        e_state.source_valid = false;
-        e_state.needs_head_check = false;
-        e_state.head_is_valid = false;
-        e_state.needs_update_relation = true;
-        changed_inds.push_back(ind);
-    }
-
-    void signal_modify(size_t ind, bool is_deref_support=false){
-        InputEntryState& e_state = entry_states[ind];
-        if(is_deref_support){
-            e_state.needs_head_check = true;
-        }
-        e_state.needs_update_relation = true;
-        changed_inds.push_back(ind);
-    }
-
-    void ensure_larger_than(size_t new_size){
-        if(new_size > size()){
-            size_t new_cap = std::max(new_size, _capacity + std::min(64,_capacity));
-            head_ptrs.conservativeResize(new_cap, n_heads);
-            entry_states.reserve(new_cap);
-        }
-    }
-
-    
-    bool validate_head_or_retract(int64_t f_id, size_t change_ind){
-
-        bool is_valid = true;
-
-        // for(Var* head_var : head_var_ptrs){
-        size_t v = 0;
-        for(size_t i=head_range.start; i < head_range.end; i++){
-            Var* head_var = head_var_ptrs[i];
-            Item* head_ptr = resolve_head_ptr(f_id, head_var, change_ind);
-            if(head_ptr == nullptr){
-                is_valid = false;
-                break;
-            }
-            head_ptrs(change_ind, i) = head_ptr;
-        }
-        return is_valid;
-
-
-    }
-
+    size_t size();
+    size_t capacity();
+    InputState(CORGI_Node* node, size_t arg_ind);
+    void signal_add(size_t ind);
+    void signal_remove(size_t ind);
+    void signal_modify(size_t ind, bool is_deref_support=false);
+    void ensure_larger_than(size_t new_size);
+    bool validate_head_or_retract(int64_t f_id, size_t change_ind);
     void insert_change_dep(int64_t f_id, 
                           const DerefInfo& deref_info,
-                          int64_t ind=-1, bool is_deref_support=true){
-        ChangeDependsMap& change_dep_map = node->graph->change_dep_map; 
-        ChangeEvent cr = ChangeEvent(f_id, deref_info);
-        auto it = change_dep_map.find(cr);
-        bool inserted = false;
-        if(it == change_dep_map.end()){
-            std::tie(it, inserted) = change_dep_map.insert({cr, std::vector<ChangeDep>()});
-        }
-        it->second.push_back(ChangeDep(this, ind, is_deref_support));
-    }
-
-    Item* resolve_head_ptr(int64_t f_id, Var* var, int64_t ind=-1){
-        const std::vector<ref<Fact>>& facts = node->fact_set->facts;
-        size_t n_derefs = var->length;
-        DerefInfo* deref_infos = var->deref_infos;
-        ChangeDependsMap& change_dep_map = node->graph->change_dep_map; 
-        if(n_derefs > 0){
-            Fact* inst_ptr = (Fact*) facts[f_id].get();
-            if(n_derefs > 1){
-                for(int i=0; i < n_derefs-1; i++){
-                    if(inst_ptr == nullptr) return nullptr;
-
-                    const DerefInfo& deref_info = deref_infos[i];
-                    Member* mbr_ptr = deref_once(inst_ptr, deref_info);
-                    
-                    // Insert a ChangeEventord into change_dep_map so we can 
-                    //  invalidate the relevant input entry if the dereference
-                    //  chain is invalidated by a retraction or modify
-                    if(ind != -1){
-                        insert_change_dep(f_id, deref_info, ind, true);
-                    }
-                    inst_ptr = (Fact*) mbr_ptr->get_ptr();
-                }
-                if(inst_ptr != nullptr){
-                    const DerefInfo& deref_info = deref_infos[-1];
-                    Member* mbr_ptr = deref_once(inst_ptr, deref_info);
-                    insert_change_dep(f_id, deref_info, ind, false);
-                    return (Item*) mbr_ptr;
-                }else{
-                    return nullptr;
-                }
-            }
-        }
-    }
+                          int64_t ind=-1, bool is_deref_support=true);
+    Item* resolve_head_ptr(int64_t f_id, Var* var, int64_t ind=-1);
     
     // void _check_modified_head(int64_t ind, InputEntryStat* e_state){
     //     bool was_valid = e_state->is_valid;
@@ -470,81 +298,9 @@ struct InputState {
         
 
 
-    void update(){
-        for(int64_t change_ind : changed_inds){
-            InputEntryState& e_state = entry_states[change_ind];
-            bool head_was_valid = e_state.head_is_valid;
-
-            // Follow the var's deref chain to validate address of the terminating 
-            //  head field in some fact.
-            bool head_is_valid = true;
-            if(e_state.needs_head_check){
-                head_is_valid = validate_head_or_retract(e_state.f_id, change_ind);
-            }
-            e_state.head_is_valid = head_is_valid;
-            
-            // Always update unless head was invalid and is still invalid
-            e_state.needs_update_relation = !(!head_was_valid & !head_is_valid);
-        }
-        changed_inds.clear();
-
-        // Ensure various buffers are large enough
-        
-
-        // for(auto& istate : entry_states){
-        //     istate.reset_temp_flags();
-        // }
-
-        // Update input_states with any upstream removals
-        // size_t n_rem = 0;
-        // for(int64_t ind : input->remove_inds){
-        //     InputEntryState& e_state = entry_states[ind];
-        //     if(e_state.is_valid){
-        //         ++n_rem;
-        //         e_state.recently_invalid = true;
-        //     }
-        //     e_state.is_valid = false;
-        //     e_state.changed = true;
-        // }
-
-        
-        
-        // size_t c = 0;
-        // Add to change_inds any modifies specifically routed to this node. 
-        // for(int64_t ind : input->modify_events){
-        //     _resolve_head(ind, true);
-        // }
-
-
-        
-    }
+    void update();
 };
 
-struct DependsComparator {
-    /** Comparator over ChangeEvents.
-    */
-    bool operator()(const ChangeEvent& rec1, const ChangeEvent& rec2) const {
-        if(rec1.f_id !=  rec2.f_id) return rec1.f_id < rec2.f_id;
-        if(rec1.mbr_ind !=  rec2.mbr_ind) return rec1.mbr_ind < rec2.mbr_ind;
-        if(rec1.mbr_ind !=  rec2.mbr_ind) return rec1.mbr_ind < rec2.mbr_ind;
-        
-    }
-};
-
-struct ChangeDep {
-    // An input state in a node that depends on this change event.
-    InputState* input_state;
-    // The index of the input fact in the input state.
-    uint64_t ind : 63;
-
-    // Indicates that this dependency is part of a derefrence chain
-    //  and not the final (i.e. head) dereference in the chain.
-    bool is_deref_support : 1;
-
-    ChangeDep(InputState* input_state, size_t ind, bool is_deref_support=false):
-        input_state(input_state), ind(ind), is_deref_support(is_deref_support)
-    {};
-};
 
 
                  
@@ -573,16 +329,11 @@ struct CORGI_Node {
     std::vector<std::unique_ptr<CORGI_IO>> outputs;
     std::vector<InputState> input_states;
 
-    CORGI_Node(CORGI_Graph* graph, Literal* literal, std::vector<CORGI_IO*> inputs) :
-        graph(graph), literal(literal), inputs(inputs) {
-        // n_vars = literal->var_inds.size();
-        // var_inds = literal->var_inds;
-        for(size_t i=0; i < inputs.size(); i++){
-            input_states.push_back(InputState(this, inputs[i]));
-            inputs[i]->downstream_input_states.push_back(&input_states[i]);
-            outputs.push_back(std::make_unique<CORGI_IO>(this));
-        }
-    }
+    CORGI_Node(CORGI_Graph* graph, Literal* literal, std::vector<CORGI_IO*> inputs);
+    void update_alpha_matches_func();
+    void update_beta_matches_func();
+    void update_output_changes();
+    void update();
 };
 
 // std::vector<ChangeEvent> accumulated_change_events(
@@ -607,11 +358,11 @@ struct VarFrontier {
     std::vector<Literal*> upstream_depends = {};
     CORGI_IO* output;
 
-    VarFrontier(CORGI_IO* output) : output(output) {};
+    VarFrontier(CORGI_IO* output);
 };
 
 
-using ChangeDependsMap = std::map<ChangeEvent, std::vector<ChangeDep>>;
+
 
 struct CORGI_Graph {
     // The change_head of the working memory at the last graph update.
@@ -651,149 +402,18 @@ struct CORGI_Graph {
     // float total_structure_weight = 0.0f;
     // float total_match_weight = 0.0f;
 
-    void _ensure_root_inputs(Logic* logic){
-        auto ensure_root_io = ([&](int32_t type_index){
-            if(root_inputs[type_index] == nullptr){
-                root_inputs[type_index] = std::make_unique<CORGI_IO>();
-            }
-        });
-        for(size_t i=0; i < logic->vars.size(); i++){
-            Var* var = logic->vars[i];
-            CRE_Type* type = var->base_type;
-            ensure_root_io(type->type_index);
-            for(CRE_Type* subtype : type->sub_types){
-                ensure_root_io(subtype->type_index);
-            }
-        }
-    }
-
-    std::vector<size_t> _get_degree_order(Logic* logic){
-        // Order vars by decreasing beta degree --- the number of other 
-        // vars that they share beta literals with. Implements heuristic
-        // that the most beta-constrained nodes are matched first. 
-        auto has_pairs = Eigen::Tensor<bool, 2, Eigen::RowMajor>(
-            logic->vars.size(), logic->vars.size()
-        );
-        for(Item& item : logic->items){
-            if(item.get_t_id() == T_ID_LITERAL){
-                Literal* lit = item._as<Literal*>();
-                VarInds& var_inds = lit->var_inds;
-                for(size_t j=0; j < var_inds.size(); j++){
-                    has_pairs(info.pos, var_inds[j]) = true;
-                    has_pairs(var_inds[j], info.pos) = true;
-                }
-            }
-        }
-        Eigen::Tensor<size_t, 1, Eigen::RowMajor> degree = has_pairs.sum(1);
-        Eigen::Tensor<size_t, 1, Eigen::RowMajor> degree_order = degree.argsort(-1);
-        return degree_order.matrix().cast<size_t>().eval().vector();
-    }
-
-    void _add_literal(Literal* lit, std::vector<VarFrontier>& frontiers){
-        // Let the inputs to the node be the outputs of the frontiers
-        //  of the literals' vars.
-        std::vector<CORGI_IO*> inputs = {};
-        for(size_t i=0; i < lit->var_inds.size(); i++){
-            VarFrontier& frontier = frontiers[lit->var_inds[i]];
-            inputs.push_back(frontier.output);
-        }
-
-        // Make the new node and add it to the graph.
-        std::unique_ptr<CORGI_Node> node = //
-            std::make_unique<CORGI_Node>(this, lit, inputs);
-        nodes_by_nargs[lit->var_inds.size()].push_back(node.get());
-        nodes.push_back(std::move(node));
-
-        // Update the frontiers to point to the outputs of the new node.
-        for(size_t i=0; i < lit->var_inds.size(); i++){
-            VarFrontier& frontier = frontiers[lit->var_inds[i]];
-            frontier.output = node->outputs[i].get();
-            frontier.upstream_depends.push_back(lit);
-        }
-    }
-
-    void _add_logic(Logic* logic, std::vector<VarFrontier>& frontiers){
-        // auto degree_order = _get_degree_order(logic);
-        if(logic->kind == CONDS_KIND_AND){
-            for(auto item : logic->items){
-                if(item.get_t_id() == T_ID_LITERAL){
-                    _add_literal(item._as<Literal*>(), frontiers);
-                }else if(item.get_t_id() == T_ID_LOGIC){
-                    _add_logic(item._as<Logic*>(), frontiers);
-                }
-            }
-        }else if(logic->kind == CONDS_KIND_OR){
-            for(auto item : logic->items){
-                std::vector<VarFrontier> frontiers_copy = frontiers;
-                if(item.get_t_id() == T_ID_LITERAL){
-                    _add_literal(item._as<Literal*>(), frontiers_copy);
-                }else if(item.get_t_id() == T_ID_LOGIC){
-                    _add_logic(item._as<Logic*>(), frontiers_copy);
-                }
-            }
-        }   
-        for(size_t i=0; i < logic->vars.size(); i++){
-            CRE_Type* var_type = logic->vars[i]->base_type;
-            var_frontiers[i] = VarFrontier(get_root_io(var_type));
-        }
-        _add_logic(logic, var_frontiers);
-    }
-
-    CORGI_IO* get_root_io(CRE_Type* type) const{
-        int32_t type_index = type->type_index;
-        if(type_index >= root_inputs.size()){
-            root_inputs.resize(type_index + 1, nullptr);
-        }
-        // if(root_inputs[type_index] == nullptr){
-        //     root_inputs[type_index] = std::make_unique<CORGI_IO>();
-        // }
-        return root_inputs[type_index].get();
-    }
-
-    void parse_change_events(){
-        for(size_t i=change_head; i < fact_set->change_queue.size(); i++){
-            ChangeEvent& change_event = &fact_set->change_queue[i];
-            Fact* fact = fact_set->get(change_event.f_id);
-            
-            // Modifies route directly to their dependencies 
-            auto change_dep_it = change_dep_map.find(change_event);
-            std::vector<ChangeDep>& change_deps = change_dep_it->second;
-            for(ChangeDep& change_dep : change_deps){
-                InputState* input_state = change_dep.input_state;
-                input_state->signal_modify(change_dep.ind, change_dep.is_deref_support);
-            }
-
-            // DECLARE / RETRACT route to their root inputs and propogate
-            //  down the CORGI graph.
-            if(change_event.change_kind == CHANGE_KIND_DECLARE || 
-               change_event.change_kind == CHANGE_KIND_RETRACT){
-
-                auto add_to_root_io = ([&](CORGI_IO* root_io){
-                    // Skip if the root io is nullptr.
-                    if(root_io == nullptr) return;
-                    if(change_event.change_kind == CHANGE_KIND_DECLARE){
-                        root_io->add(change_event.f_id);
-                        root_io->downstream_signal_add(change_event.f_id);
-                    }else{
-                        root_io->remove_at(change_event.f_id);
-                        root_io->downstream_signal_remove(change_event.f_id);
-                    }
-                });
-
-                CORGI_IO* root_io = get_root_io(fact->type);
-                add_to_root_io(root_io);
-                for(CRE_Type* subtype : fact->type->sub_types){
-                    root_io = get_root_io(subtype);
-                    add_to_root_io(root_io);
-                }
-            }
-        }
-    }
+    void _ensure_root_inputs(Logic* logic);
+    std::vector<size_t> _get_degree_order(Logic* logic);
+    void _add_literal(Literal* lit, std::vector<VarFrontier>& frontiers);
+    void _add_logic(Logic* logic, std::vector<VarFrontier>& frontiers);
+    CORGI_IO* get_root_io(CRE_Type* type) const;
+    void parse_change_events();
+    void update();
 };
 
 // Node Update Phases
-// 1) Process the input changes in each InputState
-// 2) Resolve the head pointers of any 
+// 1) Parse Change Evernts: Process the input changes from the factset and pipe into input states.
+// 2) Resolve the head pointers
 // 3) Revaluate the relation along all changes or pairs of changes 
 // 4) Update the output, and its changes 
 

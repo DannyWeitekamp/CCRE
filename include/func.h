@@ -732,6 +732,7 @@ struct Func : CRE_Obj{
 	template <class ... Ts>
 	FuncRef compose(Ts && ... args);
 
+    Item call_heads(void** head_val_ptrs, size_t n_args);
 	Item call_args(Item* args, size_t n_args);
 	Item call_args(std::vector<Item>& args);
 	template <class ... Ts>

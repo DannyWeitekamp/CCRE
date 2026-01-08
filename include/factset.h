@@ -15,7 +15,7 @@
 #include "fact.h"
 #include "alloc_buffer.h"
 #include "ref.h"
-// #include "var.h"
+#include "var.h"
 
 namespace cre {
 
@@ -23,9 +23,47 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+//--------------------------------------------------------------
+// : ChangeEvent
 
-// Forward Declaration
-struct FactChange;
+constexpr static uint8_t CHANGE_KIND_INIT = 1; 
+constexpr static uint8_t CHANGE_KIND_DECLARE = 1; 
+constexpr static uint8_t CHANGE_KIND_RETRACT = 2; 
+constexpr static uint8_t CHANGE_KIND_MODIFY  = 3; 
+
+struct ChangeEvent {
+    int64_t f_id;
+    int16_t mbr_ind; 
+    uint16_t deref_kind;
+    uint8_t change_kind;
+    uint8_t pad[1]; 
+
+    ChangeEvent(int64_t f_id, uint8_t change_kind=CHANGE_KIND_DECLARE) :
+        f_id(f_id), mbr_ind(-1), deref_kind(DEREF_KIND_NULL),
+        change_kind(change_kind)
+    {};
+
+    ChangeEvent(int64_t f_id, const DerefInfo& inf) :
+        f_id(f_id), mbr_ind(-1), deref_kind(inf.deref_kind),
+        change_kind(CHANGE_KIND_MODIFY)
+    {};
+
+
+    /* Comparators intended for binary map / hashmap lookups 
+       change_kind not used here since it rarely matters for 
+       triggering a change */
+    inline bool operator<(const ChangeEvent& rec2) const {
+        if(this->f_id != rec2.f_id) return this->f_id < rec2.f_id;
+        if(this->mbr_ind !=  rec2.mbr_ind) return this->mbr_ind < rec2.mbr_ind;
+        if(this->deref_kind !=  rec2.deref_kind) return this->deref_kind < rec2.deref_kind;        
+    }
+
+    inline bool operator==(const ChangeEvent& rec2) const {
+        return (this->f_id == rec2.f_id &&
+                this->mbr_ind ==  rec2.mbr_ind &&
+                this->deref_kind ==  rec2.deref_kind);
+    }
+};
 
 //--------------------------------------------------------------
 // : FactSet
@@ -38,7 +76,7 @@ public:
 	vector<ref<Fact>> facts;
 	vector<uint32_t> empty_f_ids;
 	uint64_t _size;
-    vector<FactChange> change_queue;
+    vector<ChangeEvent> change_queue;
 
 	// -- Methods -- 
 	FactSet(size_t n_facts=0);
@@ -743,20 +781,22 @@ struct ToFactSetTranslator {
 
 
 // -----------------------------------------------
-// FactChange
-
-const uint16_t CHANGE_KIND_INIT = 0;
-const uint16_t CHANGE_KIND_DECLARE = 1;
-const uint16_t CHANGE_KIND_RETRACT = 2;
-const uint16_t CHANGE_KIND_MODIFY = 3;
+// ChangeEvent
 
 
-struct FactChange {
-    uint32_t f_id;
-    uint16_t a_id;
-    uint16_t kind;
-    // Item item;
-}; 
+
+// const uint16_t CHANGE_KIND_INIT = 0;
+// const uint16_t CHANGE_KIND_DECLARE = 1;
+// const uint16_t CHANGE_KIND_RETRACT = 2;
+// const uint16_t CHANGE_KIND_MODIFY = 3;
+
+
+// struct ChangeEvent {
+//     uint32_t f_id;
+//     uint16_t a_id;
+//     uint16_t kind;
+//     // Item item;
+// }; 
 
 } // NAMESPACE_END(cre)
 
