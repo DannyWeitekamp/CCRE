@@ -75,6 +75,8 @@ uint32_t declare(FactSet* fs, Fact* fact){
 	// cout << "C" << endl;
 	fs->_size++;
 
+	fs->change_queue.push_back(ChangeEvent(f_id, CHANGE_KIND_DECLARE));
+
 	return f_id;
 }
 
@@ -98,6 +100,8 @@ void retract_f_id(FactSet* fs, uint32_t f_id){
 
 	fact->f_id = 0;
 	fact->parent = nullptr;
+
+	fs->change_queue.push_back(ChangeEvent(f_id, CHANGE_KIND_RETRACT));
 	// fact->dec_ref();
 }
 
@@ -116,6 +120,8 @@ void retract(FactSet* fs, Fact* fact){
 
 	uint32_t f_id = fact->f_id;
 	retract_f_id(fs, f_id);
+
+	
 }
 
 std::vector<ref<Fact>> fs_get_facts(FactSet* fs){

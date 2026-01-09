@@ -36,7 +36,7 @@ struct BitMatrix {
     uint8_t* data = nullptr;
 
     void reserve(uint32_t n_rows, uint32_t n_cols);
-    uint8_t set_byte(uint32_t byte_row_ind, uint32_t byte_col_ind, uint8_t value);
+    void set_byte(uint32_t byte_row_ind, uint32_t byte_col_ind, uint8_t value);
     uint8_t get_byte(uint32_t byte_row_ind, uint32_t byte_col_ind) const;
     bool get(uint32_t row, uint32_t col) const;
     void set(uint32_t row, uint32_t col, bool value);
@@ -194,7 +194,8 @@ struct ChangeDep {
 };
 
 using ChangeDependsMap = std::map<ChangeEvent, std::vector<ChangeDep>>;
-using HeadPtrTensor = Eigen::Tensor<Item*, 2, Eigen::RowMajor>;
+// using HeadPtrTensor = Eigen::Tensor<Item*, 2, Eigen::RowMajor>;
+using HeadPtrTensor = Eigen::Matrix<Item*, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
 //TODO: HeadsState
 struct InputState {
@@ -329,7 +330,7 @@ struct CORGI_Node {
     std::vector<std::unique_ptr<CORGI_IO>> outputs;
     std::vector<InputState> input_states;
 
-    CORGI_Node(CORGI_Graph* graph, Literal* literal, std::vector<CORGI_IO*> inputs);
+    CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<CORGI_IO*>& inputs);
     void update_alpha_matches_func();
     void update_beta_matches_func();
     void update_output_changes();
@@ -383,7 +384,7 @@ struct CORGI_Graph {
     // std::vector<std::unique_ptr<CORGI_Node>> root_nodes = {};
 
     // Owning vector of root inputs, one for each type index.
-    std::vector<std::unique_ptr<CORGI_IO>> root_inputs = std::vector<std::unique_ptr<CORGI_IO>>(64, nullptr);
+    std::vector<std::unique_ptr<CORGI_IO>> root_inputs = std::vector<std::unique_ptr<CORGI_IO>>(64);
 
     // // Maps type_indices to root inputs for facts of that type.
     // std::vector<std::vector<CORGI_IO*>> type_to_root_inputs = {};
@@ -406,7 +407,8 @@ struct CORGI_Graph {
     std::vector<size_t> _get_degree_order(Logic* logic);
     void _add_literal(Literal* lit, std::vector<VarFrontier>& frontiers);
     void _add_logic(Logic* logic, std::vector<VarFrontier>& frontiers);
-    CORGI_IO* get_root_io(CRE_Type* type) const;
+    void add_logic(Logic* logic);
+    CORGI_IO* get_root_io(CRE_Type* type);
     void parse_change_events();
     void update();
 };

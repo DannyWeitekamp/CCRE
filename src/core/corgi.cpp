@@ -18,7 +18,7 @@ void BitMatrix::reserve(uint32_t n_rows, uint32_t n_cols) {
     }
 }
 
-uint8_t BitMatrix::set_byte(uint32_t byte_row_ind, uint32_t byte_col_ind, uint8_t value) {
+void BitMatrix::set_byte(uint32_t byte_row_ind, uint32_t byte_col_ind, uint8_t value) {
     data[byte_row_ind * cap_col_bytes + byte_col_ind] = value;
 }
 
@@ -91,7 +91,7 @@ int64_t CORGI_IO::add(int64_t f_id){
 
 void CORGI_IO::add_at(size_t ind, int64_t f_id){
     if(ind >= capacity()){
-        size_t new_cap = std::max(ind + 1, _size + std::min(64,_size));
+        size_t new_cap = std::max(ind + 1, _size + std::min(64ul,_size));
         match_f_ids.resize(new_cap, -1);
     }
     match_f_ids[ind] = f_id;
@@ -117,7 +117,7 @@ InputState::InputState(CORGI_Node* node, size_t arg_ind){
 
     auto kind = node->literal->kind;
     if(kind == LIT_KIND_EQ || kind == LIT_KIND_FUNC){
-        Func* func = (Func*) node->literal->obj;
+        Func* func = (Func*) node->literal->obj.get();
         head_range = func->head_ranges[arg_ind];
         for(size_t i=head_range.start; i < head_range.end; i++){
             const HeadInfo& hi = func->head_infos[i];
@@ -157,7 +157,7 @@ void InputState::signal_modify(size_t ind, bool is_deref_support){
 
 void InputState::ensure_larger_than(size_t new_size){
     if(new_size > size()){
-        size_t new_cap = std::max(new_size, _capacity + std::min(64,_capacity));
+        size_t new_cap = std::max(new_size, _capacity + std::min(64ul,_capacity));
         head_ptrs.conservativeResize(new_cap, n_heads);
         entry_states.reserve(new_cap);
     }
@@ -200,8 +200,8 @@ Item* InputState::resolve_head_ptr(int64_t f_id, Var* var, int64_t ind){
     const std::vector<ref<Fact>>& facts = node->graph->fact_set->facts;
     size_t n_derefs = var->length;
     DerefInfo* deref_infos = var->deref_infos;
+    Fact* inst_ptr = (Fact*) facts[f_id].get();
     if(n_derefs > 0){
-        Fact* inst_ptr = (Fact*) facts[f_id].get();
         if(n_derefs > 1){
             for(int i=0; i < n_derefs-1; i++){
                 if(inst_ptr == nullptr) return nullptr;
@@ -227,6 +227,7 @@ Item* InputState::resolve_head_ptr(int64_t f_id, Var* var, int64_t ind){
             }
         }
     }
+    return nullptr;
 }
 
 void InputState::update(){
@@ -279,7 +280,7 @@ void InputState::update(){
 }
 
 // CORGI_Node implementations
-CORGI_Node::CORGI_Node(CORGI_Graph* graph, Literal* literal, std::vector<CORGI_IO*> inputs) :
+CORGI_Node::CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<CORGI_IO*>& inputs) :
     graph(graph), literal(literal), inputs(inputs) {
     // n_vars = literal->var_inds.size();
     // var_inds = literal->var_inds;
@@ -293,10 +294,11 @@ CORGI_Node::CORGI_Node(CORGI_Graph* graph, Literal* literal, std::vector<CORGI_I
 void CORGI_Node::update_alpha_matches_func(){
     InputState& input_state = input_states[0];
     Func* func = (Func*) literal->obj.get();
-    size_t n_heads = func->head_infos.size();
+    // size_t n_heads = func->head_infos.size();
     for(auto& change_ind : input_state.changed_inds){
         InputEntryState& e_state = input_state.entry_states[change_ind];
-        bool is_match = (func->call_heads(input_state.head_ptrs(change_ind, n_heads)) == CFSTATUS_TRUTHY) ^ literal->negated;
+        void** row_ptr = (void**) input_state.head_ptrs.row(change_ind).data();
+        bool is_match = (func->call_heads(row_ptr) == CFSTATUS_TRUTHY) ^ literal->negated;
         e_state.true_count = int64_t(is_match);
     }
 }
@@ -313,7 +315,7 @@ void CORGI_Node::update_output_changes(){
         InputState& input_state = input_states[i];
         for(size_t k=0; k < input_state.entry_states.size(); k++){
             InputEntryState& e_state = input_state.entry_states[k];
-            CORGI_IO* output = outputs[k];
+            CORGI_IO* output = outputs[k].get();
             bool true_is_nonzero = (e_state.true_count > 0);
             e_state.true_ever_nonzero |= true_is_nonzero;
             
@@ -389,11 +391,27 @@ void CORGI_Graph::_ensure_root_inputs(Logic* logic){
     }
 }
 
+// Function to get the indices that would sort an Eigen vector
+template <typename T>
+std::vector<size_t> argsort_eigen(const T& vec) {
+    // Initialize a vector of indices from 0 to n-1
+    std::vector<size_t> indices(vec.size());
+    std::iota(indices.begin(), indices.end(), 0);
+
+    // Sort the indices based on the values in the original vector
+    std::sort(indices.begin(), indices.end(),
+        [&](size_t i, size_t j) {
+            return vec(i) < vec(j);
+        });
+
+    return indices;
+}
+
 std::vector<size_t> CORGI_Graph::_get_degree_order(Logic* logic){
     // Order vars by decreasing beta degree --- the number of other 
     // vars that they share beta literals with. Implements heuristic
     // that the most beta-constrained nodes are matched first. 
-    auto has_pairs = Eigen::Tensor<bool, 2, Eigen::RowMajor>(
+    auto has_pairs = Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>(
         logic->vars.size(), logic->vars.size()
     );
     for(Item& item : logic->items){
@@ -408,9 +426,9 @@ std::vector<size_t> CORGI_Graph::_get_degree_order(Logic* logic){
             }
         }
     }
-    Eigen::Tensor<size_t, 1, Eigen::RowMajor> degree = has_pairs.sum(1);
-    Eigen::Tensor<size_t, 1, Eigen::RowMajor> degree_order = degree.argsort(-1);
-    return degree_order.matrix().cast<size_t>().eval().vector();
+    auto degree = has_pairs.colwise().sum();
+    auto degree_order = argsort_eigen(degree);
+    return degree_order;
 }
 
 void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers){
@@ -426,7 +444,6 @@ void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers
     std::unique_ptr<CORGI_Node> node = //
         std::make_unique<CORGI_Node>(this, lit, inputs);
     nodes_by_nargs[lit->var_inds.size()].push_back(node.get());
-    nodes.push_back(std::move(node));
 
     // Update the frontiers to point to the outputs of the new node.
     for(size_t i=0; i < lit->var_inds.size(); i++){
@@ -434,6 +451,7 @@ void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers
         frontier.output = node->outputs[i].get();
         frontier.upstream_depends.push_back(lit);
     }
+    nodes.push_back(std::move(node));
 }
 
 void CORGI_Graph::_add_logic(Logic* logic, std::vector<VarFrontier>& frontiers){
@@ -458,29 +476,34 @@ void CORGI_Graph::_add_logic(Logic* logic, std::vector<VarFrontier>& frontiers){
             }
         }
     }   
+
+}
+
+void CORGI_Graph::add_logic(Logic* logic){
+    std::vector<VarFrontier> frontiers = {};
+    frontiers.resize(logic->vars.size(), nullptr);
     for(size_t i=0; i < logic->vars.size(); i++){
         CRE_Type* var_type = logic->vars[i]->base_type;
-        var_frontiers[i] = VarFrontier(get_root_io(var_type));
+        frontiers[i] = VarFrontier(get_root_io(var_type));
     }
-    _add_logic(logic, var_frontiers);
-
+    _add_logic(logic, frontiers);
     // TODO: Do I need to build var_end_join_ptrs?
 }
 
-CORGI_IO* CORGI_Graph::get_root_io(CRE_Type* type) const{
+CORGI_IO* CORGI_Graph::get_root_io(CRE_Type* type){
     int32_t type_index = type->type_index;
     if(type_index >= root_inputs.size()){
-        root_inputs.resize(type_index + 1, nullptr);
+        root_inputs.resize(type_index + 1);
     }
-    // if(root_inputs[type_index] == nullptr){
-    //     root_inputs[type_index] = std::make_unique<CORGI_IO>();
-    // }
+    if(root_inputs[type_index] == nullptr){
+        root_inputs[type_index] = std::make_unique<CORGI_IO>(nullptr);
+    }
     return root_inputs[type_index].get();
 }
 
 void CORGI_Graph::parse_change_events(){
     for(size_t i=change_head; i < fact_set->change_queue.size(); i++){
-        ChangeEvent& change_event = &fact_set->change_queue[i];
+        ChangeEvent& change_event = fact_set->change_queue[i];
         Fact* fact = fact_set->get(change_event.f_id);
         
         // Modifies route directly to their dependencies 

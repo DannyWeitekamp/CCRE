@@ -149,6 +149,13 @@ add_test(
   COMMAND $<TARGET_FILE:test_logical>
   )
 
+add_executable(test_corgi tests/test_corgi.cpp)
+target_link_libraries(test_corgi PRIVATE core_lib logical_lib)
+add_test(
+  NAME test_corgi
+  COMMAND $<TARGET_FILE:test_corgi>
+  )
+
 add_executable(test_transform tests/test_transform.cpp)
 target_link_libraries(test_transform PRIVATE core_lib transform_lib)
 add_test(

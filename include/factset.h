@@ -55,7 +55,7 @@ struct ChangeEvent {
     inline bool operator<(const ChangeEvent& rec2) const {
         if(this->f_id != rec2.f_id) return this->f_id < rec2.f_id;
         if(this->mbr_ind !=  rec2.mbr_ind) return this->mbr_ind < rec2.mbr_ind;
-        if(this->deref_kind !=  rec2.deref_kind) return this->deref_kind < rec2.deref_kind;        
+        return this->deref_kind < rec2.deref_kind;        
     }
 
     inline bool operator==(const ChangeEvent& rec2) const {
