@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <map>
 #include <stdexcept>
+#include <sys/types.h>
 #include <vector>
 #include <span>
 #include <cstddef>
@@ -162,11 +163,13 @@ struct CORGI_IO {
 
     int64_t size() const;
     int64_t capacity() const;
-    void downstream_signal_add(size_t ind);
+    void downstream_signal_add(size_t ind, int64_t f_id);
     void downstream_signal_remove(size_t ind);
     int64_t add(int64_t f_id);
     void add_at(size_t ind, int64_t f_id);
     void remove_at(size_t ind);
+
+    std::string to_string() const;
 };
 
 // struct DependsComparator {
@@ -179,6 +182,22 @@ struct CORGI_IO {
         
 //     }
 // };
+
+struct HeadValueBuffer {
+    size_t byte_width = 0;
+    size_t n_heads = 0;
+    size_t capacity = 0;
+    void* data = nullptr;
+    std::vector<size_t> head_offsets = {};
+
+    HeadValueBuffer(Func* func, size_t arg_ind);
+    HeadValueBuffer();
+    void resize(size_t n_entries);
+
+    inline void* get_entry_data_ptr(size_t ind) const {
+        return (void*) ((uint8_t*) data + ind * byte_width);
+    }
+};
 
 struct ChangeDep {
     // An input state in a node that depends on this change event.
@@ -205,16 +224,17 @@ struct InputState {
     CORGI_Node* node;
     CORGI_IO* input;
     std::vector<Var*> head_var_ptrs;
+    // std::vector<size_t> head_offsets;
     HeadRange head_range;
+    size_t n_heads; 
     // std::span<HeadInfo> head_infos;
 
     size_t _capacity; 
     size_t _size; 
-    size_t n_heads; 
-    std::vector<int64_t> modified_f_ids;
+    std::vector<int64_t> modified_f_ids = {};
     
-    HeadPtrTensor head_ptrs;
-    std::vector<InputEntryState> entry_states;
+    HeadValueBuffer head_value_buffer={};
+    std::vector<InputEntryState> entry_states = {};
 
 
     std::vector<int64_t> changed_inds = {};
@@ -228,10 +248,10 @@ struct InputState {
     size_t size();
     size_t capacity();
     InputState(CORGI_Node* node, size_t arg_ind);
-    void signal_add(size_t ind);
+    void signal_add(size_t ind, int64_t f_id);
     void signal_remove(size_t ind);
     void signal_modify(size_t ind, bool is_deref_support=false);
-    void ensure_larger_than(size_t new_size);
+    void ensure_larger_than(size_t new_size, size_t new_capacity=-1);
     bool validate_head_or_retract(int64_t f_id, size_t change_ind);
     void insert_change_dep(int64_t f_id, 
                           const DerefInfo& deref_info,
@@ -335,6 +355,36 @@ struct CORGI_Node {
     void update_beta_matches_func();
     void update_output_changes();
     void update();
+
+
+    template <class ... Ts>
+    bool eval_func_relation(Func* func, Ts&& ... entry_inds){
+        void** head_val_ptrs = (void**) alloca(sizeof(void**)*func->head_infos.size());
+        void* ret_ptr = (void*) alloca(func->return_type->byte_width);
+        int i = 0;
+        ([&] {	
+            HeadValueBuffer& head_value_buffer = input_states[i].head_value_buffer;
+            size_t entry_ind = entry_inds; // Variatic expansion of entry_inds
+            auto h_start = func->head_ranges[i].start;
+            auto h_end = func->head_ranges[i].end;
+            
+            size_t j = 0;
+            for(size_t head_ind=h_start; head_ind<h_end; ++head_ind){
+                size_t head_offset = head_value_buffer.head_offsets[j];
+                void* entry_data_ptr = head_value_buffer.get_entry_data_ptr(entry_ind);
+                void* head_val_ptr = (void*) ((uint8_t*) entry_data_ptr + head_offset);
+                
+                head_val_ptrs[head_ind] = head_val_ptr;
+                j++;
+            }
+            ++i;        
+        } (), ...);
+
+        func->call_recursive_fc(func, ret_ptr, head_val_ptrs);
+        Item ret_item = func->ptr_to_item_func(ret_ptr);
+        cout << "RET ITEM: " << ret_item.to_string() << endl;
+        return ret_item.as<bool>();
+    }
 };
 
 // std::vector<ChangeEvent> accumulated_change_events(

@@ -569,6 +569,28 @@ public:
         return T( (innerT*) get_ptr());
     }
 
+    // template <typename T>
+    // requires std::is_same_v<T, bool>
+    template<bool T>
+    bool as() const{
+        switch(t_id){
+        case T_ID_BOOL:
+            return _as<bool>();
+        case T_ID_INT:
+            return _as<int64_t>() != 0;
+        case T_ID_FLOAT:
+            return _as<double>() != 0.0;
+        case T_ID_STR:
+            return _as<std::string_view>().length() > 0;
+        case T_ID_UNDEF:
+            return false;
+        case T_ID_NONE:
+            return false;
+        default:
+            return val != 0;
+        }        
+    }
+
     template <std::integral T>
     T as() const{
         if(is_integral()){

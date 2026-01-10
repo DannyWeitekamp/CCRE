@@ -16,22 +16,26 @@ void test_corgi_basic(){
     // Define Cat FactType
     FactType* CatType = define_fact("Cat", {
         {"name", cre_str},
-        {"color", cre_str}
+        {"color", cre_str},
+        {"age", cre_int},
     });
 
     ref<Var> A = new_var("A", CatType);
     ref<Var> B = new_var("B", CatType);
 
-    ref<Logic> logic = AND(Equals(A->extend_attr("color"), "black"), Equals(B->extend_attr("color"), "white"));
+    ref<Logic> logic = AND(
+        EqualsStr(A->extend_attr("color"), "brown"), GreaterThanInt(A->extend_attr("age"), 5),
+        EqualsStr(B->extend_attr("color"), "white"), LessThanInt(B->extend_attr("age"), 5)
+    );
     cout << "Logic: " << logic << endl;
     
     // Create a FactSet
     ref<FactSet> fact_set = new FactSet();
 
-    fact_set->declare(make_fact(CatType, "snickers", "brown"));
-    fact_set->declare(make_fact(CatType, "dingo", "brown"));
-    fact_set->declare(make_fact(CatType, "fluffer", "white"));
-    fact_set->declare(make_fact(CatType, "sango", "white"));
+    fact_set->declare(make_fact(CatType, "snickers", "brown", 10));
+    fact_set->declare(make_fact(CatType, "dingo", "brown", 2));
+    fact_set->declare(make_fact(CatType, "fluffer", "white", 6));
+    fact_set->declare(make_fact(CatType, "sango", "white", 4));
     
     // Create a CORGI_Graph
     CORGI_Graph graph;
@@ -44,6 +48,8 @@ void test_corgi_basic(){
     
     cout << "Graph nodes: " << graph.nodes.size() << endl;
     IS_TRUE(graph.nodes.size() > 0);
+
+    graph.update();
     
     cout << "Test passed!" << endl;
 }

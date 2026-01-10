@@ -65,15 +65,15 @@ int64_t CORGI_IO::capacity() const {
     return match_f_ids.size();
 }
 
-void CORGI_IO::downstream_signal_add(size_t ind){
+void CORGI_IO::downstream_signal_add(size_t ind, int64_t f_id){
     for(InputState* input_state : downstream_input_states){
-        input_state->signal_add(ind);
+        input_state->signal_add(ind, f_id);
     }
 }
 
-void CORGI_IO::downstream_signal_remove(size_t ind){
+void CORGI_IO::downstream_signal_remove(size_t f_id){
     for(InputState* input_state : downstream_input_states){
-        input_state->signal_remove(ind);
+        input_state->signal_remove(f_id);
     }
 }
 
@@ -102,6 +102,57 @@ void CORGI_IO::remove_at(size_t ind){
     match_holes.push_back(ind);
 }
 
+
+std::string CORGI_IO::to_string() const{
+    std::stringstream ss;
+    if(upstream_node != nullptr){
+        cout << "Output of node: " << upstream_node->literal->to_string() << endl;
+    }else{
+        cout << "Root IO:" << endl;
+    }
+    for(size_t i=0; i < match_f_ids.size(); i++){
+        int64_t f_id = match_f_ids[i];
+        ss << f_id << " : ";
+        FactSet* fact_set = upstream_node != nullptr ? upstream_node->graph->fact_set : nullptr;
+        if(f_id != -1 && fact_set != nullptr){
+            ref<Fact> fact = fact_set->get(f_id);
+            ss << fact->to_string() << " ";
+        }else{
+            ss << "null ";
+        }
+        ss << endl;
+    }
+    return ss.str();
+}
+HeadValueBuffer::HeadValueBuffer() {};
+
+HeadValueBuffer::HeadValueBuffer(Func* func, size_t arg_ind) :
+    byte_width(0),
+    n_heads(func->head_ranges[arg_ind].end-func->head_ranges[arg_ind].start)
+{
+    head_offsets.reserve(n_heads);
+    for(size_t i=func->head_ranges[arg_ind].start; i < func->head_ranges[arg_ind].end; i++){
+        const HeadInfo& hi = func->head_infos[i];
+        head_offsets.push_back(byte_width);
+        byte_width += hi.head_type->byte_width;
+    }
+    resize(64);
+}
+
+void HeadValueBuffer::resize(size_t n_entries){
+    if(n_entries > capacity){
+        size_t new_capacity = std::max(n_entries, capacity + std::min(64ul,capacity));
+        void* new_data = (void*) malloc(new_capacity * byte_width);
+        if(data != nullptr){
+            memcpy(new_data, data, capacity * byte_width);
+            free(data);
+        }
+        data = new_data;
+        capacity = new_capacity;
+        
+    }
+}
+
 // ChangeDep implementations
 ChangeDep::ChangeDep(InputState* input_state, size_t ind, bool is_deref_support):
     input_state(input_state), ind(ind), is_deref_support(is_deref_support)
@@ -112,28 +163,49 @@ size_t InputState::size(){return _size;}
 
 size_t InputState::capacity(){return _capacity;}
 
-InputState::InputState(CORGI_Node* node, size_t arg_ind){
-    head_var_ptrs = {};
-
-    auto kind = node->literal->kind;
-    if(kind == LIT_KIND_EQ || kind == LIT_KIND_FUNC){
-        Func* func = (Func*) node->literal->obj.get();
-        head_range = func->head_ranges[arg_ind];
-        for(size_t i=head_range.start; i < head_range.end; i++){
-            const HeadInfo& hi = func->head_infos[i];
-            head_var_ptrs.push_back(hi.var_ptr);
-        }
-    }else{
-        throw std::runtime_error("NOT IMPLEMENTED");
+void InputState::ensure_larger_than(size_t new_size, size_t new_capacity){
+    if(new_size > size()){
+        new_capacity  = new_capacity == -1 ? new_size : new_capacity;
+        size_t new_cap = std::max(new_capacity, _capacity + std::min(64ul,_capacity));
+        // head_ptrs.conservativeResize(new_cap, n_heads);
+        head_value_buffer.resize(new_cap);
+        entry_states.resize(new_cap, InputEntryState(-1));
+        _capacity = new_cap;
+        _size = new_size;
     }
 }
 
-void InputState::signal_add(size_t ind){
+InputState::InputState(CORGI_Node* node, size_t arg_ind) :
+    node(node), input(node->inputs[arg_ind]), 
+    _capacity(input->capacity()), _size(input->size())
+{
+    head_var_ptrs = {};
+
+    auto kind = node->literal->kind;
+    size_t arg_offset = 0;
+    if(kind == LIT_KIND_EQ || kind == LIT_KIND_FUNC){
+        Func* func = (Func*) node->literal->obj.get();
+        head_range = func->head_ranges[arg_ind];
+        n_heads = head_range.end - head_range.start;
+        for(size_t i=head_range.start; i < head_range.end; i++){
+            const HeadInfo& hi = func->head_infos[i];
+            head_var_ptrs.push_back(hi.var_ptr);
+            arg_offset += hi.base_type->byte_width;
+        }
+        head_value_buffer = HeadValueBuffer(func, arg_ind);
+    }else{
+        throw std::runtime_error("NOT IMPLEMENTED");
+    }
+    ensure_larger_than(input->size(), input->capacity());
+}
+
+void InputState::signal_add(size_t ind, int64_t f_id){
     ensure_larger_than(ind + 1);
     InputEntryState& e_state = entry_states[ind];
     e_state.source_valid = true;
     e_state.needs_head_check = true;
     e_state.needs_update_relation = true;
+    e_state.f_id = f_id;
     changed_inds.push_back(ind);
 }
 
@@ -155,20 +227,15 @@ void InputState::signal_modify(size_t ind, bool is_deref_support){
     changed_inds.push_back(ind);
 }
 
-void InputState::ensure_larger_than(size_t new_size){
-    if(new_size > size()){
-        size_t new_cap = std::max(new_size, _capacity + std::min(64ul,_capacity));
-        head_ptrs.conservativeResize(new_cap, n_heads);
-        entry_states.reserve(new_cap);
-    }
-}
+
 
 bool InputState::validate_head_or_retract(int64_t f_id, size_t change_ind){
 
     bool is_valid = true;
 
     // for(Var* head_var : head_var_ptrs){
-    size_t v = 0;
+    void* entry_data_ptr = head_value_buffer.get_entry_data_ptr(change_ind);
+    size_t j = 0;
     for(size_t i=head_range.start; i < head_range.end; i++){
         Var* head_var = head_var_ptrs[i];
         Item* head_ptr = resolve_head_ptr(f_id, head_var, change_ind);
@@ -176,7 +243,11 @@ bool InputState::validate_head_or_retract(int64_t f_id, size_t change_ind){
             is_valid = false;
             break;
         }
-        head_ptrs(change_ind, i) = head_ptr;
+        
+        void* dest = (uint8_t*) entry_data_ptr + head_value_buffer.head_offsets[j];
+        copy_convert_arg(dest, *head_ptr, head_var->head_type);
+        // head_ptrs(change_ind, i) = head_ptr;
+        j++;
     }
     return is_valid;
 
@@ -217,14 +288,14 @@ Item* InputState::resolve_head_ptr(int64_t f_id, Var* var, int64_t ind){
                 }
                 inst_ptr = (Fact*) mbr_ptr->get_ptr();
             }
-            if(inst_ptr != nullptr){
-                const DerefInfo& deref_info = deref_infos[-1];
-                Member* mbr_ptr = deref_once(inst_ptr, deref_info);
-                insert_change_dep(f_id, deref_info, ind, false);
-                return (Item*) mbr_ptr;
-            }else{
-                return nullptr;
-            }
+        }
+        if(inst_ptr != nullptr){
+            const DerefInfo& deref_info = deref_infos[n_derefs-1];
+            Member* mbr_ptr = deref_once(inst_ptr, deref_info);
+            insert_change_dep(f_id, deref_info, ind, false);
+            return (Item*) mbr_ptr;
+        }else{
+            return nullptr;
         }
     }
     return nullptr;
@@ -297,8 +368,9 @@ void CORGI_Node::update_alpha_matches_func(){
     // size_t n_heads = func->head_infos.size();
     for(auto& change_ind : input_state.changed_inds){
         InputEntryState& e_state = input_state.entry_states[change_ind];
-        void** row_ptr = (void**) input_state.head_ptrs.row(change_ind).data();
-        bool is_match = (func->call_heads(row_ptr) == CFSTATUS_TRUTHY) ^ literal->negated;
+        
+        // void** row_ptr = (void**) input_state.head_ptrs.row(change_ind).data();
+        bool is_match = (eval_func_relation(func, change_ind) == CFSTATUS_TRUTHY) ^ literal->negated;
         e_state.true_count = int64_t(is_match);
     }
 }
@@ -313,9 +385,10 @@ void CORGI_Node::update_beta_matches_func(){
 void CORGI_Node::update_output_changes(){
     for(size_t i=0; i < input_states.size(); i++){
         InputState& input_state = input_states[i];
+        CORGI_IO* output = outputs[i].get();
         for(size_t k=0; k < input_state.entry_states.size(); k++){
             InputEntryState& e_state = input_state.entry_states[k];
-            CORGI_IO* output = outputs[k].get();
+            
             bool true_is_nonzero = (e_state.true_count > 0);
             e_state.true_ever_nonzero |= true_is_nonzero;
             
@@ -328,7 +401,7 @@ void CORGI_Node::update_output_changes(){
                 e_state.present_in_output = true;
                 auto output_ind = output->add(e_state.f_id);
                 e_state.output_ind = output_ind;
-                output->downstream_signal_add(e_state.f_id);
+                output->downstream_signal_add(output_ind, e_state.f_id);
             
             // If the fact is present in the output and is now not a match,
             //  add it to the output and signal the downstream nodes.
@@ -339,10 +412,13 @@ void CORGI_Node::update_output_changes(){
                 output->downstream_signal_remove(e_state.f_id);
             }
         }
+
+        cout << output->to_string() << endl;
         // Clear the changed indicies for this input state to indicate
         //  that they have been processed (during input updates and match checking)
         input_state.changed_inds.clear();
     }
+
 }
 
 void CORGI_Node::update(){
@@ -365,10 +441,6 @@ void CORGI_Node::update(){
     for(InputState& input_state : input_states){
         input_state.changed_inds.clear();
     }
-
-    
-
-
 }
 
 // VarFrontier implementations
@@ -508,10 +580,12 @@ void CORGI_Graph::parse_change_events(){
         
         // Modifies route directly to their dependencies 
         auto change_dep_it = change_dep_map.find(change_event);
-        std::vector<ChangeDep>& change_deps = change_dep_it->second;
-        for(ChangeDep& change_dep : change_deps){
-            InputState* input_state = change_dep.input_state;
-            input_state->signal_modify(change_dep.ind, change_dep.is_deref_support);
+        if(change_dep_it != change_dep_map.end()){
+            std::vector<ChangeDep>& change_deps = change_dep_it->second;
+            for(ChangeDep& change_dep : change_deps){
+                InputState* input_state = change_dep.input_state;
+                input_state->signal_modify(change_dep.ind, change_dep.is_deref_support);
+            }
         }
 
         // DECLARE / RETRACT route to their root inputs and propogate
@@ -523,8 +597,8 @@ void CORGI_Graph::parse_change_events(){
                 // Skip if the root io is nullptr.
                 if(root_io == nullptr) return;
                 if(change_event.change_kind == CHANGE_KIND_DECLARE){
-                    root_io->add(change_event.f_id);
-                    root_io->downstream_signal_add(change_event.f_id);
+                    size_t ind = root_io->add(change_event.f_id);
+                    root_io->downstream_signal_add(ind, change_event.f_id);
                 }else{
                     root_io->remove_at(change_event.f_id);
                     root_io->downstream_signal_remove(change_event.f_id);
