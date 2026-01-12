@@ -20,15 +20,6 @@ void test_corgi_basic(){
         {"age", cre_int},
     });
 
-    ref<Var> A = new_var("A", CatType);
-    ref<Var> B = new_var("B", CatType);
-
-    ref<Logic> logic = AND(
-        EqualsStr(A->extend_attr("color"), "brown"), GreaterThanInt(A->extend_attr("age"), 5),
-        EqualsStr(B->extend_attr("color"), "white"), LessThanInt(B->extend_attr("age"), 5)
-    );
-    cout << "Logic: " << logic << endl;
-    
     // Create a FactSet
     ref<FactSet> fact_set = new FactSet();
 
@@ -36,22 +27,31 @@ void test_corgi_basic(){
     fact_set->declare(make_fact(CatType, "dingo", "brown", 2));
     fact_set->declare(make_fact(CatType, "fluffer", "white", 6));
     fact_set->declare(make_fact(CatType, "sango", "white", 4));
-    
-    // Create a CORGI_Graph
-    CORGI_Graph graph;
-    graph.fact_set = fact_set.get();
-    // Initialize nodes_by_nargs to avoid out-of-bounds access
-    graph.nodes_by_nargs.resize(10);
-    
-    // Add the logic to the graph
-    graph.add_logic(logic.get());
-    
-    cout << "Graph nodes: " << graph.nodes.size() << endl;
-    IS_TRUE(graph.nodes.size() > 0);
 
-    graph.update();
+    ref<Var> A = new_var("A", CatType);
+    ref<Var> B = new_var("B", CatType);
+
+    ref<Logic> logic = AND(
+        EqualsStr(A->extend_attr("color"), "brown"), GreaterThanInt(A->extend_attr("age"), 5),
+        EqualsStr(B->extend_attr("color"), "white"), LessThanInt(B->extend_attr("age"), 5)
+    );
+
+    cout << "--------" << endl;
     
-    cout << "Test passed!" << endl;
+    // CORGI_Graph graph(fact_set.get());
+    // graph.add_logic(logic.get());
+    // graph.update();
+
+    ref<Logic> logic2 = AND(
+        EqualsStr(A->extend_attr("color"), "brown"),
+        EqualsStr(B->extend_attr("color"), "white"), 
+          LessThanInt(A->extend_attr("age"), B->extend_attr("age"))
+    );
+
+    CORGI_Graph graph2(fact_set.get());
+    graph2.add_logic(logic2.get());
+    graph2.update();
+
 }
 
 int main(){

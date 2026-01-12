@@ -142,10 +142,12 @@ struct CORGI_IO {
     // The set of f_ids held by this input/output.
     std::vector<int64_t> match_f_ids = {};
     // The indicies in the input of associated output facts.
-    std::vector<int64_t> match_inp_inds = {};
+    std::vector<int64_t> input_inds = {};
 
     // A mapping of idrecs to their indicies in the output.
     // std::map<uint64_t, int64_t> idrecs_to_inds = {};
+
+    
 
     // A vector that keeps track indicies of holes in the output.  
     std::vector<int64_t> match_holes = {};
@@ -154,19 +156,20 @@ struct CORGI_IO {
     // int64_t width = 0;
     // A weak pointer to the node upstream to this one
     CORGI_Node* upstream_node = nullptr;
+    size_t arg_ind = -1;
 
     // A vector of input states that take this as an input.
     std::vector<InputState*> downstream_input_states = {};
 
     // bool is_root = false;
-    CORGI_IO(CORGI_Node* upstream_node = nullptr);
+    CORGI_IO(CORGI_Node* upstream_node = nullptr, size_t arg_ind = -1);
 
     int64_t size() const;
     int64_t capacity() const;
     void downstream_signal_add(size_t ind, int64_t f_id);
     void downstream_signal_remove(size_t ind);
-    int64_t add(int64_t f_id);
-    void add_at(size_t ind, int64_t f_id);
+    int64_t add(int64_t f_id, int64_t input_ind = -1);
+    void add_at(size_t ind, int64_t f_id, int64_t input_ind = -1);
     void remove_at(size_t ind);
 
     std::string to_string() const;
@@ -337,7 +340,8 @@ struct CORGI_Node {
 
     // The Op for the node's literal
     // ref<Func> func;
-
+    Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> 
+      truth_table = {};
     
     
     // // The number of Vars (1 for alpha or 2 for beta)
@@ -349,6 +353,8 @@ struct CORGI_Node {
     std::vector<CORGI_IO*> inputs;
     std::vector<std::unique_ptr<CORGI_IO>> outputs;
     std::vector<InputState> input_states;
+
+    bool upstream_same_parents = false;
 
     CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<CORGI_IO*>& inputs);
     void update_alpha_matches_func();
@@ -382,7 +388,6 @@ struct CORGI_Node {
 
         func->call_recursive_fc(func, ret_ptr, head_val_ptrs);
         Item ret_item = func->ptr_to_item_func(ret_ptr);
-        cout << "RET ITEM: " << ret_item.to_string() << endl;
         return ret_item.as<bool>();
     }
 };
@@ -461,6 +466,8 @@ struct CORGI_Graph {
     CORGI_IO* get_root_io(CRE_Type* type);
     void parse_change_events();
     void update();
+
+    CORGI_Graph(FactSet* fact_set) : nodes_by_nargs(8), fact_set(fact_set) {}
 };
 
 // Node Update Phases

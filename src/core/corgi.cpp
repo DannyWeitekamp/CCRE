@@ -53,8 +53,8 @@ InputEntryState::InputEntryState(int64_t f_id):
 {}
 
 // CORGI_IO implementations
-CORGI_IO::CORGI_IO(CORGI_Node* upstream_node) :
-    upstream_node(upstream_node) 
+CORGI_IO::CORGI_IO(CORGI_Node* upstream_node, size_t arg_ind) :
+    upstream_node(upstream_node), arg_ind(arg_ind) 
 {}
 
 int64_t CORGI_IO::size() const {
@@ -66,35 +66,41 @@ int64_t CORGI_IO::capacity() const {
 }
 
 void CORGI_IO::downstream_signal_add(size_t ind, int64_t f_id){
+    
     for(InputState* input_state : downstream_input_states){
+        // cout << "DOWNSTREAM SIGNAL ADD: " << ind << " " << f_id << "->" << uint64_t(input_state) << endl;
         input_state->signal_add(ind, f_id);
     }
 }
 
-void CORGI_IO::downstream_signal_remove(size_t f_id){
+void CORGI_IO::downstream_signal_remove(size_t ind){
     for(InputState* input_state : downstream_input_states){
-        input_state->signal_remove(f_id);
+        input_state->signal_remove(ind);
     }
 }
 
-int64_t CORGI_IO::add(int64_t f_id){
+int64_t CORGI_IO::add(int64_t f_id, int64_t input_ind){
+    // cout << fmt::format("ADD: f_id={}, input_ind={}", f_id, input_ind) << endl;
     if(match_holes.size() > 0){
         int64_t ind = match_holes.back();
         match_holes.pop_back();
         match_f_ids[ind] = f_id;
+        input_inds[ind] = input_ind;
         return ind;
     }else{
         match_f_ids.push_back(f_id);
+        input_inds.push_back(input_ind);
         return match_f_ids.size() - 1;
     }
 }
 
-void CORGI_IO::add_at(size_t ind, int64_t f_id){
+void CORGI_IO::add_at(size_t ind, int64_t f_id, int64_t input_ind){
     if(ind >= capacity()){
         size_t new_cap = std::max(ind + 1, _size + std::min(64ul,_size));
         match_f_ids.resize(new_cap, -1);
     }
     match_f_ids[ind] = f_id;
+    input_inds[ind] = input_ind;
 }
 
 void CORGI_IO::remove_at(size_t ind){
@@ -106,7 +112,8 @@ void CORGI_IO::remove_at(size_t ind){
 std::string CORGI_IO::to_string() const{
     std::stringstream ss;
     if(upstream_node != nullptr){
-        cout << "Output of node: " << upstream_node->literal->to_string() << endl;
+        std::string var_str = arg_ind >= 0 ? upstream_node->input_states[arg_ind].head_var_ptrs[0]->base->to_string() : "??";
+        cout << fmt::format("Output ({}) of node: {}" , var_str, upstream_node->literal->to_string()) << endl;
     }else{
         cout << "Root IO:" << endl;
     }
@@ -196,6 +203,7 @@ InputState::InputState(CORGI_Node* node, size_t arg_ind) :
     }else{
         throw std::runtime_error("NOT IMPLEMENTED");
     }
+    // cout << "head_var_ptrs: " << head_var_ptrs.size() << endl;
     ensure_larger_than(input->size(), input->capacity());
 }
 
@@ -207,6 +215,7 @@ void InputState::signal_add(size_t ind, int64_t f_id){
     e_state.needs_update_relation = true;
     e_state.f_id = f_id;
     changed_inds.push_back(ind);
+    // cout << fmt::format("{}: SIGNAL ADD: ind={}, f_id={}, {} @ {}", head_var_ptrs[0]->base->to_string(), ind, f_id, changed_inds, uint64_t(this)) << endl;
 }
 
 void InputState::signal_remove(size_t ind){
@@ -236,7 +245,7 @@ bool InputState::validate_head_or_retract(int64_t f_id, size_t change_ind){
     // for(Var* head_var : head_var_ptrs){
     void* entry_data_ptr = head_value_buffer.get_entry_data_ptr(change_ind);
     size_t j = 0;
-    for(size_t i=head_range.start; i < head_range.end; i++){
+    for(size_t i=0; i < n_heads; i++){
         Var* head_var = head_var_ptrs[i];
         Item* head_ptr = resolve_head_ptr(f_id, head_var, change_ind);
         if(head_ptr == nullptr){
@@ -302,6 +311,7 @@ Item* InputState::resolve_head_ptr(int64_t f_id, Var* var, int64_t ind){
 }
 
 void InputState::update(){
+    cout << head_var_ptrs[0]->base->to_string() << ": changed_inds: " << fmt::format("{} @ {}", changed_inds, uint64_t(this)) << endl;
     for(int64_t change_ind : changed_inds){
         InputEntryState& e_state = entry_states[change_ind];
         bool head_was_valid = e_state.head_is_valid;
@@ -355,10 +365,15 @@ CORGI_Node::CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<C
     graph(graph), literal(literal), inputs(inputs) {
     // n_vars = literal->var_inds.size();
     // var_inds = literal->var_inds;
+
+    // NOTE: reserve() is necessary here so pointer held by downstream 
+    //   nodes is not invalidated as input_states is resized.
+    input_states.reserve(inputs.size()); 
+    outputs.reserve(inputs.size());
     for(size_t i=0; i < inputs.size(); i++){
-        input_states.push_back(InputState(this, i));
+        input_states.emplace_back(InputState(this, i));
         inputs[i]->downstream_input_states.push_back(&input_states[i]);
-        outputs.push_back(std::make_unique<CORGI_IO>(this));
+        outputs.emplace_back(std::make_unique<CORGI_IO>(this, i));
     }
 }
 
@@ -375,14 +390,122 @@ void CORGI_Node::update_alpha_matches_func(){
     }
 }
 
+
 void CORGI_Node::update_beta_matches_func(){
-    for(size_t i=0; i < input_states.size(); i++){
-        InputState& input_state = input_states[i];
+
+    // Resize the truth table to the size of the inputs
+    size_t n_rows = truth_table.rows();
+    size_t n_cols = truth_table.cols();
+    truth_table.conservativeResize(
+        input_states[0].size(), input_states[1].size());
+    for(size_t i=n_rows; i < input_states[0].size(); i++){
+        for(size_t j=n_cols; j < input_states[1].size(); j++){
+            truth_table(i, j) = false;
+        }
     }
 
+    Func* func = (Func*) literal->obj.get();
+
+    auto update_truth_table_cell = ([&](
+        bool is_match, size_t i, size_t j,
+        InputEntryState& es_i, InputEntryState& es_j
+    ){    
+        bool was_match = truth_table(i, j);
+        truth_table(i, j) = is_match;
+        int64_t count_diff = int64_t(is_match) - int64_t(was_match);
+        es_i.true_count += count_diff;
+        es_j.true_count += count_diff;
+    });
+
+    // for(size_t arg_ind = 0; arg_ind < 2; arg_ind++){
+    // size_t other_ind = arg_ind == 0 ? 1 : 0;
+    InputState& inp_state0 = input_states[0];
+    InputState& inp_state1 = input_states[1];
+    if(upstream_same_parents){
+        auto& u_tt = inputs[0]->upstream_node->truth_table;
+        auto& u_input_inds0 = inputs[0]->input_inds;
+        auto& u_input_inds1 = inputs[1]->input_inds;
+
+        auto upstream_true = ([&](size_t i, size_t j) -> bool {
+            return u_tt(u_input_inds0[i], u_input_inds1[j]);
+        });
+
+        // Update the whole row/column
+        for(size_t k=0; k < inp_state0.changed_inds.size(); k++){
+            int64_t i = inp_state0.changed_inds[k];
+            InputEntryState& es_i = inp_state0.entry_states[i];
+            for(size_t j=0; j < inp_state1.size(); j++){
+                InputEntryState& es_j = inp_state1.entry_states[j];
+
+                // If the upstream truth table is false, then this cell is also false
+                if(not upstream_true(i, j)){
+                    update_truth_table_cell(false, i, j, es_i, es_j);    
+                    continue;
+                }
+                bool is_match = false;
+                if(es_j.head_is_valid){
+                    is_match = (eval_func_relation(func, i, j) == CFSTATUS_TRUTHY) ^ literal->negated;
+                }
+                update_truth_table_cell(is_match, i, j, es_i, es_j);
+            }
+        }
+        // Check just the unchanged parts, so to avoid repeat checks 
+        for(size_t k=0; k < inp_state1.changed_inds.size(); k++){
+            int64_t j = inp_state1.changed_inds[k];
+            InputEntryState& es_j = inp_state1.entry_states[j];
+            for(size_t i=0; i < inp_state0.size(); i++){
+                InputEntryState& es_i = inp_state1.entry_states[i];
+
+                // If the upstream truth table is false, then this cell is also false
+                if(not upstream_true(i, j)){
+                    update_truth_table_cell(false, i, j, es_i, es_j);    
+                    continue;          
+                }
+                bool is_match = false;
+                if(es_j.head_is_valid){
+                    is_match = (eval_func_relation(func, i, j) == CFSTATUS_TRUTHY) ^ literal->negated;
+                }
+                update_truth_table_cell(is_match, i, j, es_i, es_j);
+            }
+        }
+    }else{
+        // Update the whole row/column
+        for(size_t k=0; k < inp_state0.changed_inds.size(); k++){
+            int64_t i = inp_state0.changed_inds[k];
+            InputEntryState& es_i = inp_state0.entry_states[i];
+            for(size_t j=0; j < inp_state1.size(); j++){
+                InputEntryState& es_j = inp_state1.entry_states[j];
+                bool is_match = false;
+                if(es_j.head_is_valid){
+                    is_match = (eval_func_relation(func, i, j) == CFSTATUS_TRUTHY) ^ literal->negated;
+                }
+                update_truth_table_cell(is_match, i, j, es_i, es_j);
+            }
+        }
+        // Check just the unchanged parts, so to avoid repeat checks 
+        // Update the whole row/column
+        for(size_t k=0; k < inp_state1.changed_inds.size(); k++){
+            int64_t j = inp_state1.changed_inds[k];
+            InputEntryState& es_j = inp_state1.entry_states[j];
+            for(size_t i=0; i < inp_state0.size(); i++){
+                InputEntryState& es_i = inp_state0.entry_states[i];
+                // Skip entries updated along dim 0 because they were already updated
+                if(!es_i.needs_update_relation) continue;          
+
+                bool is_match = false;
+                if(es_j.head_is_valid){
+                    is_match = (eval_func_relation(func, i, j) == CFSTATUS_TRUTHY) ^ literal->negated;
+                }
+                update_truth_table_cell(is_match, i, j, es_i, es_j);
+            }
+        }
+    }
 }
 
 void CORGI_Node::update_output_changes(){
+
+    // cout << truth_table << endl;
+    // cout << "--------" << endl;
     for(size_t i=0; i < input_states.size(); i++){
         InputState& input_state = input_states[i];
         CORGI_IO* output = outputs[i].get();
@@ -400,6 +523,7 @@ void CORGI_Node::update_output_changes(){
             if(!e_state.present_in_output && true_is_nonzero){
                 e_state.present_in_output = true;
                 auto output_ind = output->add(e_state.f_id);
+                // cout << fmt::format("ADD ind={}, f_id={}", output_ind, e_state.f_id) << endl;
                 e_state.output_ind = output_ind;
                 output->downstream_signal_add(output_ind, e_state.f_id);
             
@@ -407,9 +531,10 @@ void CORGI_Node::update_output_changes(){
             //  add it to the output and signal the downstream nodes.
             }else if(e_state.present_in_output && !true_is_nonzero){
                 e_state.present_in_output = false;
+                // cout << fmt::format("REMOVE ind={}, f_id={}", e_state.output_ind, e_state.f_id) << endl;
                 outputs[k]->remove_at(e_state.output_ind);
+                output->downstream_signal_remove(e_state.output_ind);
                 e_state.output_ind = -1;
-                output->downstream_signal_remove(e_state.f_id);
             }
         }
 
@@ -436,6 +561,8 @@ void CORGI_Node::update(){
         }
     }
 
+    // cout << "NOW!!!" << endl;
+
     update_output_changes();
 
     for(InputState& input_state : input_states){
@@ -450,7 +577,7 @@ VarFrontier::VarFrontier(CORGI_IO* output) : output(output) {}
 void CORGI_Graph::_ensure_root_inputs(Logic* logic){
     auto ensure_root_io = ([&](int32_t type_index){
         if(root_inputs[type_index] == nullptr){
-            root_inputs[type_index] = std::make_unique<CORGI_IO>();
+            root_inputs[type_index] = std::move(std::make_unique<CORGI_IO>());
         }
     });
     for(size_t i=0; i < logic->vars.size(); i++){
@@ -512,10 +639,15 @@ void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers
         inputs.push_back(frontier.output);
     }
 
+    if(lit->var_inds.size() >= nodes_by_nargs.size()){
+        nodes_by_nargs.resize(lit->var_inds.size()+1);
+    }
+
     // Make the new node and add it to the graph.
-    std::unique_ptr<CORGI_Node> node = //
-        std::make_unique<CORGI_Node>(this, lit, inputs);
-    nodes_by_nargs[lit->var_inds.size()].push_back(node.get());
+    nodes.emplace_back(std::make_unique<CORGI_Node>(this, lit, inputs));
+    CORGI_Node* node = nodes[nodes.size() - 1].get();//
+        
+    nodes_by_nargs[lit->var_inds.size()].push_back(node);
 
     // Update the frontiers to point to the outputs of the new node.
     for(size_t i=0; i < lit->var_inds.size(); i++){
@@ -523,7 +655,7 @@ void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers
         frontier.output = node->outputs[i].get();
         frontier.upstream_depends.push_back(lit);
     }
-    nodes.push_back(std::move(node));
+    
 }
 
 void CORGI_Graph::_add_logic(Logic* logic, std::vector<VarFrontier>& frontiers){
@@ -616,8 +748,10 @@ void CORGI_Graph::parse_change_events(){
 }
 
 void CORGI_Graph::update(){
+    
     parse_change_events();
     for(auto& node : nodes){
+        // cout << fmt::format(" -- UPDATE NODE : {} --", node->literal->to_string()) << endl;
         node->update();
     }
 }
