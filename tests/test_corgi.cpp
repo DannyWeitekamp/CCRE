@@ -25,7 +25,8 @@ void test_corgi_basic(){
 
     fact_set->declare(make_fact(CatType, "snickers", "brown", 10));
     fact_set->declare(make_fact(CatType, "dingo", "brown", 2));
-    fact_set->declare(make_fact(CatType, "fluffer", "white", 6));
+    fact_set->declare(make_fact(CatType, "snowball", "white", 6));
+    fact_set->declare(make_fact(CatType, "ol'fluffer", "white", 20));
     fact_set->declare(make_fact(CatType, "sango", "white", 4));
 
     ref<Var> A = new_var("A", CatType);

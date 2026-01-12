@@ -311,7 +311,7 @@ Item* InputState::resolve_head_ptr(int64_t f_id, Var* var, int64_t ind){
 }
 
 void InputState::update(){
-    cout << head_var_ptrs[0]->base->to_string() << ": changed_inds: " << fmt::format("{} @ {}", changed_inds, uint64_t(this)) << endl;
+    // cout << head_var_ptrs[0]->base->to_string() << ": changed_inds: " << fmt::format("{} @ {}", changed_inds, uint64_t(this)) << endl;
     for(int64_t change_ind : changed_inds){
         InputEntryState& e_state = entry_states[change_ind];
         bool head_was_valid = e_state.head_is_valid;
