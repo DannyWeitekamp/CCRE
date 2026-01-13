@@ -6,6 +6,7 @@
 #include "../include/func.h"
 #include "../include/logic.h"
 #include "../include/var_inds.h"
+#include "../include/mapping.h"
 #include "types.h"
 #include "var.h"
 #include <cstdint>
@@ -25,6 +26,7 @@ namespace cre{
     struct CORGI_Node;
     struct CORGI_Graph;
     struct InputState;
+    struct MatchIter;
 }
 
 namespace cre {
@@ -156,7 +158,7 @@ struct CORGI_IO {
     // int64_t width = 0;
     // A weak pointer to the node upstream to this one
     CORGI_Node* upstream_node = nullptr;
-    size_t arg_ind = -1;
+    int64_t arg_ind = -1;
 
     // A vector of input states that take this as an input.
     std::vector<InputState*> downstream_input_states = {};
@@ -355,6 +357,7 @@ struct CORGI_Node {
     std::vector<InputState> input_states;
 
     bool upstream_same_parents = false;
+    bool upstream_aligned = false;
 
     CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<CORGI_IO*>& inputs);
     void update_alpha_matches_func();
@@ -418,7 +421,31 @@ struct VarFrontier {
 };
 
 
+using EndJoinPtrsMatrix = Eigen::Tensor<CORGI_Node*, 2, Eigen::RowMajor>;
 
+
+struct LogicGraphView {
+    // Weak pointer to the graph this view is of.
+    CORGI_Graph* graph;
+
+    // Weak pointer to the logic this view is for.
+    Logic* logic;
+
+    // Graph nodes for this Logic 
+    std::vector<CORGI_Node*> nodes = {};
+
+    // Graph nodes for this Logic organized by [[...alphas],[...betas],[...etc]]
+    std::vector<std::vector<CORGI_Node*>> nodes_by_nargs = std::vector<std::vector<CORGI_Node*>>(8);
+    std::vector<VarFrontier> frontiers;
+    EndJoinPtrsMatrix end_join_ptrs; 
+
+    MatchIter* match_iter_prototype = nullptr;
+
+    void _add_literal(Literal* lit, std::vector<VarFrontier>& frontiers, EndJoinPtrsMatrix& end_join_ptrs);
+    void _add_logic(Logic* logic, std::vector<VarFrontier>& frontiers, EndJoinPtrsMatrix& end_join_ptrs);
+
+    LogicGraphView(CORGI_Graph* graph, Logic* logic);
+};
 
 struct CORGI_Graph {
     // The change_head of the working memory at the last graph update.
@@ -430,8 +457,9 @@ struct CORGI_Graph {
     // Owning vector of nodes in this graph
     std::vector<std::unique_ptr<CORGI_Node>> nodes = {};
 
-    // All graph nodes organized by [[...alphas],[...betas],[...etc]]
-    std::vector<std::vector<CORGI_Node*>> nodes_by_nargs = {};
+    // All logic views for this graph.
+    std::vector<LogicGraphView> logic_views = {};
+
 
 
     // Owning List of root nodes (i.e. the nodes that holds all
@@ -460,14 +488,230 @@ struct CORGI_Graph {
 
     void _ensure_root_inputs(Logic* logic);
     std::vector<size_t> _get_degree_order(Logic* logic);
-    void _add_literal(Literal* lit, std::vector<VarFrontier>& frontiers);
-    void _add_logic(Logic* logic, std::vector<VarFrontier>& frontiers);
+    
     void add_logic(Logic* logic);
     CORGI_IO* get_root_io(CRE_Type* type);
     void parse_change_events();
     void update();
 
-    CORGI_Graph(FactSet* fact_set) : nodes_by_nargs(8), fact_set(fact_set) {}
+    CORGI_Graph(FactSet* fact_set) : fact_set(fact_set) {}
+};
+
+// Forward declarations
+struct MatchIterNode;
+
+struct IterNodeDep {
+    CORGI_Node* node;
+    // Pointers to downstream nodes on which this m_node depends
+    //  NOTE: the dependant node might not be the .node of the
+    //  corresponding dependant m_node. This points to the most
+    //  downstream join for a particular var pair. 
+    MatchIterNode* m_node;
+
+    // Index of a downstream m_node on which this iter node depends.
+    size_t ind;
+
+    // The arg_ind in each node in dep_node_ptrs for the var this
+    //  m_node is associated with. 
+    size_t arg_ind;
+
+    IterNodeDep(CORGI_Node* node, MatchIterNode* m_node, size_t ind, size_t arg_ind) :
+        node(node), m_node(m_node), ind(ind), arg_ind(arg_ind) {}
+};
+
+
+struct MatchIterNode {
+    // The corgi node that this match iter node is associated with.
+    CORGI_Node* node;
+
+    // The arg_ind in the node that this match iter node is associated with.
+    size_t arg_ind;
+
+    // The var_ind within the Logic statement that this match iter node is associated with.
+    size_t var_ind;
+   
+    // The index of this match iter node in the match iter.
+    size_t m_node_ind;
+    
+    // The f_ids associated with this match iter node.
+    std::vector<int64_t> f_ids = {};
+
+    // The current index within f_ids for this iter node.
+    int64_t curr_ind = -1;
+
+    // The indicies of the downstream match iter nodes on which this match iter node depends.
+    std::vector<IterNodeDep> upstream_deps = {};
+
+    MatchIterNode(): node(nullptr), arg_ind(-1), var_ind(-1), m_node_ind(-1) {}
+
+    MatchIterNode(CORGI_Node* node, size_t arg_ind, size_t var_ind, size_t m_node_ind) :
+        node(node), arg_ind(arg_ind), var_ind(var_ind), m_node_ind(m_node_ind) {}
+};
+
+struct MatchIter {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type   = std::ptrdiff_t;
+    using value_type        = ref<Mapping>;
+    using pointer           = ref<Mapping>*;
+    using reference         = ref<Mapping>&;
+
+    LogicGraphView* logic_view;
+    CORGI_Graph* graph;
+    Logic* logic;
+    std::vector<MatchIterNode> m_nodes;
+    ref<Mapping> curr_match;
+    // std::vector<CRE_Type*> output_types;
+    bool is_empty;
+    bool iter_started;
+
+    explicit MatchIter(LogicGraphView* logic_view) : 
+        logic_view(logic_view), graph(logic_view->graph), logic(logic_view->logic) {
+
+        m_nodes = {};
+        m_nodes.resize(logic->vars.size() + 1);
+
+        std::vector<MatchIterNode*> handled_vars = {};
+        handled_vars.resize(logic->vars.size() + 1, nullptr);
+
+        size_t n_vars = logic->vars.size();
+
+        // INIT
+        if(logic_view->match_iter_prototype == nullptr){
+
+            // Loop downstream to upstream through the end nodes. Build a MatchIterNode
+            //  for each end node to help us iterate over valid matches in the graph.
+            // for var_ind in range(len(graph.end_nodes)-1,-1,-1):
+            for(size_t i=0; i <= logic->vars.size(); i++){
+                VarFrontier& frontier = logic_view->frontiers[i];
+                m_nodes.emplace_back(
+                    MatchIterNode(frontier.output->upstream_node, 
+                        frontier.output->arg_ind, i, m_nodes.size())
+                );
+                MatchIterNode* m_node = &m_nodes.back();
+
+                for(size_t j=0; j<n_vars; j++){
+                    CORGI_Node* dep_node = logic_view->end_join_ptrs(i, j);
+                    MatchIterNode* dep_m_node = handled_vars[j];
+                    if(dep_node != nullptr && dep_m_node != nullptr){
+                        // Find the arg_ind in the dep_node that corresponds to the var_ind
+                        size_t arg_ind = -1;
+                        for(size_t k=0; k<dep_node->literal->var_inds.size(); k++){
+                            if(dep_node->literal->var_inds[k] == j){
+                                arg_ind = k; break;
+                            }
+                        }
+                        m_node->upstream_deps.emplace_back(
+                            IterNodeDep(dep_node, dep_m_node, j, arg_ind)
+                        );
+                    }
+                }
+
+                // Mark this var as being handled by m_node.
+                handled_vars[i] = m_node;
+            }
+
+
+        }
+
+    }
+    
+    bool operator==(const MatchIter& other) const { 
+        if(is_empty != other.is_empty) return false;
+        if(m_nodes.size() != other.m_nodes.size()) return false;
+        for(size_t i=0; i<m_nodes.size(); i++){
+            if(m_nodes[i].node != other.m_nodes[i].node) return false;
+            if(m_nodes[i].arg_ind != other.m_nodes[i].arg_ind) return false;
+            if(m_nodes[i].curr_ind != other.m_nodes[i].curr_ind) return false;
+        }
+        return true;
+    }
+    bool operator!=(const MatchIter& other) const { 
+        return !(*this == other);
+    }
+    auto& operator*() const { return *curr_match; }
+
+    MatchIter& operator++() { 
+        // Increment the m_iter nodes until satisfying all upstream
+        while(!is_empty){
+            int64_t most_upstream_overflow = -1;
+
+            // On a fresh iterator skip incrementating and 
+            //  just make sure upstream updates are applied
+            if(!iter_started){
+                most_upstream_overflow = 0;
+                iter_started = true;
+
+            // Otherwise increment from downstream to upstream
+            }else{
+                most_upstream_overflow = -1;
+            
+                // For each m_node from downstream to upstream
+                for(int64_t i=m_nodes.size()-1; i >= 0; i--){
+                    MatchIterNode& m_node = m_nodes[i];
+
+                    // Increment curr_ind if m_node the most downstream or if
+                    //  a downstream m_node overflowed.
+                    if(i == m_nodes.size()-1 || most_upstream_overflow == i+1){
+                        ++m_node.curr_ind;
+                    }
+
+                    // Track whether incrementing also overflowed the ith m_node.
+                    if(m_node.curr_ind >= m_node.f_ids.size()){
+                        m_node.curr_ind = 0;
+                        most_upstream_overflow = i;
+                    }
+                }
+
+                // If the 0th m_node overflows then iteration is finished.
+                if(most_upstream_overflow == 0) is_empty = true;
+            }
+            // Starting with the most upstream overflow and moving downstream set m_node.f_ids
+            //  to be the set of f_ids consistent with its upstream dependencies.
+            bool idrec_sets_are_nonzero = true;
+            for(size_t i=most_upstream_overflow; i<m_nodes.size(); i++){
+                MatchIterNode& m_node = m_nodes[i];
+
+                // Only Update if has dependencies
+                if(m_node.upstream_deps.size() > 0) update_from_upstream_match(m_node);
+
+                if(m_node.f_ids.size() == 0) idrec_sets_are_nonzero = false;
+            }
+            // If each m_node has a non-zero idrec set we can yield a match
+            //  otherwise we need to keep iterating
+            if(idrec_sets_are_nonzero) break;
+        }
+
+        // Fill in the matched f_ids
+        for(int64_t i=m_nodes.size()-1; i >= 0; i--){
+            MatchIterNode& m_node = m_nodes[i];
+            int64_t f_id = m_node.f_ids[m_node.curr_ind];
+            ref<Fact> fact = graph->fact_set->get(f_id);
+            curr_match->set(i,Item(fact));
+        }
+        return *this; 
+    }
+
+    void update_from_upstream_match(MatchIterNode& m_node){
+        bool multiple_deps = m_node.upstream_deps.size() > 1;
+        std::map<int64_t, bool> f_id_set = {};
+
+        for(size_t i=0; i<m_node.upstream_deps.size(); i++){
+            // Each dep_node is the terminal beta node (i.e. a graph node not an iter node) 
+            //  between the vars iterated by m_node and dep_m_node, and might not be the same
+            //  as dep_m_node.node.
+            IterNodeDep& dep = m_node.upstream_deps[i];
+            int64_t arg_ind = dep.arg_ind == 0 ? 1 : 0;
+
+            // Extract the idrec for the current fixed dependency value in dep_m_node
+        }
+        if(multiple_deps){
+            for(size_t i=0; i<m_node.f_ids.size(); i++){
+
+            }
+        }
+
+    }
+
 };
 
 // Node Update Phases

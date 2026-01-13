@@ -630,7 +630,34 @@ std::vector<size_t> CORGI_Graph::_get_degree_order(Logic* logic){
     return degree_order;
 }
 
-void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers){
+void CORGI_Graph::add_logic(Logic* logic){
+
+    logic_views.emplace_back(LogicGraphView(this, logic));
+    LogicGraphView& logic_view = logic_views.back();
+
+    size_t n_vars = logic->vars.size();
+    std::vector<VarFrontier> frontiers = {};
+    EndJoinPtrsMatrix end_join_ptrs = EndJoinPtrsMatrix(n_vars, n_vars);
+    end_join_ptrs.setZero();
+    
+    frontiers.resize(n_vars, nullptr);
+    for(size_t i=0; i < n_vars; i++){
+        CRE_Type* var_type = logic->vars[i]->base_type;
+        frontiers[i] = VarFrontier(this->get_root_io(var_type));
+    }
+
+    logic_view._add_logic(logic, frontiers, end_join_ptrs);
+    logic_view.frontiers = std::move(frontiers);
+    logic_view.end_join_ptrs = std::move(end_join_ptrs);
+    
+}
+
+LogicGraphView::LogicGraphView(CORGI_Graph* graph, Logic* logic) :
+    graph(graph), logic(logic) {}
+
+void LogicGraphView::_add_literal(Literal* lit, 
+                            std::vector<VarFrontier>& frontiers,
+                            EndJoinPtrsMatrix& end_join_ptrs){
     // Let the inputs to the node be the outputs of the frontiers
     //  of the literals' vars.
     std::vector<CORGI_IO*> inputs = {};
@@ -644,8 +671,9 @@ void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers
     }
 
     // Make the new node and add it to the graph.
-    nodes.emplace_back(std::make_unique<CORGI_Node>(this, lit, inputs));
-    CORGI_Node* node = nodes[nodes.size() - 1].get();//
+    graph->nodes.emplace_back(std::make_unique<CORGI_Node>(graph, lit, inputs));
+    CORGI_Node* node = graph->nodes.back().get();//
+    nodes.push_back(node);
         
     nodes_by_nargs[lit->var_inds.size()].push_back(node);
 
@@ -656,43 +684,51 @@ void CORGI_Graph::_add_literal(Literal* lit, std::vector<VarFrontier>& frontiers
         frontier.upstream_depends.push_back(lit);
     }
     
+    if(lit->var_inds.size() == 2){
+        // TODO: Upstream same partent
+        CORGI_Node* p1 = inputs[0]->upstream_node;
+        CORGI_Node* p2 = inputs[1]->upstream_node;
+        node->upstream_same_parents = (p1 != nullptr and p1 == p2);
+        if(node->upstream_same_parents){
+            node->upstream_aligned = p1->literal->var_inds == p2->literal->var_inds;
+        }
+
+
+        end_join_ptrs(lit->var_inds[0], lit->var_inds[1]) = node;
+        end_join_ptrs(lit->var_inds[1], lit->var_inds[0]) = node;
+    }
 }
 
-void CORGI_Graph::_add_logic(Logic* logic, std::vector<VarFrontier>& frontiers){
+
+
+void LogicGraphView::_add_logic(Logic* logic, 
+                             std::vector<VarFrontier>& frontiers,
+                             EndJoinPtrsMatrix& end_join_ptrs){
     // auto degree_order = _get_degree_order(logic);
     if(logic->kind == CONDS_KIND_AND){
         // Add a node for each literal
         for(auto item : logic->items){
             if(item.get_t_id() == T_ID_LITERAL){
-                _add_literal(item._as<Literal*>(), frontiers);
+                _add_literal(item._as<Literal*>(), frontiers, end_join_ptrs);
             }else if(item.get_t_id() == T_ID_LOGIC){
-                _add_logic(item._as<Logic*>(), frontiers);
+                _add_logic(item._as<Logic*>(), frontiers, end_join_ptrs);
             }
         }
     }else if(logic->kind == CONDS_KIND_OR){
         // For ORs we copy the frontier so it is independent for each branch.
         for(auto item : logic->items){
             std::vector<VarFrontier> frontiers_copy = frontiers;
+            EndJoinPtrsMatrix end_join_ptrs_copy = end_join_ptrs;
             if(item.get_t_id() == T_ID_LITERAL){
-                _add_literal(item._as<Literal*>(), frontiers_copy);
+                _add_literal(item._as<Literal*>(), frontiers_copy, end_join_ptrs_copy);
             }else if(item.get_t_id() == T_ID_LOGIC){
-                _add_logic(item._as<Logic*>(), frontiers_copy);
+                _add_logic(item._as<Logic*>(), frontiers_copy, end_join_ptrs_copy);
             }
         }
     }   
-
 }
 
-void CORGI_Graph::add_logic(Logic* logic){
-    std::vector<VarFrontier> frontiers = {};
-    frontiers.resize(logic->vars.size(), nullptr);
-    for(size_t i=0; i < logic->vars.size(); i++){
-        CRE_Type* var_type = logic->vars[i]->base_type;
-        frontiers[i] = VarFrontier(get_root_io(var_type));
-    }
-    _add_logic(logic, frontiers);
-    // TODO: Do I need to build var_end_join_ptrs?
-}
+
 
 CORGI_IO* CORGI_Graph::get_root_io(CRE_Type* type){
     int32_t type_index = type->type_index;

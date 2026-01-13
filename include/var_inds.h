@@ -44,6 +44,8 @@ struct VarInds {
         }
     }
 
+    VarInds(): _size(0) {}
+
     ~VarInds(){
         if(_size > N_ITERN_VAR_INDS && inds_ptr != nullptr){
             free(inds_ptr);
@@ -69,7 +71,16 @@ struct VarInds {
         return _size <= N_ITERN_VAR_INDS ? inds[i] : inds_ptr[i];
     }
 
-    VarInds(): _size(0) {}
+    bool operator==(const VarInds& other) const {
+        if(_size != other._size) return false;
+        if(_size <= N_ITERN_VAR_INDS){
+            return std::equal(inds, inds + _size, other.inds);
+        }else{
+            return std::equal(inds_ptr, inds_ptr + _size, other.inds_ptr);
+        }
+    }
+
+    
     // VarInds(size_t size): _size(size) {}
 };
 
