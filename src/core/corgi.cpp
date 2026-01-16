@@ -1,4 +1,5 @@
 #include "../include/corgi.h"
+#include <cstdint>
 #include <cstdlib>
 
 namespace cre {
@@ -57,11 +58,11 @@ CORGI_IO::CORGI_IO(CORGI_Node* upstream_node, size_t arg_ind) :
     upstream_node(upstream_node), arg_ind(arg_ind) 
 {}
 
-int64_t CORGI_IO::size() const {
+size_t CORGI_IO::size() const {
     return _size;
 }
 
-int64_t CORGI_IO::capacity() const {
+size_t CORGI_IO::capacity() const {
     return match_f_ids.size();
 }
 
@@ -70,6 +71,11 @@ void CORGI_IO::downstream_signal_add(size_t ind, int64_t f_id){
     for(InputState* input_state : downstream_input_states){
         // cout << "DOWNSTREAM SIGNAL ADD: " << ind << " " << f_id << "->" << uint64_t(input_state) << endl;
         input_state->signal_add(ind, f_id);
+    }
+
+    // cout << "DOWNSTREAM SIGNAL ADD: " << ind << " " << f_id << "->" << uint64_t(this) << endl;
+    for(UpstreamIndexCache* upstr_index_cache : upstr_index_caches){
+        upstr_index_cache->resolve_upstream_inds(ind);
     }
 }
 
@@ -97,7 +103,7 @@ int64_t CORGI_IO::add(int64_t f_id, int64_t input_ind){
 void CORGI_IO::add_at(size_t ind, int64_t f_id, int64_t input_ind){
     if(ind >= capacity()){
         size_t new_cap = std::max(ind + 1, _size + std::min(64ul,_size));
-        match_f_ids.resize(new_cap, -1);
+        match_f_ids.reserve(new_cap);
     }
     match_f_ids[ind] = f_id;
     input_inds[ind] = input_ind;
@@ -109,14 +115,17 @@ void CORGI_IO::remove_at(size_t ind){
 }
 
 
-std::string CORGI_IO::to_string() const{
+std::string CORGI_IO::to_string(bool verbose) const{
     std::stringstream ss;
     if(upstream_node != nullptr){
         std::string var_str = arg_ind >= 0 ? upstream_node->input_states[arg_ind].head_var_ptrs[0]->base->to_string() : "??";
-        cout << fmt::format("Output ({}) of node: {}" , var_str, upstream_node->literal->to_string()) << endl;
+        ss << fmt::format("Output ({}) of node: {}" , var_str, upstream_node->literal->to_string());
     }else{
-        cout << "Root IO:" << endl;
+        ss << "Root IO:";
     }
+    if(not verbose) return ss.str();
+    if(verbose) ss << endl;
+
     for(size_t i=0; i < match_f_ids.size(); i++){
         int64_t f_id = match_f_ids[i];
         ss << f_id << " : ";
@@ -170,10 +179,22 @@ size_t InputState::size(){return _size;}
 
 size_t InputState::capacity(){return _capacity;}
 
-void InputState::ensure_larger_than(size_t new_size, size_t new_capacity){
-    if(new_size > size()){
-        new_capacity  = new_capacity == -1 ? new_size : new_capacity;
-        size_t new_cap = std::max(new_capacity, _capacity + std::min(64ul,_capacity));
+
+void InputState::ensure_larger_than(size_t new_size){
+    if(new_size > _size){
+        if(new_size > _capacity){
+            ensure_larger_than(new_size, new_size);
+        }else{
+            _size = new_size;
+        }
+    }
+}
+
+void InputState::ensure_larger_than(size_t new_size, size_t new_capacity){    
+    assert(new_capacity == -1 || new_capacity >= new_size);
+    if(new_capacity > _capacity){
+        size_t new_cap = std::max(new_capacity, _capacity * 2);
+        // cout << "ensure_larger_than: " << new_cap << endl;
         // head_ptrs.conservativeResize(new_cap, n_heads);
         head_value_buffer.resize(new_cap);
         entry_states.resize(new_cap, InputEntryState(-1));
@@ -204,7 +225,7 @@ InputState::InputState(CORGI_Node* node, size_t arg_ind) :
         throw std::runtime_error("NOT IMPLEMENTED");
     }
     // cout << "head_var_ptrs: " << head_var_ptrs.size() << endl;
-    ensure_larger_than(input->size(), input->capacity());
+    ensure_larger_than(input->size(), std::max(input->capacity(), 8ul));
 }
 
 void InputState::signal_add(size_t ind, int64_t f_id){
@@ -248,6 +269,7 @@ bool InputState::validate_head_or_retract(int64_t f_id, size_t change_ind){
     for(size_t i=0; i < n_heads; i++){
         Var* head_var = head_var_ptrs[i];
         Item* head_ptr = resolve_head_ptr(f_id, head_var, change_ind);
+        // cout << f_id << " HP: " << (*head_ptr).as<double>() << endl;
         if(head_ptr == nullptr){
             is_valid = false;
             break;
@@ -255,6 +277,7 @@ bool InputState::validate_head_or_retract(int64_t f_id, size_t change_ind){
         
         void* dest = (uint8_t*) entry_data_ptr + head_value_buffer.head_offsets[j];
         copy_convert_arg(dest, *head_ptr, head_var->head_type);
+        // cout << "DEST: " << *((double*) dest) << endl;
         // head_ptrs(change_ind, i) = head_ptr;
         j++;
     }
@@ -373,7 +396,7 @@ CORGI_Node::CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<C
     for(size_t i=0; i < inputs.size(); i++){
         input_states.emplace_back(InputState(this, i));
         inputs[i]->downstream_input_states.push_back(&input_states[i]);
-        outputs.emplace_back(std::make_unique<CORGI_IO>(this, i));
+        outputs.emplace_back(CORGI_IO(this, i));
     }
 }
 
@@ -397,7 +420,9 @@ void CORGI_Node::update_beta_matches_func(){
     size_t n_rows = truth_table.rows();
     size_t n_cols = truth_table.cols();
     truth_table.conservativeResize(
-        input_states[0].size(), input_states[1].size());
+        input_states[0].size(), input_states[1].size()
+    );
+
     for(size_t i=n_rows; i < input_states[0].size(); i++){
         for(size_t j=n_cols; j < input_states[1].size(); j++){
             truth_table(i, j) = false;
@@ -421,13 +446,23 @@ void CORGI_Node::update_beta_matches_func(){
     // size_t other_ind = arg_ind == 0 ? 1 : 0;
     InputState& inp_state0 = input_states[0];
     InputState& inp_state1 = input_states[1];
+
+    // cout << "THIS: " << literal->to_string() << endl;
     if(upstream_same_parents){
+
+        cout << "upstream_same_parents: " << inputs[0]->upstream_node->literal->to_string() << endl;
+        cout << "upstream_aligned: " << upstream_aligned << endl;
         auto& u_tt = inputs[0]->upstream_node->truth_table;
+        
         auto& u_input_inds0 = inputs[0]->input_inds;
         auto& u_input_inds1 = inputs[1]->input_inds;
 
         auto upstream_true = ([&](size_t i, size_t j) -> bool {
-            return u_tt(u_input_inds0[i], u_input_inds1[j]);
+            if(upstream_aligned) {
+                return u_tt(u_input_inds0[i], u_input_inds1[j]);
+            }else {
+                return u_tt(u_input_inds1[j], u_input_inds0[i]);
+            }
         });
 
         // Update the whole row/column
@@ -437,6 +472,8 @@ void CORGI_Node::update_beta_matches_func(){
             for(size_t j=0; j < inp_state1.size(); j++){
                 InputEntryState& es_j = inp_state1.entry_states[j];
 
+
+                
                 // If the upstream truth table is false, then this cell is also false
                 if(not upstream_true(i, j)){
                     update_truth_table_cell(false, i, j, es_i, es_j);    
@@ -446,6 +483,13 @@ void CORGI_Node::update_beta_matches_func(){
                 if(es_j.head_is_valid){
                     is_match = (eval_func_relation(func, i, j) == CFSTATUS_TRUTHY) ^ literal->negated;
                 }
+
+                // if(i % 7 == j % 7) {
+                //     cout << "(" << es_i.f_id << "," << es_j.f_id << ")*" << is_match << " " << es_j.head_is_valid << endl; // ut: " << upstream_true(i, j) << endl;
+                // }
+
+                
+
                 update_truth_table_cell(is_match, i, j, es_i, es_j);
             }
         }
@@ -506,9 +550,15 @@ void CORGI_Node::update_output_changes(){
 
     // cout << truth_table << endl;
     // cout << "--------" << endl;
+    
+
     for(size_t i=0; i < input_states.size(); i++){
         InputState& input_state = input_states[i];
-        CORGI_IO* output = outputs[i].get();
+        CORGI_IO& output = outputs[i];
+
+        for(UpstreamIndexCache* upstr_index_cache : output.upstr_index_caches){
+            upstr_index_cache->resize(input_state.entry_states.size());
+        }
         for(size_t k=0; k < input_state.entry_states.size(); k++){
             InputEntryState& e_state = input_state.entry_states[k];
             
@@ -522,23 +572,23 @@ void CORGI_Node::update_output_changes(){
             //  add it to the output and signal the downstream nodes.
             if(!e_state.present_in_output && true_is_nonzero){
                 e_state.present_in_output = true;
-                auto output_ind = output->add(e_state.f_id);
+                auto output_ind = output.add(e_state.f_id, k);
                 // cout << fmt::format("ADD ind={}, f_id={}", output_ind, e_state.f_id) << endl;
                 e_state.output_ind = output_ind;
-                output->downstream_signal_add(output_ind, e_state.f_id);
+                output.downstream_signal_add(output_ind, e_state.f_id);
             
             // If the fact is present in the output and is now not a match,
             //  add it to the output and signal the downstream nodes.
             }else if(e_state.present_in_output && !true_is_nonzero){
                 e_state.present_in_output = false;
                 // cout << fmt::format("REMOVE ind={}, f_id={}", e_state.output_ind, e_state.f_id) << endl;
-                outputs[k]->remove_at(e_state.output_ind);
-                output->downstream_signal_remove(e_state.output_ind);
+                outputs[k].remove_at(e_state.output_ind);
+                output.downstream_signal_remove(e_state.output_ind);
                 e_state.output_ind = -1;
             }
         }
 
-        cout << output->to_string() << endl;
+        // cout << output->to_string() << endl;
         // Clear the changed indicies for this input state to indicate
         //  that they have been processed (during input updates and match checking)
         input_state.changed_inds.clear();
@@ -635,25 +685,101 @@ void CORGI_Graph::add_logic(Logic* logic){
     logic_views.emplace_back(LogicGraphView(this, logic));
     LogicGraphView& logic_view = logic_views.back();
 
+    
+    
+}
+
+
+UpstreamIndexCache::UpstreamIndexCache(CORGI_IO* end_output, EndJoinPtrsMatrix& end_join_ptrs){        
+    CORGI_IO* output = end_output;
+    CORGI_Node* this_node = output->upstream_node;
+
+    // TODO: VarInd should be a property of the LogicView not of the literal
+    //   of a particular node (which might be shared by multiple Logic objects).
+    size_t this_var_ind = this_node->literal->var_inds[output->arg_ind];
+    // io_path.push_back(std::make_tuple(output, nullptr));
+
+    cout << " THIS NODE: " << this_node->literal->to_string() << endl;
+    // upstream_var_inds.push_back(this_var_ind);
+    while(output->upstream_node){
+        CORGI_Node* node = output->upstream_node;
+        size_t other_ind = output->arg_ind == 1 ? 0 : 1;
+        size_t other_var_ind = node->literal->var_inds[other_ind];
+        // CORGI_IO* input = node->inputs[output->arg_ind];
+
+        bool is_end_join = end_join_ptrs(this_var_ind, other_var_ind) == node;
+        // cout << "tv=" << this_var_ind << ", v=" << other_var_ind << " NODE: " << node->literal->to_string() << endl;
+        if(is_end_join){
+            upstream_var_inds.push_back(other_var_ind);
+            io_path.push_back(std::make_tuple(output, node));
+        }else{
+            io_path.push_back(std::make_tuple(output, nullptr));
+        }
+        
+        output = node->inputs[output->arg_ind];    
+    }
+
+    for(auto& [io, node] : io_path){
+        cout << (node != nullptr ? "*" : " ") << "io: " << io->to_string() << endl;
+    }
+    
+
+    // cout << "INIT UPSTREAM INDEX CACHE: " << this_node->literal->to_string() << " (" << end_output->arg_ind << "), len=" << io_path.size() << endl;
+    // cout << "upstream_var_inds:" <<upstream_var_inds << endl;
+}
+
+void UpstreamIndexCache::resolve_upstream_inds(size_t index_in_end_io){
+    // cout << "resolve_upstream_inds: " << index_in_end_io << ", " << io_path.size() << endl;
+    size_t index = index_in_end_io;
+    size_t k = 0;
+    for(size_t i=0; i < io_path.size(); i++){
+        CORGI_IO* io = std::get<0>(io_path[i]);
+        CORGI_Node* node = std::get<1>(io_path[i]);
+        size_t upstream_ind = io->input_inds[index];
+        if(node != nullptr){
+            upstream_inds(index_in_end_io, k) = upstream_ind;
+            k++;
+        }
+        if(k >= upstream_var_inds.size()) break;
+        index = upstream_ind;
+    }
+}
+
+std::string UpstreamIndexCache::to_string() const{
+    std::stringstream ss;
+    ss << "Upstream Depends Info: " << endl;
+    ss << "  Upstream Var Inds: " << upstream_var_inds << endl;
+    // ss << "  IO Path: " << io_path << endl;
+    ss << "  Upstream Inds: " << upstream_inds << endl;
+    return ss.str();
+}
+
+LogicGraphView::LogicGraphView(CORGI_Graph* graph, Logic* logic) :
+    graph(graph), logic(logic) {
+
     size_t n_vars = logic->vars.size();
-    std::vector<VarFrontier> frontiers = {};
-    EndJoinPtrsMatrix end_join_ptrs = EndJoinPtrsMatrix(n_vars, n_vars);
+    frontiers = {};
+    end_join_ptrs = EndJoinPtrsMatrix(n_vars, n_vars);
     end_join_ptrs.setZero();
     
     frontiers.resize(n_vars, nullptr);
     for(size_t i=0; i < n_vars; i++){
         CRE_Type* var_type = logic->vars[i]->base_type;
-        frontiers[i] = VarFrontier(this->get_root_io(var_type));
+        frontiers[i] = VarFrontier(graph->get_root_io(var_type));
     }
 
-    logic_view._add_logic(logic, frontiers, end_join_ptrs);
-    logic_view.frontiers = std::move(frontiers);
-    logic_view.end_join_ptrs = std::move(end_join_ptrs);
-    
-}
+    _add_logic(logic, frontiers, end_join_ptrs);
 
-LogicGraphView::LogicGraphView(CORGI_Graph* graph, Logic* logic) :
-    graph(graph), logic(logic) {}
+    // Make UpstreamIndexCache for the end output of each var and
+    //  attach it to the output so that it updates on graph changes.
+    upstr_index_caches.reserve(n_vars); // Reserve is required for correctness
+    for(size_t i=0; i < n_vars; i++){
+        upstr_index_caches.emplace_back(
+            UpstreamIndexCache(frontiers[i].output, end_join_ptrs)
+        );
+        frontiers[i].output->upstr_index_caches.push_back(&upstr_index_caches.back());
+    }
+}
 
 void LogicGraphView::_add_literal(Literal* lit, 
                             std::vector<VarFrontier>& frontiers,
@@ -680,25 +806,27 @@ void LogicGraphView::_add_literal(Literal* lit,
     // Update the frontiers to point to the outputs of the new node.
     for(size_t i=0; i < lit->var_inds.size(); i++){
         VarFrontier& frontier = frontiers[lit->var_inds[i]];
-        frontier.output = node->outputs[i].get();
+        frontier.output = &node->outputs[i];
         frontier.upstream_depends.push_back(lit);
+        // cout << "FRONTIER: " << frontier.output->to_string(false) << ", arg_ind: " << frontier.output->arg_ind << endl;
     }
     
+    // Fill in end_join ptrs for beta nodes. And determine if the upstream 
+    // nodes have the same parent and are aligned (i.e. 
+    //    A.x < B.x and A.x < B.y [aligned]  but
+    //    A.x < B.x and B.x < A.y [not aligned] )
     if(lit->var_inds.size() == 2){
-        // TODO: Upstream same partent
         CORGI_Node* p1 = inputs[0]->upstream_node;
         CORGI_Node* p2 = inputs[1]->upstream_node;
         node->upstream_same_parents = (p1 != nullptr and p1 == p2);
+
         if(node->upstream_same_parents){
-            node->upstream_aligned = p1->literal->var_inds == p2->literal->var_inds;
+            node->upstream_aligned = lit->var_inds == p1->literal->var_inds;
         }
-
-
         end_join_ptrs(lit->var_inds[0], lit->var_inds[1]) = node;
         end_join_ptrs(lit->var_inds[1], lit->var_inds[0]) = node;
     }
 }
-
 
 
 void LogicGraphView::_add_logic(Logic* logic, 
@@ -791,6 +919,59 @@ void CORGI_Graph::update(){
         node->update();
     }
 }
+
+
+
+
+MatchIter* LogicGraphView::get_matches(){
+    // Parse the change events for the whole graph.
+    graph->parse_change_events();
+    
+    // Update just the nodes in this logic view.
+    for(CORGI_Node* node : nodes){
+        node->update();
+        // cout << node->truth_table << endl;
+        cout << "truth table: " << node->literal->to_string() << endl;
+        for(size_t i=0; i < node->truth_table.rows(); i++){
+            InputEntryState& e_i = node->input_states[0].entry_states[i];
+            bool any_in_row = false;
+            for(size_t j=0; j < node->truth_table.cols(); j++){
+                InputEntryState& e_j = node->input_states[1].entry_states[j];
+                if(i != j && node->truth_table(i, j)) {
+                    cout << i << "," << j << " (" << e_i.f_id << ", " << e_j.f_id << ")" << " ";
+                    any_in_row = true;
+                }
+            }
+            if(any_in_row) cout << endl;
+        }
+        cout << endl;
+        // for(auto& output : node->outputs){
+        //     cout << output.to_string() << endl;
+        //     cout << output.match_f_ids << endl;
+        //     cout << endl;
+        // }
+    }
+    if(match_iter_prototype == nullptr){
+        // TODO: should probably be a ref<>
+        match_iter_prototype = std::make_unique<MatchIter>(this);
+    }
+
+    // for(size_t i=0; i < upstr_index_caches.size(); i++){
+    //     UpstreamIndexCache& upstr_index_cache = upstr_index_caches[i];
+    //     VarFrontier& frontier = frontiers[i];
+    //     for(size_t j=0; j < upstr_index_cache.upstream_var_inds.size(); j++){
+    //         upstr_index_cache.resolve_upstream_inds(j);
+    //     }
+    // }
+    
+    return match_iter_prototype.get(); //TODO create copy;
+}
+
+// MatchIter* Logic::get_matches(){
+    
+// }
+
+
 
 } // namespace cre
 

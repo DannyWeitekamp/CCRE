@@ -69,11 +69,12 @@ namespace cre {
 
 // Equals ==
 bool _Equals(double a, double b){
+	// cout << "Equals: " << a << " == " << b << endl;
 	return a == b;
 }
 FuncRef Equals = define_func<_Equals>("Equals", "Equals({},{})", "{} == {}", "{} != {}");
 
-bool _EqualsInt(int64_t a, int64_t b){
+bool _EqualsInt(int64_t a, int64_t b){	
 	return a == b;
 }
 FuncRef EqualsInt = define_func<_EqualsInt>("EqualsInt", "EqualsInt({},{})", "{} == {}", "{} != {}");

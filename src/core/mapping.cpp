@@ -32,4 +32,16 @@ ref<Mapping> new_mapping(Item* values, size_t length,
     return mapping;
 }
 
+ref<Mapping> new_mapping(size_t length,
+                         ref<CRE_Obj> host_obj, VarMapType* var_map,
+                         AllocBuffer* buffer){    
+    ref<Mapping> mapping = alloc_mapping(length, buffer);
+    for(size_t i=0; i < length; i++){
+        mapping->set_init(i, Item());
+    }
+    mapping->host_obj = host_obj;
+    mapping->var_map = var_map;
+    return mapping;
+}
+
 }

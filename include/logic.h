@@ -113,6 +113,8 @@ struct Logic : public CRE_Obj {
         return item_match_weight + var_match_weight;
     }
 
+    // MatchIter* get_matches();
+
 std::string basic_str();
     size_t _stream_item(std::vector<std::string>& lit_strs, size_t i, std::string_view indent,
        HashSet<void*>* var_covered, std::vector<bool>& item_covered, size_t& n_items_covered, bool is_first);

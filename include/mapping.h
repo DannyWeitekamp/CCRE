@@ -151,6 +151,11 @@ ref<Mapping> new_mapping(Item* values, size_t length=0,
      AllocBuffer* buffer=nullptr
 );
 
+ref<Mapping> new_mapping(size_t length=0,
+    ref<CRE_Obj> host_obj=nullptr, VarMapType* var_map=nullptr,
+    AllocBuffer* buffer=nullptr
+);
+
 
 template<typename T>
 inline ref<Mapping> new_mapping(const std::vector<T>& values,
