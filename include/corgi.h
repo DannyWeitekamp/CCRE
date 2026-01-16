@@ -371,6 +371,9 @@ struct CORGI_Node {
     void update_output_changes();
     void update();
 
+    std::string repr_truth_table() const;
+    
+
 
     template <class ... Ts>
     bool eval_func_relation(Func* func, Ts&& ... entry_inds){
@@ -680,7 +683,7 @@ struct MatchIter {
                     frontier.output->arg_ind, i, m_nodes.size(), this_index_cache)
             );
             MatchIterNode* m_node = &m_nodes.back();
-            cout << "!m_node: " << m_node->node->literal->to_string() << endl;
+            // cout << "!m_node: " << m_node->node->literal->to_string() << endl;
             
 
             for(size_t j=0; j < n_vars; j++){
@@ -706,9 +709,9 @@ struct MatchIter {
                     UpstreamIndexCache* dep_index_cache = &logic_view->upstr_index_caches[j];
                     int64_t dep_cache_ind = dep_index_cache->index_of_node(dep_node);
                     int64_t this_cache_ind = this_index_cache->index_of_node(dep_node);
-                    cout << "  dep node: " << dep_node->literal->to_string() << endl;
-                    cout << "    dep_cache_ind: " << dep_cache_ind << endl;
-                    cout << "    this_cache_ind: " << this_cache_ind << endl;
+                    // cout << "  dep node: " << dep_node->literal->to_string() << endl;
+                    // cout << "    dep_cache_ind: " << dep_cache_ind << endl;
+                    // cout << "    this_cache_ind: " << this_cache_ind << endl;
                     assert(dep_cache_ind != -1);
                     m_node->upstream_deps.emplace_back(
                         IterNodeDep(dep_node, dep_m_node, j, arg_ind, dep_index_cache, dep_cache_ind, this_cache_ind)
@@ -865,10 +868,10 @@ struct MatchIter {
                   std::back_inserter(m_node.f_ids));
         
         
-        cout << endl;
-        cout << "start f_ids: " << m_node.output->match_f_ids << endl;
+        // cout << endl;
+        // cout << "start f_ids: " << m_node.output->match_f_ids << endl;
         // cout << "curr ind: " << m_node.curr_ind << endl;
-        cout << "This: " << m_node.node->literal->to_string() << endl;
+        // cout << "This: " << m_node.node->literal->to_string() << endl;
 
         // Go through each upstream dependency check if each f_id
         // is consistent with the fixed f_ids upstream, if not set the f_id to -1.
@@ -882,8 +885,8 @@ struct MatchIter {
             CORGI_Node* dep_node = dep.node;
             int64_t arg_ind = dep.arg_ind == 0 ? 1 : 0;
 
-            cout << "   dep_node: " << dep_node->literal->to_string();
-            cout << " f_ids: " << dep_m_node->f_ids << "curr_ind: " << dep_m_node->curr_ind << endl;
+            // cout << "   dep_node: " << dep_node->literal->to_string();
+            // cout << " f_ids: " << dep_m_node->f_ids << "curr_ind: " << dep_m_node->curr_ind << endl;
 
             // cout << "dep_m_node->curr_ind: " << dep_m_node->curr_ind << endl;
 
@@ -897,8 +900,8 @@ struct MatchIter {
                 // cout << m_node.upstr_index_cache->upstream_inds << endl;
                 int64_t this_ind = m_node.upstr_index_cache->upstream_inds(j, dep.this_cache_ind);
 
-                cout << "this_ind: " << this_ind << " dep_ind: " << dep_ind << endl;
-                cout << "this_f_id: " << m_node.f_ids[j] << " dep_f_id: " << dep_m_node->f_ids[dep_ind] << endl;
+                // cout << "this_ind: " << this_ind << " dep_ind: " << dep_ind << endl;
+                // cout << "this_f_id: " << m_node.f_ids[j] << " dep_f_id: " << dep_m_node->f_ids[dep_ind] << endl;
 
                 // Consult the dep_node's truth table to check if the f_id is 
                 //   consistent with the current f_id in the dep_m_node.
@@ -909,13 +912,13 @@ struct MatchIter {
                     is_match = dep_node->truth_table(dep_ind, this_ind);
                 }
 
-                cout << "is_match: " << is_match << endl;
+                // cout << "is_match: " << is_match << endl;
                 
                 if(not is_match) m_node.f_ids[j] = -1;
             }
         }
 
-        cout << "m_node f_ids: " << m_node.f_ids << endl;
+        // cout << "m_node f_ids: " << m_node.f_ids << endl;
 
         // Set the curr_ind to the first non-zero f_id
         for(size_t j=0; j<m_node.f_ids.size(); j++){
@@ -937,7 +940,7 @@ struct MatchIter {
             m_node.is_empty = true;
         }
 
-        cout << "is_empty: " << m_node.is_empty << endl;
+        // cout << "is_empty: " << m_node.is_empty << endl;
     }
 };
 

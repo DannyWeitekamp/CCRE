@@ -140,7 +140,7 @@ void test_same_parents(){
         float mod5 = i % 5;
         float mod7 = i % 7;
         float val = i;
-        cout << "declare: " << val << " m3:" << mod3 << " m5:" << mod5 << " m7:" << mod7 << endl;
+        // cout << "declare: " << val << " m3:" << mod3 << " m5:" << mod5 << " m7:" << mod7 << endl;
         ms->declare(make_fact(BOOP, name, mod3, mod5, mod7, val));
     }
     
@@ -158,21 +158,13 @@ void test_same_parents(){
     );
     
     
-    // CORGI_Graph graph1(ms.get());
-    // graph1.add_logic(conds1.get());
-    // MatchIter* match_iter1 = graph1.logic_views[0].get_matches();
-    // std::vector<std::vector<std::string>> matches1 = get_match_names(match_iter1);
-    // IS_TRUE(matches_equal(matches1, {{"0", "105"}}));
+    CORGI_Graph graph1(ms.get());
+    graph1.add_logic(conds1.get());
+    MatchIter* match_iter1 = graph1.logic_views[0].get_matches();
+    std::vector<std::vector<std::string>> matches1 = get_match_names(match_iter1);
+    IS_TRUE(matches_equal(matches1, {{"0", "105"}}));
 
     cout << "--------------" << endl;
-    
-    // return;
-     
-    // Expected: [['0', '105']]
-    // assert(matches1.size() == 1);
-    // assert(matches1[0].size() == 2);
-    // assert(matches1[0][0] == "0");
-    // assert(matches1[0][1] == "105");
     
     // Unaligned case
     ref<Logic> conds2 = AND(
@@ -182,18 +174,12 @@ void test_same_parents(){
         Equals(B->extend_attr("mod7"), A->extend_attr("mod7"))
     );
     
-    // CORGI_Graph graph2(ms.get());
-    // graph2.add_logic(conds2.get());
-    // MatchIter* match_iter2 = graph2.logic_views[0].get_matches();
-    // std::vector<std::vector<std::string>> matches2 = get_match_names(match_iter2);
-    // IS_TRUE(matches_equal(matches2, {{"0", "105"}}));
-    // cout << "--------------" << endl;
-
-    // Expected: [['0', '105']]
-    // assert(matches2.size() == 1);
-    // assert(matches2[0].size() == 2);
-    // assert(matches2[0][0] == "0");
-    // assert(matches2[0][1] == "105");
+    CORGI_Graph graph2(ms.get());
+    graph2.add_logic(conds2.get());
+    MatchIter* match_iter2 = graph2.logic_views[0].get_matches();
+    std::vector<std::vector<std::string>> matches2 = get_match_names(match_iter2);
+    IS_TRUE(matches_equal(matches2, {{"0", "105"}}));
+    cout << "--------------" << endl;
     
     // Complex case with three variables
     ref<Logic> conds3 = AND(

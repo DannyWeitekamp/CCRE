@@ -400,6 +400,28 @@ CORGI_Node::CORGI_Node(CORGI_Graph* graph, Literal* literal, const std::vector<C
     }
 }
 
+// cout << node->truth_table << endl;
+std::string CORGI_Node::repr_truth_table() const {
+    std::stringstream ss;
+    // cout << "truth table: " << literal->to_string() << endl;
+    for(size_t i=0; i < truth_table.rows(); i++){
+        const InputEntryState& e_i = input_states[0].entry_states[i];
+        bool any_in_row = false;
+        for(size_t j=0; j < truth_table.cols(); j++){
+            const InputEntryState& e_j = input_states[1].entry_states[j];
+            if(i != j && truth_table(i, j)) {
+                // ss << i << "," << j << " (" << e_i.f_id << ", " << e_j.f_id << ")" << " ";
+                ss << "(" << e_i.f_id << ", " << e_j.f_id << ")" << " ";
+                any_in_row = true;
+            }
+        }
+        if(any_in_row) ss << endl;
+    }
+    ss << endl;
+    return ss.str();
+}
+
+
 void CORGI_Node::update_alpha_matches_func(){
     InputState& input_state = input_states[0];
     Func* func = (Func*) literal->obj.get();
@@ -450,8 +472,8 @@ void CORGI_Node::update_beta_matches_func(){
     // cout << "THIS: " << literal->to_string() << endl;
     if(upstream_same_parents){
 
-        cout << "upstream_same_parents: " << inputs[0]->upstream_node->literal->to_string() << endl;
-        cout << "upstream_aligned: " << upstream_aligned << endl;
+        // cout << "upstream_same_parents: " << inputs[0]->upstream_node->literal->to_string() << endl;
+        // cout << "upstream_aligned: " << upstream_aligned << endl;
         auto& u_tt = inputs[0]->upstream_node->truth_table;
         
         auto& u_input_inds0 = inputs[0]->input_inds;
@@ -699,7 +721,7 @@ UpstreamIndexCache::UpstreamIndexCache(CORGI_IO* end_output, EndJoinPtrsMatrix& 
     size_t this_var_ind = this_node->literal->var_inds[output->arg_ind];
     // io_path.push_back(std::make_tuple(output, nullptr));
 
-    cout << " THIS NODE: " << this_node->literal->to_string() << endl;
+    // cout << " THIS NODE: " << this_node->literal->to_string() << endl;
     // upstream_var_inds.push_back(this_var_ind);
     while(output->upstream_node){
         CORGI_Node* node = output->upstream_node;
@@ -719,9 +741,9 @@ UpstreamIndexCache::UpstreamIndexCache(CORGI_IO* end_output, EndJoinPtrsMatrix& 
         output = node->inputs[output->arg_ind];    
     }
 
-    for(auto& [io, node] : io_path){
-        cout << (node != nullptr ? "*" : " ") << "io: " << io->to_string() << endl;
-    }
+    // for(auto& [io, node] : io_path){
+    //     cout << (node != nullptr ? "*" : " ") << "io: " << io->to_string() << endl;
+    // }
     
 
     // cout << "INIT UPSTREAM INDEX CACHE: " << this_node->literal->to_string() << " (" << end_output->arg_ind << "), len=" << io_path.size() << endl;
@@ -931,20 +953,20 @@ MatchIter* LogicGraphView::get_matches(){
     for(CORGI_Node* node : nodes){
         node->update();
         // cout << node->truth_table << endl;
-        cout << "truth table: " << node->literal->to_string() << endl;
-        for(size_t i=0; i < node->truth_table.rows(); i++){
-            InputEntryState& e_i = node->input_states[0].entry_states[i];
-            bool any_in_row = false;
-            for(size_t j=0; j < node->truth_table.cols(); j++){
-                InputEntryState& e_j = node->input_states[1].entry_states[j];
-                if(i != j && node->truth_table(i, j)) {
-                    cout << i << "," << j << " (" << e_i.f_id << ", " << e_j.f_id << ")" << " ";
-                    any_in_row = true;
-                }
-            }
-            if(any_in_row) cout << endl;
-        }
-        cout << endl;
+        // cout << "truth table: " << node->literal->to_string() << endl;
+        // for(size_t i=0; i < node->truth_table.rows(); i++){
+            // InputEntryState& e_i = node->input_states[0].entry_states[i];
+            // bool any_in_row = false;
+            // for(size_t j=0; j < node->truth_table.cols(); j++){
+                // InputEntryState& e_j = node->input_states[1].entry_states[j];
+                // if(i != j && node->truth_table(i, j)) {
+                //     cout << i << "," << j << " (" << e_i.f_id << ", " << e_j.f_id << ")" << " ";
+                //     any_in_row = true;
+                // }
+            // }
+            // if(any_in_row) cout << endl;
+        // }
+        // cout << endl;
         // for(auto& output : node->outputs){
         //     cout << output.to_string() << endl;
         //     cout << output.match_f_ids << endl;
