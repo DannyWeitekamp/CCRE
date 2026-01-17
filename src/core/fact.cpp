@@ -15,6 +15,7 @@
 #include "ref.h"              // for ref
 #include "t_ids.h"            // for T_ID_FACT, T_ID_LOGIC, T_ID_FLOAT
 #include "types.h"            // for FactType, MemberSpec, BIFLG_VERBOSITY
+
 namespace cre { struct AllocBuffer; }
 
 
@@ -76,6 +77,7 @@ void Fact_dtor(const CRE_Obj* x){
 			// }
 		
 		}
+		
 
 		CRE_Obj_dtor(x);
 

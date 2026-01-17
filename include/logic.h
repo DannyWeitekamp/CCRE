@@ -13,6 +13,7 @@
 #include "../include/hash.h"   // for HashSet
 #include "../include/var_inds.h" // for VarInds
 #include "../include/mapping.h" // for Mapping
+
 #include <assert.h>
 
 // Forward declarations
@@ -20,6 +21,9 @@ namespace cre {
 struct AllocBuffer;
 struct Func;
 struct Var;
+struct MatchIter;
+struct FactSet;
+struct BaseLogicView;
 }
 
 namespace cre {
@@ -65,6 +69,8 @@ struct Logic : public CRE_Obj {
     float item_match_weight = 0.0f;
     float var_structure_weight = 0.0f;
     float var_match_weight = 0.0f;
+
+    BaseLogicView* matcher_view = nullptr;
 
 
 
@@ -113,7 +119,7 @@ struct Logic : public CRE_Obj {
         return item_match_weight + var_match_weight;
     }
 
-    // MatchIter* get_matches();
+    ref<MatchIter> get_matches(FactSet* fact_set);
 
 std::string basic_str();
     size_t _stream_item(std::vector<std::string>& lit_strs, size_t i, std::string_view indent,

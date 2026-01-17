@@ -10,6 +10,7 @@
 #include <vector>                // for vector
 #include "../include/fact.h"     // for Fact
 #include "../include/factset.h"  // for FactSet, FactChange, FactSetBuilder
+#include "../include/base_matcher.h" // for BaseMatcherGraph
 #include "alloc_buffer.h"        // for AllocBuffer
 #include "fmt/base.h"            // for runtime
 #include "hash.h"                // for CREHash, bytes_to_base64
@@ -216,7 +217,11 @@ std::string FactSet::long_hash_string(size_t byte_width){
 void FactSet_dtor(const CRE_Obj* x){
 	// cout << "FactSet_dtor:" << uint64_t(x) << endl;
 	// cout << (FactType* ) x << endl; 
-	delete ((FactSet*) x);
+	FactSet* fs = (FactSet*) x;
+	if(fs->matcher_graph != nullptr){
+		delete fs->matcher_graph;
+	}
+	delete fs;
 }
 
 FactSet::FactSet(size_t n_facts) :

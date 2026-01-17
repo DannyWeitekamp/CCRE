@@ -1,6 +1,7 @@
 #include "../include/corgi.h"
 #include <cstdint>
 #include <cstdlib>
+#include "../include/base_matcher.h"
 
 namespace cre {
 
@@ -303,6 +304,8 @@ Item* InputState::resolve_head_ptr(int64_t f_id, Var* var, int64_t ind){
     const std::vector<ref<Fact>>& facts = node->graph->fact_set->facts;
     size_t n_derefs = var->length;
     DerefInfo* deref_infos = var->deref_infos;
+
+    assert(f_id >= 0 && f_id < facts.size());
     Fact* inst_ptr = (Fact*) facts[f_id].get();
     if(n_derefs > 0){
         if(n_derefs > 1){
@@ -520,7 +523,7 @@ void CORGI_Node::update_beta_matches_func(){
             int64_t j = inp_state1.changed_inds[k];
             InputEntryState& es_j = inp_state1.entry_states[j];
             for(size_t i=0; i < inp_state0.size(); i++){
-                InputEntryState& es_i = inp_state1.entry_states[i];
+                InputEntryState& es_i = inp_state0.entry_states[i];
 
                 // If the upstream truth table is false, then this cell is also false
                 if(not upstream_true(i, j)){
@@ -702,15 +705,17 @@ std::vector<size_t> CORGI_Graph::_get_degree_order(Logic* logic){
     return degree_order;
 }
 
-void CORGI_Graph::add_logic(Logic* logic){
-
+LogicGraphView* CORGI_Graph::add_logic(Logic* logic){
+    // First check that the logic view is not already in the graph.
+    for(LogicGraphView& lv : logic_views){
+        if(lv.logic == logic){
+            return &lv;
+        }
+    }
+    // If not, add a new logic view to the graph.
     logic_views.emplace_back(LogicGraphView(this, logic));
-    LogicGraphView& logic_view = logic_views.back();
-
-    
-    
+    return &logic_views.back();
 }
-
 
 UpstreamIndexCache::UpstreamIndexCache(CORGI_IO* end_output, EndJoinPtrsMatrix& end_join_ptrs){        
     CORGI_IO* output = end_output;
@@ -725,19 +730,20 @@ UpstreamIndexCache::UpstreamIndexCache(CORGI_IO* end_output, EndJoinPtrsMatrix& 
     // upstream_var_inds.push_back(this_var_ind);
     while(output->upstream_node){
         CORGI_Node* node = output->upstream_node;
-        size_t other_ind = output->arg_ind == 1 ? 0 : 1;
-        size_t other_var_ind = node->literal->var_inds[other_ind];
-        // CORGI_IO* input = node->inputs[output->arg_ind];
 
-        bool is_end_join = end_join_ptrs(this_var_ind, other_var_ind) == node;
-        // cout << "tv=" << this_var_ind << ", v=" << other_var_ind << " NODE: " << node->literal->to_string() << endl;
-        if(is_end_join){
-            upstream_var_inds.push_back(other_var_ind);
-            io_path.push_back(std::make_tuple(output, node));
+
+        if(node->literal->var_inds.size() >= 2){
+            size_t other_ind = output->arg_ind == 1 ? 0 : 1;
+            size_t other_var_ind = node->literal->var_inds[other_ind];    
+            bool is_end_join = end_join_ptrs(this_var_ind, other_var_ind) == node;
+            if(is_end_join){
+                upstream_var_inds.push_back(other_var_ind);
+                io_path.push_back(std::make_tuple(output, node));
+            }
         }else{
             io_path.push_back(std::make_tuple(output, nullptr));
         }
-        
+                
         output = node->inputs[output->arg_ind];    
     }
 
@@ -777,7 +783,7 @@ std::string UpstreamIndexCache::to_string() const{
 }
 
 LogicGraphView::LogicGraphView(CORGI_Graph* graph, Logic* logic) :
-    graph(graph), logic(logic) {
+    BaseLogicView(graph, logic) {
 
     size_t n_vars = logic->vars.size();
     frontiers = {};
@@ -817,8 +823,9 @@ void LogicGraphView::_add_literal(Literal* lit,
     if(lit->var_inds.size() >= nodes_by_nargs.size()){
         nodes_by_nargs.resize(lit->var_inds.size()+1);
     }
-
+    
     // Make the new node and add it to the graph.
+    CORGI_Graph* graph = get_graph();
     graph->nodes.emplace_back(std::make_unique<CORGI_Node>(graph, lit, inputs));
     CORGI_Node* node = graph->nodes.back().get();//
     nodes.push_back(node);
@@ -931,6 +938,7 @@ void CORGI_Graph::parse_change_events(){
             }
         }
     }
+    change_head = fact_set->change_queue.size();
 }
 
 void CORGI_Graph::update(){
@@ -943,11 +951,24 @@ void CORGI_Graph::update(){
 }
 
 
+ref<MatchIter> new_match_iter(LogicGraphView* logic_view, AllocBuffer* buffer) {
+    // cout << "NEW MATCH ITER" << sizeof(CRE_Obj) << ", " << sizeof(MatchIter) << endl;
+    auto [match_iter_addr, did_malloc] = alloc_cre_obj(sizeof(MatchIter), &CRE_Obj_dtor, T_ID_MATCH_ITER, buffer);
+    // cout << "MATCH ITER ADDR: " << uint64_t(match_iter_addr) << endl;
+    ref<MatchIter> match_iter = new (match_iter_addr) MatchIter(logic_view);
+    return match_iter;
+}
+
+ref<MatchIter> MatchIter::copy(AllocBuffer* buffer) const {
+    auto [match_iter_addr, did_malloc] = alloc_cre_obj(sizeof(MatchIter), &CRE_Obj_dtor, T_ID_MATCH_ITER, buffer);
+    ref<MatchIter> match_iter = new (match_iter_addr) MatchIter(*this);
+    return match_iter;
+}
 
 
-MatchIter* LogicGraphView::get_matches(){
+ref<MatchIter> LogicGraphView::get_matches() {
     // Parse the change events for the whole graph.
-    graph->parse_change_events();
+    get_graph()->parse_change_events();
     
     // Update just the nodes in this logic view.
     for(CORGI_Node* node : nodes){
@@ -975,8 +996,11 @@ MatchIter* LogicGraphView::get_matches(){
     }
     if(match_iter_prototype == nullptr){
         // TODO: should probably be a ref<>
-        match_iter_prototype = std::make_unique<MatchIter>(this);
+        match_iter_prototype = new_match_iter(this);
     }
+
+    ref<MatchIter> iter = match_iter_prototype->copy();
+    iter->reset();
 
     // for(size_t i=0; i < upstr_index_caches.size(); i++){
     //     UpstreamIndexCache& upstr_index_cache = upstr_index_caches[i];
@@ -986,7 +1010,42 @@ MatchIter* LogicGraphView::get_matches(){
     //     }
     // }
     
-    return match_iter_prototype.get(); //TODO create copy;
+    return iter; //TODO create copy;
+}
+
+
+BaseLogicView* _resolve_logic_view(Logic* logic, FactSet* fact_set){
+    // Fast path recycle the logic view cached in the logic object.
+    if(logic->matcher_view != nullptr){
+        BaseLogicView* lv = logic->matcher_view;
+        if(lv->graph->fact_set == fact_set){
+            return lv;
+        }
+    }
+
+    // TODO: For now, since catching up nodes after an insert
+    //   isn't implemented, just leak the old graph and make new one.
+    if(fact_set->matcher_graph != nullptr){
+        // delete fact_set->matcher_graph;
+        fact_set->matcher_graph = nullptr;
+    }
+    // Create a new graph if one doesn't exist.
+    if(fact_set->matcher_graph == nullptr){
+        // fact_set->matcher_graph = std::make_unique<CORGI_Graph>(fact_set);
+        fact_set->matcher_graph = new CORGI_Graph(fact_set);
+    }
+    CORGI_Graph* graph = (CORGI_Graph*) fact_set->matcher_graph;
+
+    // Add the logic to the graph and cache the logic view in the logic object.
+    //   Note: add_logic can return the cached logic view if it already exists.
+    BaseLogicView* logic_view = (BaseLogicView*) graph->add_logic(logic);
+    logic->matcher_view = logic_view;
+    return logic_view;
+}
+
+ref<MatchIter> Logic::get_matches(FactSet* fact_set) {
+    LogicGraphView* logic_view = (LogicGraphView*) _resolve_logic_view(this, fact_set);
+    return logic_view->get_matches();
 }
 
 // MatchIter* Logic::get_matches(){

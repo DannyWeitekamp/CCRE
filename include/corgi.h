@@ -7,6 +7,7 @@
 #include "../include/logic.h"
 #include "../include/var_inds.h"
 #include "../include/mapping.h"
+#include "../include/base_matcher.h"
 #include "types.h"
 #include "var.h"
 #include <cstdint>
@@ -21,6 +22,7 @@
 #include <Eigen/Core>
 #include <Eigen/src/Core/NumTraits.h>
 #include <unsupported/Eigen/CXX11/Tensor>
+
 
 namespace cre{
     struct CORGI_Node;
@@ -490,12 +492,12 @@ struct UpstreamIndexCache {
 };
 
 
-struct LogicGraphView {
-    // Weak pointer to the graph this view is of.
-    CORGI_Graph* graph;
+struct LogicGraphView : public BaseLogicView {
 
-    // Weak pointer to the logic this view is for.
-    Logic* logic;
+    inline CORGI_Graph* get_graph() const {
+        return (CORGI_Graph*) graph;
+    }
+
 
     // Graph nodes for this Logic 
     std::vector<CORGI_Node*> nodes = {};
@@ -506,22 +508,24 @@ struct LogicGraphView {
     EndJoinPtrsMatrix end_join_ptrs; 
     std::vector<UpstreamIndexCache> upstr_index_caches = {};
 
-    std::unique_ptr<MatchIter> match_iter_prototype = nullptr;
+    ref<MatchIter> match_iter_prototype = nullptr;
 
     void _add_literal(Literal* lit, std::vector<VarFrontier>& frontiers, EndJoinPtrsMatrix& end_join_ptrs);
     void _add_logic(Logic* logic, std::vector<VarFrontier>& frontiers, EndJoinPtrsMatrix& end_join_ptrs);
 
     LogicGraphView(CORGI_Graph* graph, Logic* logic);
 
-    MatchIter* get_matches();
+    ref<MatchIter> get_matches();
 };
 
-struct CORGI_Graph {
-    // The change_head of the working memory at the last graph update.
-    size_t change_head = 0;
+struct CORGI_Graph : public BaseMatcherGraph{
+    // Ensures we can properly delete CORGI_Graph objects that
+    //  have been upcast to BaseMatcherGraph.
+    virtual ~CORGI_Graph() {
+        cout << "CORGI_Graph destructor" << endl;
+    }
+    
 
-    // The working memory memset.
-    FactSet* fact_set = nullptr;
 
     // Owning vector of nodes in this graph
     std::vector<std::unique_ptr<CORGI_Node>> nodes = {};
@@ -558,12 +562,12 @@ struct CORGI_Graph {
     void _ensure_root_inputs(Logic* logic);
     std::vector<size_t> _get_degree_order(Logic* logic);
     
-    void add_logic(Logic* logic);
+    LogicGraphView* add_logic(Logic* logic);
     CORGI_IO* get_root_io(CRE_Type* type);
     void parse_change_events();
     void update();
 
-    CORGI_Graph(FactSet* fact_set) : fact_set(fact_set) {}
+    CORGI_Graph(FactSet* fact_set) : BaseMatcherGraph(fact_set) {}
 };
 
 // Forward declarations
@@ -575,7 +579,7 @@ struct IterNodeDep {
     //  NOTE: the dependant node might not be the .node of the
     //  corresponding dependant m_node. This points to the most
     //  downstream join for a particular var pair. 
-    MatchIterNode* m_node;
+    size_t m_node_ind;
 
     // Index of a downstream m_node on which this iter node depends.
     size_t ind;
@@ -592,10 +596,10 @@ struct IterNodeDep {
     size_t dep_cache_ind;
     size_t this_cache_ind;
 
-    IterNodeDep(CORGI_Node* node, MatchIterNode* m_node,
+    IterNodeDep(CORGI_Node* node, size_t m_node_ind,
                size_t ind, size_t arg_ind, 
                UpstreamIndexCache* dep_index_cache, size_t dep_cache_ind, size_t this_cache_ind) :
-        node(node), m_node(m_node), 
+        node(node), m_node_ind(m_node_ind), 
         ind(ind), arg_ind(arg_ind), 
         dep_index_cache(dep_index_cache), 
         dep_cache_ind(dep_cache_ind),
@@ -633,7 +637,8 @@ struct MatchIterNode {
     bool is_empty = true;
 
 
-    MatchIterNode(): node(nullptr), arg_ind(-1), var_ind(-1), m_node_ind(-1) {}
+    MatchIterNode(): node(nullptr), output(nullptr),
+                     arg_ind(-1), var_ind(-1), m_node_ind(-1), upstr_index_cache(nullptr) {}
 
     MatchIterNode(CORGI_Node* node, size_t arg_ind, size_t var_ind,
         size_t m_node_ind, UpstreamIndexCache* upstr_index_cache) :
@@ -641,10 +646,40 @@ struct MatchIterNode {
         m_node_ind(m_node_ind), upstr_index_cache(upstr_index_cache) {
             output = &node->outputs[arg_ind];
             f_ids.reserve(output->match_f_ids.size());
-        }
+    }
+
+    // Copy constructor
+    MatchIterNode(const MatchIterNode& other) :
+        node(other.node), output(other.output), arg_ind(other.arg_ind), var_ind(other.var_ind),
+        m_node_ind(other.m_node_ind), upstr_index_cache(other.upstr_index_cache) {
+            f_ids.reserve(other.output->match_f_ids.size());
+            upstream_deps = other.upstream_deps;
+            // for(IterNodeDep& dep : upstream_deps){
+            //     dep.m_node = this;
+            // }
+    }
+
+    // Copy assignment operator
+    MatchIterNode& operator=(const MatchIterNode& other) {
+        node = other.node;
+        output = other.output;
+        arg_ind = other.arg_ind;
+        var_ind = other.var_ind;
+        m_node_ind = other.m_node_ind;
+        upstr_index_cache = other.upstr_index_cache;
+        f_ids = other.f_ids;
+        upstream_deps = other.upstream_deps;
+        // for(IterNodeDep& dep : upstream_deps){
+        //     dep.m_node = this;
+        // }
+        return *this;
+    }
+    // Shouldn't need move constructor or move assignment operator
 };
 
-struct MatchIter {
+struct MatchIter : public CRE_Obj {
+    static constexpr uint16_t T_ID = T_ID_MATCH_ITER;
+
     using iterator_category = std::forward_iterator_tag;
     using difference_type   = std::ptrdiff_t;
     using value_type        = ref<Mapping>;
@@ -654,14 +689,25 @@ struct MatchIter {
     LogicGraphView* logic_view;
     CORGI_Graph* graph;
     Logic* logic;
-    std::vector<MatchIterNode> m_nodes;
-    ref<Mapping> curr_match;
+    std::vector<MatchIterNode> m_nodes = {};
+    ref<Mapping> curr_match = nullptr;
     // std::vector<CRE_Type*> output_types;
     bool is_empty;
     // bool iter_started;
 
+    // Copy constructor
+    MatchIter(const MatchIter& other) :
+        logic_view(other.logic_view), graph(other.graph), logic(other.logic),
+        m_nodes(other.m_nodes), is_empty(other.is_empty) {
+
+        size_t n_vars = logic->vars.size();
+        curr_match = new_mapping(n_vars, 
+            logic_view->logic,
+            &logic_view->logic->var_map);
+    }
+
     explicit MatchIter(LogicGraphView* logic_view) : 
-        logic_view(logic_view), graph(logic_view->graph), logic(logic_view->logic) {
+        logic_view(logic_view), graph(logic_view->get_graph()), logic(logic_view->logic) {
 
         // cout << "MatchIter constructor" << endl;
         
@@ -694,11 +740,13 @@ struct MatchIter {
                 CORGI_Node* dep_node = logic_view->end_join_ptrs(i, j);
                 MatchIterNode* dep_m_node = handled_vars[j];
 
-                // cout << "i: " << i << ", j: " << j << endl;
+                
                 // cout << "end_join_ptrs: " << endl;
-                // cout << dep_node << endl;
+                
                 // cout << "---- " << endl;
                 if(dep_node != nullptr && dep_m_node != nullptr){
+                    // cout << "i: " << i << ", j: " << j << endl;
+                    // cout << "dep_node: " << dep_node->literal->to_string() << endl;
                     // Find the arg_ind in the dep_node that corresponds to the var_ind
                     size_t arg_ind = -1;
                     for(size_t k=0; k < dep_node->literal->var_inds.size(); k++){
@@ -714,7 +762,7 @@ struct MatchIter {
                     // cout << "    this_cache_ind: " << this_cache_ind << endl;
                     assert(dep_cache_ind != -1);
                     m_node->upstream_deps.emplace_back(
-                        IterNodeDep(dep_node, dep_m_node, j, arg_ind, dep_index_cache, dep_cache_ind, this_cache_ind)
+                        IterNodeDep(dep_node, dep_m_node->var_ind, j, arg_ind, dep_index_cache, dep_cache_ind, this_cache_ind)
                     );
                     // cout << "add dep " << "i: " << i << ", j: " << j << endl;
                 }
@@ -745,7 +793,7 @@ struct MatchIter {
         bool all_not_empty = reset_downstream_from(0);
         is_empty = !all_not_empty;
 
-        // cout << "is_empty: " << is_empty << endl;
+    // cout << "ITER is_empty: " << is_empty << endl;
         if(!is_empty){
             fill_match();
         }
@@ -870,7 +918,7 @@ struct MatchIter {
         
         // cout << endl;
         // cout << "start f_ids: " << m_node.output->match_f_ids << endl;
-        // cout << "curr ind: " << m_node.curr_ind << endl;
+        // cout << "start curr ind: " << m_node.curr_ind << endl;
         // cout << "This: " << m_node.node->literal->to_string() << endl;
 
         // Go through each upstream dependency check if each f_id
@@ -881,19 +929,19 @@ struct MatchIter {
             //  between the vars iterated by m_node and dep_m_node, and might not be the same
             //  as dep_m_node.node.
             IterNodeDep& dep = m_node.upstream_deps[i];
-            MatchIterNode* dep_m_node = dep.m_node;
+            MatchIterNode& dep_m_node = m_nodes[dep.m_node_ind];
             CORGI_Node* dep_node = dep.node;
             int64_t arg_ind = dep.arg_ind == 0 ? 1 : 0;
 
-            // cout << "   dep_node: " << dep_node->literal->to_string();
-            // cout << " f_ids: " << dep_m_node->f_ids << "curr_ind: " << dep_m_node->curr_ind << endl;
+            // cout << "   dep_node: " << dep_node->literal->to_string() << endl;
+            // cout << "   dep f_ids: " << dep_m_node.f_ids << " dep curr_ind: " << dep_m_node.curr_ind << endl;
 
             // cout << "dep_m_node->curr_ind: " << dep_m_node->curr_ind << endl;
 
             // Get the index of curr_ind in the output handled by dep_m_node.
-            assert(dep_m_node->curr_ind >= 0);
+            assert(dep_m_node.curr_ind >= 0);
             // if(dep_m_node->curr_ind < 0) return;
-            int64_t dep_ind = dep.dep_index_cache->upstream_inds(dep_m_node->curr_ind, dep.dep_cache_ind);
+            int64_t dep_ind = dep.dep_index_cache->upstream_inds(dep_m_node.curr_ind, dep.dep_cache_ind);
             
             for(size_t j=0; j<m_node.f_ids.size(); j++){
 
@@ -918,7 +966,7 @@ struct MatchIter {
             }
         }
 
-        // cout << "m_node f_ids: " << m_node.f_ids << endl;
+        
 
         // Set the curr_ind to the first non-zero f_id
         for(size_t j=0; j<m_node.f_ids.size(); j++){
@@ -938,11 +986,21 @@ struct MatchIter {
         if(m_node.f_ids.size() == 0 ||
            m_node.f_ids[m_node.curr_ind] == -1){
             m_node.is_empty = true;
-        }
+        }//else{
+        //    m_node.is_empty = false;
+        //}
 
+        // cout << "m_node f_ids: " << m_node.f_ids << endl;
+        // cout << "curr_ind: " << m_node.curr_ind << endl;
         // cout << "is_empty: " << m_node.is_empty << endl;
     }
+
+    ref<MatchIter> copy(AllocBuffer* buffer=nullptr) const; 
 };
+
+
+ref<MatchIter> new_match_iter(LogicGraphView* logic_view, AllocBuffer* buffer=nullptr);
+
 
 // Node Update Phases
 // 1) Parse Change Evernts: Process the input changes from the factset and pipe into input states.

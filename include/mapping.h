@@ -115,6 +115,8 @@ struct Mapping : public CRE_Obj {
         }
         return Item();
     }
+
+    ref<Mapping> copy(AllocBuffer* buffer) const;
 };
 
 

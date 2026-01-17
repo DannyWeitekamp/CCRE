@@ -16,6 +16,11 @@
 #include "alloc_buffer.h"
 #include "ref.h"
 #include "var.h"
+// #include "base_matcher.h"
+
+namespace cre {
+struct BaseMatcherGraph;
+}
 
 namespace cre {
 
@@ -78,6 +83,7 @@ public:
 	uint64_t _size;
     vector<ChangeEvent> change_queue;
 
+    BaseMatcherGraph* matcher_graph = nullptr;
 	// -- Methods -- 
 	FactSet(size_t n_facts=0);
 	FactSet(vector<ref<Fact>> facts);

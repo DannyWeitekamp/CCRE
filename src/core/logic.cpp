@@ -1,4 +1,5 @@
 #include "../include/alloc_buffer.h"
+#include "corgi.h"
 #include "cre_obj.h"           // for CRE_Obj, alloc_cre_obj, CRE_Obj_dtor
 #include "types.h"             // for T_ID
 #include <cstddef>
@@ -938,6 +939,9 @@ ref<Logic> Logic::copy(
     size_t mask_ind = 0;
     return _masked_copy(this->vars, empty_item_masks, mask_ind, alloc_buffer);
 }
+
+
+
 
 } // NAMESPACE_END(cre)
 

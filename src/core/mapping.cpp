@@ -44,4 +44,14 @@ ref<Mapping> new_mapping(size_t length,
     return mapping;
 }
 
+ref<Mapping> Mapping::copy(AllocBuffer* buffer) const {
+    ref<Mapping> mapping = alloc_mapping(length, buffer);
+    for(size_t i=0; i < length; i++){
+        mapping->set_init(i, get(i));
+    }
+    mapping->host_obj = host_obj;
+    mapping->var_map = var_map;
+    return mapping;
 }
+
+} // NAMESPACE_END(cre)
