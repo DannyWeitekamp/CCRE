@@ -13,6 +13,13 @@ void Mapping_dtor(const CRE_Obj* x){
 	CRE_Obj_dtor(x);
 }
 
+MappingIter Mapping::begin() const {
+    return MappingIter((Mapping*) this, 0);
+}
+MappingIter Mapping::end() const {
+    return MappingIter((Mapping*) this, length);
+}
+
 ref<Mapping> alloc_mapping(size_t length, AllocBuffer* buffer){
     auto [mapping_addr, did_malloc] = alloc_cre_obj(SIZEOF_MAPPING(length), &Mapping_dtor, T_ID_MAPPING, buffer);
   

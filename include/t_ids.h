@@ -19,8 +19,9 @@ const uint16_t T_ID_FUNC =        11;
 const uint16_t T_ID_LITERAL =     12;
 const uint16_t T_ID_LOGIC =       13;
 const uint16_t T_ID_MAPPING =     14;
-const uint16_t T_ID_MATCH_ITER =  15;
-const uint16_t T_ID_RULE =        16;
+const uint16_t T_ID_MAPPING_ITER = 15;
+const uint16_t T_ID_MATCH_ITER =  16;
+const uint16_t T_ID_RULE =        17;
 
 
 inline bool t_id_is_primitive(uint16_t t_id){

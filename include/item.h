@@ -612,6 +612,7 @@ public:
         }else if(is_integral()){
             return T(_as<int64_t>());
         }else{
+            *(int*)0 = 0;
             std::stringstream ss;
             ss << "Item cast to float type failed for Item with type ";
             ss << get_type() << ".";

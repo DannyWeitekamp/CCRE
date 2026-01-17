@@ -4,6 +4,7 @@
 #include "../../include/func.h"
 #include "../../include/builtin_funcs.h"
 #include "../../include/structure_map.h"
+#include "../../include/corgi.h"
 
 
 // Constructor for Logic that takes a kind and variadic args
@@ -193,8 +194,13 @@ void init_logic(nb::module_ & m) {
         .def("__rpow__", [](Literal* self, nb::handle other){return py_cre_rpow(self,other);}, nb::rv_policy::reference)
         .def("__neg__", [](Literal* self){return py_cre_neg(self);}, nb::rv_policy::reference)
         .def("__invert__", py_literal_invert, nb::rv_policy::reference)
-        ;
+
+        .def("__and__", [](Literal* self, nb::handle other){return AND(self,Item_from_py(other));}, nb::rv_policy::reference)
+        .def("__or__", [](Literal* self, nb::handle other){return OR(self,Item_from_py(other));}, nb::rv_policy::reference)
+
         
+    ;
+
     // Define Logic class
     nb::class_<Logic, CRE_Obj>(m, "Logic", nb::type_slots(cre_obj_slots))
         .def(nb::new_(&py_Logic_ctor), "kind"_a, "args"_a, nb::rv_policy::reference)
@@ -221,7 +227,12 @@ void init_logic(nb::module_ & m) {
              nb::rv_policy::reference)
         .def("get_structure_weight", &Logic::get_structure_weight)
         .def("get_match_weight", &Logic::get_match_weight)
-        ;
+
+        .def("__and__", [](Logic* self, nb::handle other){return AND(self,Item_from_py(other));}, nb::rv_policy::reference)
+        .def("__or__", [](Logic* self, nb::handle other){return OR(self,Item_from_py(other));}, nb::rv_policy::reference)
+
+        .def("get_matches", &Logic::get_matches, nb::rv_policy::reference)
+    ;
     
     // Expose AND and OR as module-level functions
     m.def("AND", &py_AND, "args"_a, nb::rv_policy::reference);

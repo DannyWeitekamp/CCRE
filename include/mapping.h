@@ -14,6 +14,10 @@
 
 
 namespace cre {
+struct MappingIter;
+}
+
+namespace cre {
 
 struct VarInfo {
     Var* var;
@@ -116,7 +120,42 @@ struct Mapping : public CRE_Obj {
         return Item();
     }
 
-    ref<Mapping> copy(AllocBuffer* buffer) const;
+    ref<Mapping> copy(AllocBuffer* buffer=nullptr) const;
+
+    MappingIter begin() const;
+    MappingIter end() const;
+};
+
+
+struct MappingIter {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type   = std::ptrdiff_t;
+    using value_type        = Item;
+    using pointer           = Item*;
+    using reference         = Item&;
+
+    ref<Mapping> mapping;
+    size_t index;
+    
+
+    MappingIter(ref<Mapping> mapping, size_t index=0) :
+        mapping(mapping), index(index) {}
+
+    Item& operator*() const {
+        return mapping->get(index);
+    }    
+    bool operator==(const MappingIter& other) const {
+        return uint64_t(mapping.get()) == uint64_t(other.mapping.get()) &&
+               index == other.index;
+    }
+    bool operator!=(const MappingIter& other) const {
+        return uint64_t(mapping.get()) != uint64_t(other.mapping.get()) ||
+               index != other.index;
+    }
+    MappingIter& operator++() {
+        index++;
+        return *this;
+    }
 };
 
 

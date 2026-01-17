@@ -75,51 +75,50 @@ def make_valentines_data(reps=1):
 
 
 def main(n_valentines, reps=1):
-    with cre_context("valentine"):
-        for i in range(2):
-            working_memory = make_valentines_data(reps)
+    for i in range(2):
+        working_memory = make_valentines_data(reps)
 
-            D, E, P = Var(Department, 'D'), Var(Employee,"E"), Var(Project,"P")
-            conds = AND(D.city == "Houston", E.home_city != D.city, E.num == P.emp_num)
+        D, E, P = Var(Department, 'D'), Var(Employee,"E"), Var(Project,"P")
+        conds = AND(D.city == "Houston", E.home_city != D.city, E.num == P.emp_num)
 
-            # N=1 Valentines
-            if(n_valentines >= 1):
-                V1 = Var(Employee,"V1")
-                conds &= AND(V1.home_city != E.home_city, V1.num != E.num, V1.num > E.num)
+        # N=1 Valentines
+        if(n_valentines >= 1):
+            V1 = Var(Employee,"V1")
+            conds &= AND(V1.home_city != E.home_city, V1.num != E.num, V1.num > E.num)
 
-            # N=2 Valentines
-            if(n_valentines >= 2):
-                V2 = Var(Employee,"V2")
-                conds &= AND(V2.home_city != E.home_city, V2.num != E.num, V2.num != V1.num)
+        # N=2 Valentines
+        if(n_valentines >= 2):
+            V2 = Var(Employee,"V2")
+            conds &= AND(V2.home_city != E.home_city, V2.num != E.num, V2.num != V1.num)
 
-            # N=3 Valentines
-            if(n_valentines >= 3):
-                V3 = Var(Employee,"V3")
-                conds &= AND(V3.home_city != E.home_city, V3.num != E.num, V3.num != V1.num, V3.num != V2.num)
+        # N=3 Valentines
+        if(n_valentines >= 3):
+            V3 = Var(Employee,"V3")
+            conds &= AND(V3.home_city != E.home_city, V3.num != E.num, V3.num != V1.num, V3.num != V2.num)
 
-            # N=4 Valentines
-            if(n_valentines >= 4):
-                V4 = Var(Employee,"V4")
-                conds &= AND(V4.home_city != E.home_city, V4.num != E.num, V4.num != V1.num, V4.num != V2.num, V4.num != V3.num)
+        # N=4 Valentines
+        if(n_valentines >= 4):
+            V4 = Var(Employee,"V4")
+            conds &= AND(V4.home_city != E.home_city, V4.num != E.num, V4.num != V1.num, V4.num != V2.num, V4.num != V3.num)
 
-            # N=4 Valentines
-            if(n_valentines >= 5):
-                V5 = Var(Employee,"V5")
-                conds &= AND(V5.home_city != E.home_city, V5.num != E.num, V5.num != V1.num, V5.num != V2.num, V5.num != V3.num, V5.num != V4.num)
+        # N=4 Valentines
+        if(n_valentines >= 5):
+            V5 = Var(Employee,"V5")
+            conds &= AND(V5.home_city != E.home_city, V5.num != E.num, V5.num != V1.num, V5.num != V2.num, V5.num != V3.num, V5.num != V4.num)
 
-            if(i == 0):
-                # NOTE: Because CRE currently depends on Numba (a JIT compiler for Python)
-                #  we need to run this once without timing it to eat any initial compilation
-                #  or loading costs of the relevant functions that use numba. 
-                itr = conds.get_matches(working_memory)
-                for i in range(100):
-                    (_, E,_,*rest) = next(itr)
-                    print(E.num, *[x.num for x in rest])
-            else:
-                with PrintElapse("match"):
-                    next(conds.get_matches(working_memory))
+        if(i == 0):
+            # NOTE: Because CRE currently depends on Numba (a JIT compiler for Python)
+            #  we need to run this once without timing it to eat any initial compilation
+            #  or loading costs of the relevant functions that use numba. 
+            itr = conds.get_matches(working_memory)
+            for i in range(100):
+                (_, E,_,*rest) = next(itr)
+                print(E.num, *[x.num for x in rest])
+        else:
+            with PrintElapse("match"):
+                next(conds.get_matches(working_memory))
 
-                # INSERT_YOUR_CODE
+            # INSERT_YOUR_CODE
 
 if __name__ == "__main__":
     import argparse
