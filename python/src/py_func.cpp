@@ -108,27 +108,27 @@ void init_func(nb::module_ & m){
     .def("call", &py_Func_call)
     .def("compose", &py_Func_compose, nb::rv_policy::reference)
     // Arithmetic operators
-    .def("__eq__", [](Func* self, nb::handle other){return py_cre_equals(self,other);}, nb::rv_policy::reference)
-    .def("__ne__", [](Func* self, nb::handle other){return py_cre_not_equals(self,other);}, nb::rv_policy::reference)
-    .def("__lt__", [](Func* self, nb::handle other){return py_cre_less_than(self,other);}, nb::rv_policy::reference)
-    .def("__gt__", [](Func* self, nb::handle other){return py_cre_greater_than(self,other);}, nb::rv_policy::reference)
-    .def("__le__", [](Func* self, nb::handle other){return py_cre_less_than_or_equal(self,other);}, nb::rv_policy::reference)
-    .def("__ge__", [](Func* self, nb::handle other){return py_cre_greater_than_or_equal(self,other);}, nb::rv_policy::reference)
-    .def("__add__", [](Func* self, nb::handle other){return py_cre_add(self,other);}, nb::rv_policy::reference)
-    .def("__radd__", [](Func* self, nb::handle other){return py_cre_radd(self,other);}, nb::rv_policy::reference)
-    .def("__sub__", [](Func* self, nb::handle other){return py_cre_sub(self,other);}, nb::rv_policy::reference)
-    .def("__rsub__", [](Func* self, nb::handle other){return py_cre_rsub(self,other);}, nb::rv_policy::reference)
-    .def("__mul__", [](Func* self, nb::handle other){return py_cre_mul(self,other);}, nb::rv_policy::reference)
-    .def("__rmul__", [](Func* self, nb::handle other){return py_cre_rmul(self,other);}, nb::rv_policy::reference)
-    .def("__truediv__", [](Func* self, nb::handle other){return py_cre_truediv(self,other);}, nb::rv_policy::reference)
-    .def("__rtruediv__", [](Func* self, nb::handle other){return py_cre_rtruediv(self,other);}, nb::rv_policy::reference)
-    .def("__floordiv__", [](Func* self, nb::handle other){return py_cre_floordiv(self,other);}, nb::rv_policy::reference)
-    .def("__rfloordiv__", [](Func* self, nb::handle other){return py_cre_rfloordiv(self,other);}, nb::rv_policy::reference)
-    .def("__mod__", [](Func* self, nb::handle other){return py_cre_mod(self,other);}, nb::rv_policy::reference)
-    .def("__rmod__", [](Func* self, nb::handle other){return py_cre_rmod(self,other);}, nb::rv_policy::reference)
-    .def("__pow__", [](Func* self, nb::handle other){return py_cre_pow(self,other);}, nb::rv_policy::reference)
-    .def("__rpow__", [](Func* self, nb::handle other){return py_cre_rpow(self,other);}, nb::rv_policy::reference)
-    .def("__neg__", [](Func* self){return py_cre_neg(self);}, nb::rv_policy::reference)
+    .def("__eq__", [](Func* self, nb::handle other){return Equals(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__ne__", [](Func* self, nb::handle other){return new_literal(Equals(self, Item_from_py(other)), true);}, nb::rv_policy::reference)
+    .def("__lt__", [](Func* self, nb::handle other){return LessThan(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__gt__", [](Func* self, nb::handle other){return GreaterThan(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__le__", [](Func* self, nb::handle other){return LessThanOrEqual(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__ge__", [](Func* self, nb::handle other){return GreaterThanOrEqual(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__add__", [](Func* self, nb::handle other){return Add(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__radd__", [](Func* self, nb::handle other){return Add(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__sub__", [](Func* self, nb::handle other){return Subtract(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__rsub__", [](Func* self, nb::handle other){return Subtract(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__mul__", [](Func* self, nb::handle other){return Multiply(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__rmul__", [](Func* self, nb::handle other){return Multiply(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__truediv__", [](Func* self, nb::handle other){return Divide(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__rtruediv__", [](Func* self, nb::handle other){return Divide(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__floordiv__", [](Func* self, nb::handle other){return FloorDivide(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__rfloordiv__", [](Func* self, nb::handle other){return FloorDivide(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__mod__", [](Func* self, nb::handle other){return Modulo(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__rmod__", [](Func* self, nb::handle other){return Modulo(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__pow__", [](Func* self, nb::handle other){return Pow(self,Item_from_py(other));}, nb::rv_policy::reference)
+    .def("__rpow__", [](Func* self, nb::handle other){return Pow(Item_from_py(other),self);}, nb::rv_policy::reference)
+    .def("__neg__", [](Func* self){return Negate(self);}, nb::rv_policy::reference)
     .def("__invert__", &py_Func_invert, nb::rv_policy::reference)
     
 
@@ -159,7 +159,7 @@ void init_func(nb::module_ & m){
 
     // m.def("NewFact", &NewFact, nb::rv_policy::reference);
     // m.def("iFact", &py_iFact_ctor, nb::rv_policy::reference);
-    m.attr("Equals") = ref<Func>(cre::Equals);
+    m.attr("EqualsFloat") = ref<Func>(cre::EqualsFloat);
     m.attr("EqualsInt") = ref<Func>(cre::EqualsInt);
     m.attr("EqualsStr") = ref<Func>(cre::EqualsStr);
     m.attr("And") = ref<Func>(cre::And);
@@ -167,21 +167,21 @@ void init_func(nb::module_ & m){
     m.attr("Xor") = ref<Func>(cre::Xor);
     // Skip Not, it is overloaded in py_var.cpp
     // m.attr("Not") = ref<Func>(cre::NotFunc);
-    m.attr("Add") = ref<Func>(cre::Add);
-    m.attr("AddInts") = ref<Func>(cre::AddInts);
-    m.attr("Subtract") = ref<Func>(cre::Subtract);
-    m.attr("SubtractInts") = ref<Func>(cre::SubtractInts);
-    m.attr("Multiply") = ref<Func>(cre::Multiply);
-    m.attr("MultiplyInts") = ref<Func>(cre::MultiplyInts);
-    m.attr("Divide") = ref<Func>(cre::Divide);
-    m.attr("DivideInts") = ref<Func>(cre::DivideInts);
-    m.attr("Modulo") = ref<Func>(cre::Modulo);
-    m.attr("Pow") = ref<Func>(cre::Pow);
-    m.attr("Negate") = ref<Func>(cre::Negate);
-    m.attr("NegateInt") = ref<Func>(cre::NegateInt);
-    m.attr("Concat") = ref<Func>(cre::Concat);
-    m.attr("Slice") = ref<Func>(cre::Slice);
-    m.attr("AddInts") = ref<Func>(cre::AddInts);
+    // m.attr("Add") = ref<Func>(cre::Add);
+    // m.attr("AddInts") = ref<Func>(cre::AddInts);
+    // m.attr("Subtract") = ref<Func>(cre::Subtract);
+    // m.attr("SubtractInts") = ref<Func>(cre::SubtractInts);
+    // m.attr("Multiply") = ref<Func>(cre::Multiply);
+    // m.attr("MultiplyInts") = ref<Func>(cre::MultiplyInts);
+    // m.attr("Divide") = ref<Func>(cre::Divide);
+    // m.attr("DivideInts") = ref<Func>(cre::DivideInts);
+    // m.attr("Modulo") = ref<Func>(cre::Modulo);
+    // m.attr("Pow") = ref<Func>(cre::Pow);
+    // m.attr("Negate") = ref<Func>(cre::Negate);
+    // m.attr("NegateInt") = ref<Func>(cre::NegateInt);
+    // m.attr("Concat") = ref<Func>(cre::Concat);
+    // m.attr("Slice") = ref<Func>(cre::Slice);
+    // m.attr("AddInts") = ref<Func>(cre::AddInts);
     // m.def("And", &cre::And, nb::rv_policy::reference);
     // m.def("Add", &cre::Add, nb::rv_policy::reference);
     // m.def("AddInts", &cre::AddInts, nb::rv_policy::reference);

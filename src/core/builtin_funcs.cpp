@@ -1,5 +1,6 @@
 #include "../include/ref.h"
 #include "../include/func.h"
+#include "../include/builtin_funcs.h"
 #include <cmath>
 #include <sstream>
 
@@ -68,16 +69,17 @@ namespace cre {
 // float_to_int = define_func<_float_to_int>("int");
 
 // Equals ==
-bool _Equals(double a, double b){
+bool _EqualsFloat(double a, double b){
 	// cout << "Equals: " << a << " == " << b << endl;
 	return a == b;
 }
-FuncRef Equals = define_func<_Equals>("Equals", "Equals({},{})", "{} == {}", "{} != {}");
+FuncRef EqualsFloat = define_func<_EqualsFloat>("EqualsFloat", "EqualsFloat({},{})", "{} == {}", "{} != {}");
 
 bool _EqualsInt(int64_t a, int64_t b){	
 	return a == b;
 }
 FuncRef EqualsInt = define_func<_EqualsInt>("EqualsInt", "EqualsInt({},{})", "{} == {}", "{} != {}");
+
 
 bool _EqualsStr(const StrBlock& a, const StrBlock& b){
 	// cout << "EqualsStr: " << a.view << " == " << b.view << endl;
@@ -85,11 +87,15 @@ bool _EqualsStr(const StrBlock& a, const StrBlock& b){
 }
 FuncRef EqualsStr = define_func<_EqualsStr>("EqualsStr", "EqualsStr({},{})", "{} == {}", "{} != {}");
 
+FuncRef Equals(Item& a, Item& b){
+	return resolve_func_impl("Equals", a, b, EqualsFloat, EqualsInt, EqualsStr);
+}
+
 // LessThan <
-bool _LessThan(double a, double b){
+bool _LessThanFloat(double a, double b){
 	return a < b;
 }
-FuncRef LessThan = define_func<_LessThan>("LessThan", "LessThan({},{})", "{} < {}");
+FuncRef LessThanFloat = define_func<_LessThanFloat>("LessThanFloat", "LessThanFloat({},{})", "{} < {}");
 
 bool _LessThanInt(int64_t a, int64_t b){
 	return a < b;
@@ -102,11 +108,11 @@ bool _LessThanStr(const StrBlock& a, const StrBlock& b){
 
 FuncRef LessThanStr = define_func<_LessThanStr>("LessThanStr", "LessThanStr({},{})", "{} < {}");
 
-// GreaterThan >
-bool _GreaterThan(double a, double b){
+// --  GreaterThan > -- //
+bool _GreaterThanFloat(double a, double b){
 	return a > b;
 }
-FuncRef GreaterThan = define_func<_GreaterThan>("GreaterThan", "GreaterThan({},{})", "{} > {}");
+FuncRef GreaterThanFloat = define_func<_GreaterThanFloat>("GreaterThanFloat", "GreaterThanFloat({},{})", "{} > {}");
 
 bool _GreaterThanInt(int64_t a, int64_t b){
 	return a > b;
@@ -118,11 +124,13 @@ bool _GreaterThanStr(const StrBlock& a, const StrBlock& b){
 }
 FuncRef GreaterThanStr = define_func<_GreaterThanStr>("GreaterThanStr", "GreaterThanStr({},{})", "{} > {}");
 
-// LessThanOrEqual <=
-bool _LessThanOrEqual(double a, double b){
+
+
+// -- LessThanOrEqual <= -- //
+bool _LessThanOrEqualFloat(double a, double b){
 	return a <= b;
 }
-FuncRef LessThanOrEqual = define_func<_LessThanOrEqual>("LessThanOrEqual", "LessThanOrEqual({},{})", "{} <= {}");
+FuncRef LessThanOrEqualFloat = define_func<_LessThanOrEqualFloat>("LessThanOrEqualFloat", "LessThanOrEqualFloat({},{})", "{} <= {}");
 
 bool _LessThanOrEqualInt(int64_t a, int64_t b){
 	return a <= b;
@@ -134,11 +142,11 @@ bool _LessThanOrEqualStr(const StrBlock& a, const StrBlock& b){
 }
 FuncRef LessThanOrEqualStr = define_func<_LessThanOrEqualStr>("LessThanOrEqualStr", "LessThanOrEqualStr({},{})", "{} <= {}");
 
-// GreaterThanOrEqual >=
-bool _GreaterThanOrEqual(double a, double b){
+// -- GreaterThanOrEqual >= -- //
+bool _GreaterThanOrEqualFloat(double a, double b){
 	return a >= b;
 }
-FuncRef GreaterThanOrEqual = define_func<_GreaterThanOrEqual>("GreaterThanOrEqual", "GreaterThanOrEqual({},{})", "{} >= {}");
+FuncRef GreaterThanOrEqualFloat = define_func<_GreaterThanOrEqualFloat>("GreaterThanOrEqualFloat", "GreaterThanOrEqualFloat({},{})", "{} >= {}");
 
 bool _GreaterThanOrEqualInt(int64_t a, int64_t b){
 	return a >= b;
@@ -152,108 +160,114 @@ FuncRef GreaterThanOrEqualStr = define_func<_GreaterThanOrEqualStr>("GreaterThan
 
 
 // Logical operators
-// And &
+// -- And & -- //
 bool _And(bool a, bool b){
 	return a & b;
 }
 FuncRef And = define_func<_And>("And", "And({},{})", "{} & {}");
 
-// Or |
+// -- Or | -- //
 bool _Or(bool a, bool b){
 	return a | b;
 }
 FuncRef Or = define_func<_Or>("Or", "Or({},{})", "{} | {}");
 
-// Xor ^
+// -- Xor ^ -- //
 bool _Xor(bool a, bool b){
 	return a ^ b;
 }
 FuncRef Xor = define_func<_Xor>("Xor", "Xor({},{})", "{} ^ {}");
 
-// Not ~
+// -- Not ~ -- //
 bool _Not(bool a){
 	return !a;
 }
 FuncRef NotFunc = define_func<_Not>("Not", "Not({})", "~{}");
 
-// Add +
-int64_t _AddInts(int64_t a, int64_t b){
+// -- Add + -- //
+int64_t _AddInt(int64_t a, int64_t b){
 	return a+b;
 }
-FuncRef AddInts = define_func<_AddInts>("AddInts", "AddInts({},{})", "{} + {}");
+FuncRef AddInt = define_func<_AddInt>("AddInt", "AddInt({},{})", "{} + {}");
 
-double _Add(double a, double b){
+double _AddFloat(double a, double b){
 	return a+b;
 }
-FuncRef Add = define_func<_Add>("Add", "Add({},{})", "{} + {}");
+FuncRef AddFloat = define_func<_AddFloat>("AddFloat", "AddFloat({},{})", "{} + {}");
 
-// Subtract -
-int64_t _SubtractInts(int64_t a, int64_t b){
+// -- Subtract - -- //
+int64_t _SubtractInt(int64_t a, int64_t b){
 	return a-b;
 }
-FuncRef SubtractInts = define_func<_SubtractInts>("SubtractInts", "SubtractInts({},{})", "{} - {}");
+FuncRef SubtractInt = define_func<_SubtractInt>("SubtractInt", "SubtractInt({},{})", "{} - {}");
 
-double _Subtract(double a, double b){
+double _SubtractFloat(double a, double b){
 	return a-b;
 }
-FuncRef Subtract = define_func<_Subtract>("Subtract", "Subtract({},{})", "{} - {}");
+FuncRef SubtractFloat = define_func<_SubtractFloat>("SubtractFloat", "SubtractFloat({},{})", "{} - {}");
 
-// Multiply *
-int64_t _MultiplyInts(int64_t a, int64_t b){
+// -- Multiply * -- //
+int64_t _MultiplyInt(int64_t a, int64_t b){
 	return a*b;
 }
-FuncRef MultiplyInts = define_func<_MultiplyInts>("MultiplyInts", "MultiplyInts({},{})", "{} * {}");
+FuncRef MultiplyInt = define_func<_MultiplyInt>("MultiplyInt", "MultiplyInt({},{})", "{} * {}");
 
-double _Multiply(double a, double b){
+double _MultiplyFloat(double a, double b){
 	return a*b;
 }
-FuncRef Multiply = define_func<_Multiply>("Multiply", "Multiply({},{})", "{} * {}");
+FuncRef MultiplyFloat = define_func<_MultiplyFloat>("MultiplyFloat", "MultiplyFloat({},{})", "{} * {}");
 
-// Divide /
-int64_t _DivideInts(int64_t a, int64_t b){
+// -- Divide / -- //
+int64_t _DivideInt(int64_t a, int64_t b){
 	return a/b;
 }
-FuncRef DivideInts = define_func<_DivideInts>("DivideInts", "DivideInts({},{})", "{} / {}");
+FuncRef DivideInt = define_func<_DivideInt>("DivideInt", "DivideInt({},{})", "{} / {}");
 
-double _Divide(double a, double b){
+double _DivideFloat(double a, double b){
 	return a/b;
 }
-FuncRef Divide = define_func<_Divide>("Divide", "Divide({},{})", "{} / {}");
+FuncRef DivideFloat = define_func<_DivideFloat>("DivideFloat", "DivideFloat({},{})", "{} / {}");
 
-double _FloorDivide(double a, double b){
+double _FloorDivideFloat(double a, double b){
 	return std::floor(a/b);
 }
-FuncRef FloorDivide = define_func<_FloorDivide>("FloorDivide", "FloorDivide({},{})", "{} // {}");
+FuncRef FloorDivideFloat = define_func<_FloorDivideFloat>("FloorDivideFloat", "FloorDivideFloat({},{})", "{} // {}");
 
-// Modulo %
-int64_t _ModuloInts(int64_t a, int64_t b){
+// -- Modulo % -- //
+int64_t _ModuloInt(int64_t a, int64_t b){
 	return a%b;
 }
-FuncRef ModuloInts = define_func<_ModuloInts>("ModuloInts", "ModuloInts({},{})", "{} % {}");
+FuncRef ModuloInt = define_func<_ModuloInt>("ModuloInt", "ModuloInt({},{})", "{} % {}");
 
-double _Modulo(double a, double b){
+double _ModuloFloat(double a, double b){
 	return fmod(a, b);
 }
-FuncRef Modulo = define_func<_Modulo>("Modulo", "Modulo({},{})", "{} % {}");
+FuncRef ModuloFloat = define_func<_ModuloFloat>("ModuloFloat", "ModuloFloat({},{})", "{} % {}");
 
-// Power/Exponentiation **
-double _Pow(double a, double b){
+// -- Power/Exponentiation ** -- //
+int64_t _PowInt(int64_t a, int64_t b){
 	return std::pow(a, b);
 }
-FuncRef Pow = define_func<_Pow>("Pow", "Pow({},{})", "{} ** {}");
+FuncRef PowInt = define_func<_PowInt>("PowInt", "PowInt({},{})", "{} ** {}");
 
-// Unary Negation -x
+double _PowFloat(double a, double b){
+	return std::pow(a, b);
+}
+FuncRef PowFloat = define_func<_PowFloat>("PowFloat", "PowFloat({},{})", "{} ** {}");
+
+// -- Unary Negation -x -- //
 int64_t _NegateInt(int64_t a){
 	return -a;
 }
 FuncRef NegateInt = define_func<_NegateInt>("NegateInt", "NegateInt({})", "-{}");
 
-double _Negate(double a){
+double _NegateFloat(double a){
 	return -a;
 }
-FuncRef Negate = define_func<_Negate>("Negate", "Negate({})", "-{}");
+FuncRef NegateFloat = define_func<_NegateFloat>("NegateFloat", "NegateFloat({})", "-{}");
 
 // String operations
+// -- Concat + -- //
 std::string _Concat(const StrBlock& _a, const StrBlock& _b){
 	std::string_view a = _a.view;
 	std::string_view b = _b.view;
@@ -263,6 +277,7 @@ std::string _Concat(const StrBlock& _a, const StrBlock& _b){
 }
 FuncRef Concat = define_func<_Concat>("Concat", "Concat({},{})", "{} + {}");
 
+// -- Slice [:] -- //
 std::string _Slice(const StrBlock& _str, int64_t start, int64_t end){
 	std::string_view str = _str.view;
 	size_t len = str.length();

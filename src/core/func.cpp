@@ -561,10 +561,10 @@ std::tuple<bool, Func*> check_cast_arg(uint16_t val_t_id, CRE_Type* target_type)
   return {true, nullptr};
 }
 
-bool cast_allowed(CRE_Type* src, CRE_Type* target){
-	uint16_t src_t_id = src->get_t_id();
-	uint16_t t_id = target->get_t_id();
-	switch(src->get_t_id()){
+
+
+bool cast_allowed(uint16_t src_t_id, uint16_t t_id){
+	switch(src_t_id){
 
 	case T_ID_UNDEF:
 		return false;
@@ -598,6 +598,12 @@ bool cast_allowed(CRE_Type* src, CRE_Type* target){
 		
 	}
 	return false;
+}
+
+bool cast_allowed(CRE_Type* src, CRE_Type* target){
+	uint16_t src_t_id = src->get_t_id();
+	uint16_t t_id = target->get_t_id();
+	return cast_allowed(src_t_id, t_id);
 }
 
 

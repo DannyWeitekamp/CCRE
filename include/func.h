@@ -460,6 +460,7 @@ bool any_of(T val, Opts ...opts) {
     return (... || (val == opts));
 }
 
+bool cast_allowed(uint16_t src_t_id, uint16_t t_id);
 bool cast_allowed(CRE_Type* src, CRE_Type* target);
 // 	uint16_t t_id = target->get_t_id();
 // 	switch(src->get_t_id()){
@@ -769,6 +770,8 @@ struct FuncRef : ref<Func> {
 	template <class ... Ts>
 	inline auto operator()(Ts && ... inputs);
 	inline auto operator~() const;
+
+	FuncRef(Func* func) : ref<Func>(func) {}
 
 	
 	// inline FuncRef operator()(Ts && ... inputs){

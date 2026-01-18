@@ -180,7 +180,7 @@ ref<Logic> fact_to_conjunct(Fact* fact, Var* var, AllocBuffer* alloc_buffer) {
             mbr_var = subj_var->extend_item(i);
         }
         // cout << "MBR_VAR: " << mbr_var << endl;
-        ref<Literal> mbr_lit = new_literal(Equals->compose(mbr_var, mbr));
+        ref<Literal> mbr_lit = new_literal(Equals(mbr_var, mbr));
         conjuct->_insert_literal(mbr_lit, LiteralSemantics(LIT_SEMANTICS_FACT, 0, L - 1));
     }
     conjuct->_finalize();
@@ -193,7 +193,7 @@ ref<Logic> distribute_OR_const(Logic* disj, Var* var, AllocBuffer* alloc_buffer)
     ref<Logic> new_disj = new_logic(CONDS_KIND_OR, alloc_buffer);
     size_t L = disj->items.size();
     for(size_t i=0; i<disj->items.size(); i++){
-        ref<Literal> lit = new_literal(Equals->compose(var, disj->items[i]));
+        ref<Literal> lit = new_literal(Equals(var, disj->items[i]));
         new_disj->_insert_literal(lit, LiteralSemantics(LIT_SEMANTICS_OR_CONSTS, 0, L-1));
     }
     new_disj->_finalize();

@@ -8,6 +8,8 @@ void init_factset(nb::module_ & m);
 void init_func(nb::module_ & m);
 void init_var(nb::module_ & m);
 void init_logic(nb::module_ & m);
+void init_mapping(nb::module_ & m);
+void init_match_iter(nb::module_ & m);
 void init_flattener(nb::module_ & m);
 void init_vectorizer(nb::module_ & m);
 
@@ -21,5 +23,6 @@ NB_MODULE(cre, m) {
     init_logic(m);
     init_flattener(m);
     init_vectorizer(m);
-    
+    init_mapping(m);
+    init_match_iter(m);
 }
